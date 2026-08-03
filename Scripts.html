@@ -111,9 +111,12 @@
     state.evidenceData = '';
     appRoot().innerHTML = renderHeader('Pemindaian ruangan') +
       '<main class="page"><section class="room-banner"><div><div class="eyebrow" style="color:#ffd100">CHECKLIST HARIAN</div>' +
-      '<h1>Pindai QR ruangan</h1><p>Gunakan Google Lens atau kamera bawaan HP. Tautan QR akan membuka ruangan secara otomatis.</p></div></section>' +
+      '<h1>Pindai QR ruangan</h1><p>Pindai langsung dari aplikasi menggunakan kamera belakang HP.</p></div></section>' +
       '<section class="panel"><div class="panel-body"><div class="empty">' +
-      '<strong>Belum ada ruangan terbuka.</strong><br>Tutup halaman ini, pindai QR yang ditempel di ruangan, lalu buka tautannya menggunakan browser yang sama.</div></div></section></main>';
+      '<strong>Belum ada ruangan terbuka.</strong><br>Arahkan kamera ke QR yang ditempel di ruangan.' +
+      '<div style="margin-top:18px"><button type="button" class="btn btn-primary" onclick="startQrScanner()">Pindai QR Ruangan</button></div>' +
+      '<div class="field-hint" style="margin-top:12px">Jika video kamera tidak tersedia, aplikasi akan menyediakan pilihan Ambil foto QR.</div>' +
+      '</div></div></section></main>';
   }
 
   async function startQrScanner() {
