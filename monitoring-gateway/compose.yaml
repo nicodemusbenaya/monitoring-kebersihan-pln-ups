@@ -1,0 +1,18 @@
+services:
+  monitoring-kebersihan-gateway:
+    image: node:20-alpine
+    container_name: monitoring-kebersihan-gateway
+    working_dir: /app
+    command: sh -c "npm install --omit=dev && npm start"
+    restart: unless-stopped
+    ports:
+      - "18081:8080"
+    env_file:
+      - /share/Container/monitoring-kebersihan-gateway/.env
+    volumes:
+      - /share/Container/monitoring-kebersihan-gateway:/app
+      - monitoring_kebersihan_node_modules:/app/node_modules
+      - /share/MONITORING-KEBERSIHAN:/data
+
+volumes:
+  monitoring_kebersihan_node_modules:

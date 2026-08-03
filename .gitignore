@@ -1,0 +1,19 @@
+# Secrets and local environment files
+**/.env
+**/.env.*
+!**/.env.example
+
+# Installed dependencies and logs
+**/node_modules/
+**/npm-debug.log*
+
+# Local analysis and generated artifacts
+.analysis/
+output/
+tmp/
+
+# Operating-system and editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

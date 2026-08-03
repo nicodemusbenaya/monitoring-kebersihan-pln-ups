@@ -1,0 +1,19 @@
+services:
+  ups-earsip-gateway:
+    image: node:20-alpine
+    container_name: ups-earsip-gateway-v3
+    working_dir: /app
+    command: sh -c "npm install --omit=dev && npm start"
+    restart: unless-stopped
+    ports:
+      - "18080:8080"
+    env_file:
+      - /share/Container/gateway-v3/.env
+    environment:
+      MONITORING_UPSTREAM: http://10.10.200.166:18081
+    volumes:
+      - /share/Container/gateway-v3:/app
+      - gateway_v3_node_modules:/app/node_modules
+      - /share/UPS-EARSIP:/data
+volumes:
+  gateway_v3_node_modules:
