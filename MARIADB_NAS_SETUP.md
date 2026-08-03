@@ -37,37 +37,35 @@ FLUSH PRIVILEGES;
 
 Jangan memakai akun `root` dan jangan membuka port `3307` ke internet. User `monitoring_app` hanya boleh mengelola database aplikasi ini.
 
-## 2. Perbarui berkas gateway di NAS
+## 2. Perbarui berkas gateway gabungan di NAS
 
-Backup folder berikut terlebih dahulu:
+Container E-Arsip dan monitoring sekarang digabung untuk menghindari masalah jaringan antar-container QNAP. Folder kode monitoring tetap terpisah dan dipasang read-only ke container E-Arsip.
+
+Perbarui folder berikut:
 
 ```text
+/share/Container/gateway-v3
 /share/Container/monitoring-kebersihan-gateway
 ```
 
-Salin berkas terbaru dari folder lokal `monitoring-gateway` ke folder tersebut:
+Salin `server.js`, `package.json`, `package-lock.json`, dan `compose.yaml` terbaru dari `gateway-v3`. Salin berkas berikut dari `monitoring-gateway`:
 
 ```text
 server.js
 database.js
 schema.sql
 package.json
-compose.yaml
-.env.example
 ```
 
 Jangan menimpa `.env` dengan `.env.example`.
 
-## 3. Isi `.env`
+## 3. Isi `.env` gateway gabungan
 
-Tambahkan konfigurasi berikut ke `/share/Container/monitoring-kebersihan-gateway/.env`:
+Tambahkan konfigurasi berikut ke `/share/Container/gateway-v3/.env`. Pertahankan konfigurasi E-Arsip yang sudah ada:
 
 ```env
-PORT=8080
-STORAGE_ROOT=/data
-API_TOKEN=TOKEN_GATEWAY_YANG_SUDAH_DIGUNAKAN
-MAX_BODY_MB=12
-TRUST_PROXY=1
+MONITORING_API_TOKEN=TOKEN_GATEWAY_MONITORING_YANG_SUDAH_DIGUNAKAN
+MONITORING_MAX_BODY_MB=12
 
 DB_HOST=10.10.200.166
 DB_PORT=3307
@@ -79,26 +77,36 @@ DB_CONNECTION_LIMIT=10
 
 Jangan mengirim atau memasukkan `.env` ke Git.
 
-## 4. Recreate container
+## 4. Recreate satu container
 
-Di Container Station, lakukan **Recreate**, bukan hanya Restart. Recreate diperlukan agar dependensi `mysql2`, healthcheck, dan konfigurasi lingkungan baru diterapkan.
+Di Container Station, lakukan **Recreate** pada `ups-earsip-gateway-v3`, bukan hanya Restart. Recreate diperlukan agar dependensi `mysql2`, mount folder monitoring, dan konfigurasi lingkungan baru diterapkan.
 
 Mapping yang digunakan tetap:
 
 ```text
-Host 18081 -> container 8080
-/share/MONITORING-KEBERSIHAN -> /data
+Host 18080 -> container 8080
+/share/UPS-EARSIP -> /data
+/share/Container/monitoring-kebersihan-gateway -> /monitoring (read-only)
+/share/MONITORING-KEBERSIHAN -> /monitoring-data
 ```
 
-Container akan membuat seluruh tabel aplikasi secara otomatis. User database memerlukan izin `CREATE` saat proses pertama.
+Container akan membuat seluruh tabel aplikasi secara otomatis. User database memerlukan izin `CREATE` saat proses pertama. Setelah endpoint monitoring pada port 18080 berhasil diuji, container `monitoring-kebersihan-gateway` lama dapat dihentikan.
 
 ## 5. Periksa health gateway
 
-Di jaringan LAN buka:
+Pastikan health E-Arsip masih dapat dibuka:
 
 ```text
-http://10.10.200.166:18081/health
+http://nasups01.myqnapcloud.com:18080/health
 ```
+
+Endpoint berikut akan menampilkan `Unauthorized` jika dibuka langsung tanpa token; itu berarti rutenya aktif:
+
+```text
+http://nasups01.myqnapcloud.com:18080/api/kebersihan/status
+```
+
+Untuk pemeriksaan lengkap dengan token, jalankan `testMonitoringNasConnection()` dari Apps Script.
 
 Hasil yang benar:
 

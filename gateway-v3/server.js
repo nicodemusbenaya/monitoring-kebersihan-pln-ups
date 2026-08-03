@@ -17,7 +17,7 @@ const PUBLIC_BASE_URL = String(process.env.PUBLIC_BASE_URL || '').replace(/\/$/,
 const MAX_FILE_SIZE_MB = Number(process.env.MAX_FILE_SIZE_MB || 100);
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 const MAX_FILES = Number(process.env.MAX_FILES_PER_REQUEST || 30);
-const MONITORING_UPSTREAM = String(process.env.MONITORING_UPSTREAM || '').replace(/\/$/, '');
+const MONITORING_APP_PATH = String(process.env.MONITORING_APP_PATH || path.join(__dirname, '..', 'monitoring-gateway', 'server.js'));
 
 if (String(process.env.TRUST_PROXY || '') === '1') app.set('trust proxy', 1);
 if (API_TOKEN.length < 24) console.warn('[SECURITY] API_TOKEN belum diisi atau terlalu pendek. Gunakan minimal 24 karakter.');
@@ -570,44 +570,10 @@ app.post('/api/aturan/delete', apiAuth, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-// =========================================================
-// PROXY TERBATAS KE CONTAINER MONITORING KEBERSIHAN
-// Port publik tetap 18080, data dan token divalidasi container monitoring.
-// =========================================================
-app.use('/api/kebersihan', async (req, res, next) => {
-  if (!MONITORING_UPSTREAM) {
-    return res.status(503).json({ ok:false, message:'MONITORING_UPSTREAM belum dikonfigurasi.' });
-  }
-  try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 90_000);
-    const target = MONITORING_UPSTREAM + req.originalUrl;
-    const headers = {
-      authorization: String(req.header('authorization') || ''),
-      accept: String(req.header('accept') || '*/*')
-    };
-    const options = {
-      method: req.method,
-      headers,
-      signal: controller.signal
-    };
-    if (!['GET', 'HEAD'].includes(req.method)) {
-      headers['content-type'] = 'application/json';
-      options.body = JSON.stringify(req.body || {});
-    }
-    const upstream = await fetch(target, options);
-    const contentType = upstream.headers.get('content-type');
-    if (contentType) res.setHeader('content-type', contentType);
-    const body = Buffer.from(await upstream.arrayBuffer());
-    clearTimeout(timer);
-    res.status(upstream.status).send(body);
-  } catch (error) {
-    if (error.name === 'AbortError') {
-      return res.status(504).json({ ok:false, message:'Container monitoring tidak merespons dalam 90 detik.' });
-    }
-    next(error);
-  }
-});
+// Monitoring kebersihan berjalan di proses/container yang sama agar tidak
+// bergantung pada jaringan antar-container QNAP.
+const { app: monitoringApp } = require(MONITORING_APP_PATH);
+app.use(monitoringApp);
 
 app.use((error, req, res, next) => {
   console.error(error);

@@ -10,10 +10,14 @@ services:
     env_file:
       - /share/Container/gateway-v3/.env
     environment:
-      MONITORING_UPSTREAM: http://10.10.200.166:18081
+      NODE_PATH: /app/node_modules
+      MONITORING_APP_PATH: /monitoring/server.js
+      MONITORING_STORAGE_ROOT: /monitoring-data
     volumes:
       - /share/Container/gateway-v3:/app
       - gateway_v3_node_modules:/app/node_modules
       - /share/UPS-EARSIP:/data
+      - /share/Container/monitoring-kebersihan-gateway:/monitoring:ro
+      - /share/MONITORING-KEBERSIHAN:/monitoring-data
 volumes:
   gateway_v3_node_modules:

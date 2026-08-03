@@ -19,9 +19,9 @@ const {
 
 const app = express();
 const PORT = Number(process.env.PORT || 8080);
-const STORAGE_ROOT = path.resolve(process.env.STORAGE_ROOT || '/data');
-const API_TOKEN = String(process.env.API_TOKEN || '').trim();
-const MAX_BODY_MB = Number(process.env.MAX_BODY_MB || 12);
+const STORAGE_ROOT = path.resolve(process.env.MONITORING_STORAGE_ROOT || process.env.STORAGE_ROOT || '/data');
+const API_TOKEN = String(process.env.MONITORING_API_TOKEN || process.env.API_TOKEN || '').trim();
+const MAX_BODY_MB = Number(process.env.MONITORING_MAX_BODY_MB || process.env.MAX_BODY_MB || 12);
 
 if (String(process.env.TRUST_PROXY || '') === '1') app.set('trust proxy', 1);
 if (API_TOKEN.length < 32) throw new Error('API_TOKEN wajib diisi minimal 32 karakter.');
@@ -282,13 +282,21 @@ function scheduleDatabaseRetry() {
   timer.unref();
 }
 
-initializeDatabase().then(connected => {
+const databaseReady = initializeDatabase().then(connected => {
   if (!connected) {
     console.error('MariaDB belum siap. Gateway akan mencoba kembali setiap 30 detik.');
     scheduleDatabaseRetry();
   }
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Monitoring Kebersihan NAS Gateway v2 aktif pada port ${PORT}`);
-    console.log(`Storage root: ${STORAGE_ROOT}`);
-  });
+  return connected;
 });
+
+if (require.main === module) {
+  databaseReady.then(() => {
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Monitoring Kebersihan NAS Gateway v2 aktif pada port ${PORT}`);
+      console.log(`Storage root: ${STORAGE_ROOT}`);
+    });
+  });
+}
+
+module.exports = { app, databaseReady };
