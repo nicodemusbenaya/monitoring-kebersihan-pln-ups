@@ -46,11 +46,13 @@ function runSelfCheck() {
   }
 
   var failed = checks.filter(function(check) { return !check.passed; });
-  return {
+  var result = {
     ok: failed.length === 0,
     checks: checks,
     message: failed.length ? failed.length + ' pemeriksaan belum lolos.' : 'Semua pemeriksaan berhasil.'
   };
+  console.log(JSON.stringify(result, null, 2));
+  return result;
 }
 
 /**
