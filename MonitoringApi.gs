@@ -102,15 +102,16 @@ function monitoringSubmitInspection_(payload) {
     var submittedAt = nowIso_();
     var evidenceName = room.Code + '-' + todayKey_() + '-' + slot.Code + '-' + inspectionId;
     var evidenceFileId = savePhoto_(evidenceData, evidenceName);
+    var evidencePending = String(evidenceFileId).indexOf('DRIVE:') === 0;
     var week = monitoringWeekInfo_(new Date());
-    appendObject_('INSPECTIONS', {
+    var inspectionRow = {
       InspectionId: inspectionId, DateKey: todayKey_(), WeekStart: week.weekStart, DayNumber: week.dayNumber,
       RoomId: room.RoomId, RoomTypeId: room.RoomTypeId, SlotId: slot.SlotId, SlotCode: slot.Code,
       UserId: session.user.UserId, ScanId: scan.ScanId, ScannedAt: scan.ScannedAt, SubmittedAt: submittedAt,
       OverallStatus: dirtyCount ? 'ADA_TEMUAN' : 'BERSIH', DirtyCount: dirtyCount,
       EvidenceFileId: evidenceFileId, EvidenceName: evidenceName, State: 'SUBMITTED',
-      BackupStatus: 'PENDING', BackupUpdatedAt: submittedAt, ReopenedAt: '', ReopenedBy: ''
-    });
+      BackupStatus: evidencePending ? 'PENDING' : 'SYNCED', BackupUpdatedAt: submittedAt, ReopenedAt: '', ReopenedBy: ''
+    };
     var detailRows = activities.map(function(activity) {
       var answer = answerMap[activity.activityId];
       return {
@@ -122,8 +123,10 @@ function monitoringSubmitInspection_(payload) {
         Note: safeCellText_(answer.note || ''), CorrectedAt: '', CorrectedBy: ''
       };
     });
-    appendObjects_('INSPECTION_DETAILS', detailRows);
-    enqueueNasBackup_(inspectionId);
+    appendTransaction_([
+      { table: 'INSPECTIONS', rows: [inspectionRow] },
+      { table: 'INSPECTION_DETAILS', rows: detailRows }
+    ]);
     logAudit_(session.user.UserId, 'SUBMIT_INSPECTION', 'INSPECTION', inspectionId, {
       roomId: room.RoomId, slotId: slot.SlotId, dirtyCount: dirtyCount
     });

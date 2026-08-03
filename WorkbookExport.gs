@@ -152,7 +152,7 @@ function exportMonitoringWorkbook_(payload) {
     ]]);
     evidence.setRowHeight(row, 135);
     try {
-      var blob = DriveApp.getFileById(inspection.EvidenceFileId).getBlob();
+      var blob = loadStoredPhotoBlob_(inspection.EvidenceFileId);
       evidence.insertImage(blob, 8, row).setWidth(180).setHeight(125);
     } catch (error) {
       evidence.getRange(row, 8).setValue('Evidence tidak dapat dimuat');
@@ -167,11 +167,11 @@ function exportMonitoringWorkbook_(payload) {
   var response = UrlFetchApp.fetch(url, { headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() } });
   var name = 'Laporan Kebersihan - ' + room.Name + ' - ' + start + '.xlsx';
   var blob = response.getBlob().setName(name);
-  var folderId = PropertiesService.getScriptProperties().getProperty('REPORT_FOLDER_ID');
-  if (folderId) DriveApp.getFolderById(folderId).createFile(blob);
+  var storedPath = uploadReportBlobToNas_(blob, name);
   DriveApp.getFileById(temp.getId()).setTrashed(true);
   return {
     name: name,
+    storedPath: storedPath,
     inspectionsExported: inspections.length,
     marksWritten: markRanges.length,
     shiftMarksWritten: shiftMarksWritten,

@@ -21,10 +21,16 @@ var APP = {
     SLOTS: ['SlotId', 'RoomTypeId', 'Code', 'Name', 'Role', 'SortOrder', 'Active', 'CreatedAt', 'UpdatedAt'],
     SCAN_EVENTS: ['ScanId', 'RoomId', 'UserId', 'ScannedAt', 'UserAgent', 'QrPayload'],
     INSPECTIONS: ['InspectionId', 'DateKey', 'WeekStart', 'DayNumber', 'RoomId', 'RoomTypeId', 'SlotId', 'SlotCode', 'UserId', 'ScanId', 'ScannedAt', 'SubmittedAt', 'OverallStatus', 'DirtyCount', 'EvidenceFileId', 'EvidenceName', 'State', 'BackupStatus', 'BackupUpdatedAt', 'ReopenedAt', 'ReopenedBy'],
-    INSPECTION_DETAILS: ['DetailId', 'InspectionId', 'ActivityId', 'QualityResult', 'QualityLabel', 'FunctionResult', 'FunctionLabel', 'Note', 'CorrectedAt', 'CorrectedBy'],
+    INSPECTION_DETAILS: ['DetailId', 'InspectionId', 'ActivityId', 'QualityResult', 'QualityLabel', 'FunctionResult', 'FunctionLabel', 'Status', 'FuncStatus', 'Note', 'PhotoFileId', 'CorrectedAt', 'CorrectedBy'],
     BACKUP_QUEUE: ['QueueId', 'InspectionId', 'EventType', 'PayloadJson', 'Status', 'AttemptCount', 'LastError', 'CreatedAt', 'UpdatedAt'],
     SESSIONS: ['SessionHash', 'UserId', 'ExpiresAt', 'CreatedAt'],
     AUDIT_LOG: ['AuditId', 'UserId', 'Action', 'EntityType', 'EntityId', 'Detail', 'CreatedAt']
+  },
+  PRIMARY_KEYS: {
+    SETTINGS: 'Key', USERS: 'UserId', ROOM_TYPES: 'RoomTypeId', ROOMS: 'RoomId',
+    ACTIVITIES: 'ActivityId', ROOM_ACTIVITIES: 'MapId', SLOTS: 'SlotId',
+    SCAN_EVENTS: 'ScanId', INSPECTIONS: 'InspectionId', INSPECTION_DETAILS: 'DetailId',
+    BACKUP_QUEUE: 'QueueId', SESSIONS: 'SessionHash', AUDIT_LOG: 'AuditId'
   }
 };
 
@@ -101,6 +107,69 @@ function setupApplication() {
   } finally {
     lock.releaseLock();
   }
+}
+
+/**
+ * Jalankan sekali setelah gateway v2 dan MariaDB aktif.
+ * Spreadsheet lama dipertahankan sebagai arsip; cache fallback baru dibuat tanpa memigrasikan data lama.
+ */
+function initializeMariaDbPrimary() {
+  var connection = testMonitoringNasConnection();
+  assert_(connection.databaseConnected, 'DATABASE_CONNECTION_FAILED', 'MariaDB belum terhubung.');
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var properties = PropertiesService.getScriptProperties();
+    var previousId = properties.getProperty('SPREADSHEET_ID');
+    if (previousId && !properties.getProperty('LEGACY_SPREADSHEET_ID')) {
+      properties.setProperty('LEGACY_SPREADSHEET_ID', previousId);
+    }
+    var ss = SpreadsheetApp.create(APP.NAME + ' - Fallback Cache');
+    ss.setSpreadsheetTimeZone(APP.TIMEZONE);
+    properties.setProperty('SPREADSHEET_ID', ss.getId());
+    properties.setProperty('PRIMARY_STORAGE_MODE', 'MARIADB_NAS');
+    Object.keys(APP.SHEETS).forEach(function(name) {
+      ensureSheet_(ss, name, APP.SHEETS[name]);
+    });
+    ensureDriveFolders_(properties);
+    ensurePepper_(properties);
+    ensureBackupTrigger_();
+    seedSettings_();
+    seedMonitoringConfiguration_();
+    seedMonitoringUsers_();
+    rebuildFallbackCacheFromMariaDb_();
+    formatDatabase_();
+    return {
+      ok: true,
+      mode: 'MARIADB_NAS',
+      database: connection.database,
+      fallbackSpreadsheetId: ss.getId(),
+      fallbackSpreadsheetUrl: ss.getUrl(),
+      legacySpreadsheetId: previousId || '',
+      secureTransport: connection.secureTransport,
+      message: connection.secureTransport ?
+        'MariaDB + NAS sudah menjadi penyimpanan utama.' :
+        'MariaDB + NAS aktif untuk pengujian. Aktifkan HTTPS sebelum operasional produksi.'
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function rebuildFallbackCacheFromMariaDb_() {
+  Object.keys(APP.SHEETS).forEach(function(name) {
+    if (name === 'BACKUP_QUEUE') return;
+    var sheet = getSheet_(name);
+    if (sheet.getLastRow() > 1) sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).clearContent();
+    invalidatePrimaryRows_(name);
+    var rows = rowsAsObjects_(name).map(function(row) {
+      var copy = {};
+      Object.keys(row).forEach(function(key) { if (key !== '_row') copy[key] = row[key]; });
+      return copy;
+    });
+    sheetAppendObjects_(name, rows);
+  });
+  return { rebuilt: true };
 }
 
 /**

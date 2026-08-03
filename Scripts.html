@@ -438,9 +438,9 @@
       '<div class="stats-grid"><div class="stat-card"><span>Total kiriman</span><strong>' + dash.totals.submissions +
       '</strong></div><div class="stat-card clean"><span>Bersih</span><strong>' + dash.totals.clean +
       '</strong></div><div class="stat-card dirty"><span>Ada temuan</span><strong>' + dash.totals.findings +
-      '</strong></div><div class="stat-card"><span>Belum dicadangkan</span><strong>' + dash.totals.pendingBackup + '</strong></div></div>' +
+      '</strong></div><div class="stat-card"><span>Menunggu sinkronisasi</span><strong>' + dash.totals.pendingBackup + '</strong></div></div>' +
       '<section class="panel"><div class="panel-head"><h2>Kiriman terbaru</h2></div><div class="table-wrap"><table><thead><tr>' +
-      '<th>Tanggal</th><th>Ruangan</th><th>Slot</th><th>Petugas</th><th>Hasil</th><th>NAS</th></tr></thead><tbody>' +
+      '<th>Tanggal</th><th>Ruangan</th><th>Slot</th><th>Petugas</th><th>Hasil</th><th>Storage</th></tr></thead><tbody>' +
       (dash.recent.length ? dash.recent.map(function(item) {
         return '<tr><td>' + esc(item.dateKey) + '</td><td>' + esc(item.roomName) + '</td><td>' + esc(item.slotName) +
           '</td><td>' + esc(item.officerName) + '</td><td>' + statusBadge(item.overallStatus) +
@@ -727,14 +727,14 @@
       '<input id="template-id" placeholder="https://docs.google.com/spreadsheets/d/ID_SPREADSHEET/edit">' +
       '<div class="field-hint">Gunakan URL lengkap atau teks panjang di antara /d/ dan /edit. Jangan memakai angka #gid=.</div></div>' +
       '<button class="btn btn-primary" onclick="saveTemplate()">Simpan template</button></div></section>' +
-      '<section class="panel"><div class="panel-head"><h2>Gateway NAS khusus</h2></div><div class="panel-body">' +
+      '<section class="panel"><div class="panel-head"><h2>MariaDB + NAS utama</h2></div><div class="panel-body">' +
       '<div class="field"><label>Endpoint gateway NAS</label><input id="nas-url" value="http://nasups01.myqnapcloud.com:18080" placeholder="http://nasups01.myqnapcloud.com:18080">' +
-      '<div class="field-hint">Gunakan alamat dasar tanpa /health atau /api.</div></div>' +
+      '<div class="field-hint">Gunakan alamat dasar tanpa /health atau /api. HTTP hanya untuk pengujian; gunakan HTTPS untuk produksi.</div></div>' +
       '<div class="field"><label>Token akses</label><input id="nas-token" type="password" placeholder="Minimal 32 karakter"></div>' +
       '<button class="btn btn-primary" onclick="saveNas()">Simpan NAS</button> ' +
       '<button class="btn btn-secondary" onclick="testNas()">Tes koneksi</button> ' +
-      '<button class="btn btn-secondary" onclick="retryNas()">Ulangi cadangan</button> ' +
-      '<button class="btn btn-secondary" onclick="backupNow()">Snapshot sekarang</button></div></section></div>';
+      '<button class="btn btn-secondary" onclick="retryNas()">Sinkronkan antrean</button> ' +
+      '<button class="btn btn-secondary" onclick="backupNow()">Snapshot cache</button></div></section></div>';
   }
 
   async function saveTemplate() {
@@ -749,7 +749,7 @@
         endpoint: document.getElementById('nas-url').value,
         token: document.getElementById('nas-token').value
       });
-      toast('Konfigurasi NAS berhasil disimpan.', 'success');
+      toast('Konfigurasi MariaDB + NAS berhasil disimpan.', 'success');
     } catch (error) { handleApiError(error); }
   }
   async function testNas() {
@@ -758,19 +758,19 @@
         endpoint: document.getElementById('nas-url').value,
         token: document.getElementById('nas-token').value
       });
-      toast('Terhubung ke NAS: ' + result.endpoint, 'success');
+      toast('NAS dan MariaDB terhubung: ' + result.database, 'success');
     } catch (error) { handleApiError(error); }
   }
   async function retryNas() {
     try {
       var result = await apiCall('retryNasBackup', {});
-      toast('Cadangan: ' + result.synced + ' berhasil, ' + result.failed + ' gagal.', result.failed ? 'error' : 'success');
+      toast('Sinkronisasi: ' + result.synced + ' berhasil, ' + result.failed + ' gagal.', result.failed ? 'error' : 'success');
     } catch (error) { handleApiError(error); }
   }
   async function backupNow() {
     try {
       var result = await apiCall('backupSpreadsheetNow', {});
-      toast(result.skipped ? 'NAS belum dikonfigurasi.' : 'Snapshot database tersimpan di NAS.', result.skipped ? 'error' : 'success');
+      toast(result.skipped ? 'NAS belum dikonfigurasi.' : 'Snapshot cache fallback tersimpan di NAS.', result.skipped ? 'error' : 'success');
     } catch (error) { handleApiError(error); }
   }
 

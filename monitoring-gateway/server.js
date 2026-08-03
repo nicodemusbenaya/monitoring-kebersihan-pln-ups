@@ -6,6 +6,16 @@ const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 const fs = require('fs');
 const path = require('path');
+const {
+  initializeDatabase,
+  databaseHealth,
+  listRows,
+  upsertRow,
+  upsertRows,
+  upsertTransaction,
+  updateRow,
+  deleteRow
+} = require('./database');
 
 const app = express();
 const PORT = Number(process.env.PORT || 8080);
@@ -72,20 +82,77 @@ app.get('/health', async (req, res) => {
     const probe = safeResolve(`.health-${process.pid}`);
     await fs.promises.writeFile(probe, 'ok');
     await fs.promises.unlink(probe);
-    res.json({ ok: true, service: 'Monitoring Kebersihan NAS Gateway', version: '1.0.0', storageWritable: true });
+    const database = await databaseHealth();
+    res.status(database.connected ? 200 : 503).json({
+      ok: database.connected,
+      service: 'Monitoring Kebersihan NAS Gateway',
+      version: '2.0.0',
+      storageWritable: true,
+      databaseConnected: database.connected,
+      database: database.connected ? database.database : undefined,
+      message: database.connected ? undefined : database.message
+    });
   } catch (error) {
-    res.status(500).json({ ok: false, storageWritable: false, message: error.message });
+    res.status(500).json({ ok: false, storageWritable: false, databaseConnected: false, message: error.message });
   }
 });
 
 app.get('/api/kebersihan/status', auth, async (req, res) => {
   const stats = typeof fs.promises.statfs === 'function' ? await fs.promises.statfs(STORAGE_ROOT) : null;
+  const database = await databaseHealth();
   res.json({
-    ok: true,
+    ok: database.connected,
     storageRoot: STORAGE_ROOT,
     totalBytes: stats ? Number(stats.blocks) * Number(stats.bsize) : 0,
-    availableBytes: stats ? Number(stats.bavail) * Number(stats.bsize) : 0
+    availableBytes: stats ? Number(stats.bavail) * Number(stats.bsize) : 0,
+    databaseConnected: database.connected,
+    database: database.connected ? database.database : '',
+    databaseMessage: database.connected ? '' : database.message
   });
+});
+
+app.get('/api/kebersihan/db/rows', auth, async (req, res, next) => {
+  try {
+    const rows = await listRows(req.query.table);
+    res.json({ ok: true, table: String(req.query.table || '').toUpperCase(), rows });
+  } catch (error) { next(error); }
+});
+
+app.post('/api/kebersihan/db/upsert', auth, async (req, res, next) => {
+  try {
+    const result = await upsertRow(req.body?.table, req.body?.row || {});
+    res.json({ ok: true, ...result });
+  } catch (error) { next(error); }
+});
+
+app.post('/api/kebersihan/db/batch', auth, async (req, res, next) => {
+  try {
+    if (!Array.isArray(req.body?.rows)) return res.status(400).json({ ok: false, message: 'rows wajib berupa array.' });
+    const result = await upsertRows(req.body?.table, req.body.rows);
+    res.json({ ok: true, ...result });
+  } catch (error) { next(error); }
+});
+
+app.post('/api/kebersihan/db/transaction', auth, async (req, res, next) => {
+  try {
+    if (!Array.isArray(req.body?.mutations)) return res.status(400).json({ ok: false, message: 'mutations wajib berupa array.' });
+    const result = await upsertTransaction(req.body.mutations);
+    res.json({ ok: true, ...result });
+  } catch (error) { next(error); }
+});
+
+app.post('/api/kebersihan/db/update', auth, async (req, res, next) => {
+  try {
+    const result = await updateRow(req.body?.table, req.body?.key, req.body?.updates || {});
+    res.json({ ok: true, ...result });
+  } catch (error) { next(error); }
+});
+
+app.post('/api/kebersihan/db/delete', auth, async (req, res, next) => {
+  try {
+    const result = await deleteRow(req.body?.table, req.body?.key);
+    res.json({ ok: true, ...result });
+  } catch (error) { next(error); }
 });
 
 app.post('/api/kebersihan/inspection', auth, async (req, res, next) => {
@@ -136,13 +203,65 @@ app.post('/api/kebersihan/snapshot', auth, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+app.post('/api/kebersihan/evidence', auth, async (req, res, next) => {
+  try {
+    const contentType = String(req.body?.contentType || '');
+    const extension = contentType === 'image/png' ? 'png' : contentType === 'image/webp' ? 'webp' :
+      contentType === 'image/jpeg' ? 'jpg' : '';
+    if (!extension) return res.status(400).json({ ok: false, message: 'Format evidence harus JPG, PNG, atau WebP.' });
+    const bytes = decodeBase64(req.body?.base64);
+    const createdAt = new Date(req.body?.createdAt || Date.now());
+    if (Number.isNaN(createdAt.getTime())) return res.status(400).json({ ok: false, message: 'createdAt tidak valid.' });
+    const year = String(createdAt.getUTCFullYear());
+    const month = String(createdAt.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(createdAt.getUTCDate()).padStart(2, '0');
+    const baseName = safeSegment(String(req.body?.fileName || `evidence-${Date.now()}`).replace(/\.[a-z0-9]+$/i, ''), `evidence-${Date.now()}`);
+    const target = safeResolve('EVIDENCE', year, month, day, `${baseName}.${extension}`);
+    await writeAtomic(target, bytes);
+    const storedPath = path.relative(STORAGE_ROOT, target).split(path.sep).join('/');
+    res.status(201).json({
+      ok: true,
+      fileId: storedPath,
+      storedPath,
+      size: bytes.length,
+      contentType,
+      sha256: crypto.createHash('sha256').update(bytes).digest('hex')
+    });
+  } catch (error) { next(error); }
+});
+
+app.post('/api/kebersihan/report', auth, async (req, res, next) => {
+  try {
+    const contentType = String(req.body?.contentType || 'application/octet-stream');
+    const allowed = {
+      'application/pdf': 'pdf',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx'
+    };
+    const extension = allowed[contentType];
+    if (!extension) return res.status(400).json({ ok: false, message: 'Format laporan tidak didukung.' });
+    const bytes = decodeBase64(req.body?.base64, 50 * 1024 * 1024);
+    const createdAt = new Date(req.body?.createdAt || Date.now());
+    if (Number.isNaN(createdAt.getTime())) return res.status(400).json({ ok: false, message: 'createdAt tidak valid.' });
+    const year = String(createdAt.getUTCFullYear());
+    const month = String(createdAt.getUTCMonth() + 1).padStart(2, '0');
+    const baseName = safeSegment(String(req.body?.fileName || `laporan-${Date.now()}`).replace(/\.[a-z0-9]+$/i, ''), `laporan-${Date.now()}`);
+    const target = safeResolve('REPORTS', year, month, `${baseName}.${extension}`);
+    await writeAtomic(target, bytes);
+    const storedPath = path.relative(STORAGE_ROOT, target).split(path.sep).join('/');
+    res.status(201).json({
+      ok: true, storedPath, size: bytes.length, contentType,
+      sha256: crypto.createHash('sha256').update(bytes).digest('hex')
+    });
+  } catch (error) { next(error); }
+});
+
 app.get('/api/kebersihan/evidence', auth, async (req, res, next) => {
   try {
     const rel = String(req.query.path || '');
-    if (!rel.startsWith('INSPECTIONS/')) return res.status(400).json({ ok: false, message: 'Path evidence tidak valid.' });
+    if (!/^(INSPECTIONS|EVIDENCE)\//.test(rel)) return res.status(400).json({ ok: false, message: 'Path evidence tidak valid.' });
     const target = safeResolve(...rel.split('/'));
     const stat = await fs.promises.stat(target);
-    if (!stat.isFile() || !/^evidence\.(jpg|png|webp)$/.test(path.basename(target))) {
+    if (!stat.isFile() || !/\.(jpg|jpeg|png|webp)$/i.test(path.basename(target))) {
       return res.status(404).json({ ok: false, message: 'Evidence tidak ditemukan.' });
     }
     res.sendFile(target);
@@ -151,10 +270,25 @@ app.get('/api/kebersihan/evidence', auth, async (req, res, next) => {
 
 app.use((error, req, res, next) => {
   console.error(error);
-  res.status(500).json({ ok: false, message: error.message || 'Kesalahan server.' });
+  res.status(Number(error.statusCode || 500)).json({ ok: false, message: error.message || 'Kesalahan server.' });
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Monitoring Kebersihan NAS Gateway aktif pada port ${PORT}`);
-  console.log(`Storage root: ${STORAGE_ROOT}`);
+function scheduleDatabaseRetry() {
+  const timer = setTimeout(async () => {
+    const connected = await initializeDatabase();
+    if (connected) console.log('Koneksi MariaDB berhasil dipulihkan.');
+    else scheduleDatabaseRetry();
+  }, 30_000);
+  timer.unref();
+}
+
+initializeDatabase().then(connected => {
+  if (!connected) {
+    console.error('MariaDB belum siap. Gateway akan mencoba kembali setiap 30 detik.');
+    scheduleDatabaseRetry();
+  }
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Monitoring Kebersihan NAS Gateway v2 aktif pada port ${PORT}`);
+    console.log(`Storage root: ${STORAGE_ROOT}`);
+  });
 });

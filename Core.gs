@@ -56,7 +56,7 @@ function ensurePepper_(properties) {
   }
 }
 
-function rowsAsObjects_(sheetName) {
+function rowsAsSheetObjects_(sheetName) {
   var sheet = getSheet_(sheetName);
   var values = sheet.getDataRange().getValues();
   if (values.length < 2) return [];
@@ -72,7 +72,59 @@ function rowsAsObjects_(sheetName) {
   });
 }
 
-function appendObject_(sheetName, object) {
+function primaryDatabaseConfigured_() {
+  var properties = PropertiesService.getScriptProperties();
+  return Boolean(properties.getProperty('NAS_GATEWAY_URL') && properties.getProperty('NAS_GATEWAY_TOKEN'));
+}
+
+var PRIMARY_ROWS_MEMORY_ = {};
+
+function invalidatePrimaryRows_(sheetName) {
+  delete PRIMARY_ROWS_MEMORY_[sheetName];
+}
+
+function primaryDatabaseRequest_(path, options) {
+  var properties = PropertiesService.getScriptProperties();
+  var endpoint = String(properties.getProperty('NAS_GATEWAY_URL') || '').replace(/\/+$/, '');
+  var token = String(properties.getProperty('NAS_GATEWAY_TOKEN') || '');
+  assert_(endpoint && token, 'PRIMARY_STORAGE_NOT_CONFIGURED', 'Gateway NAS belum dikonfigurasi.');
+  options = options || {};
+  var request = {
+    method: options.method || 'get',
+    headers: { Authorization: 'Bearer ' + token },
+    muteHttpExceptions: true
+  };
+  if (options.payload !== undefined) {
+    request.contentType = 'application/json';
+    request.payload = JSON.stringify(options.payload);
+  }
+  var response = UrlFetchApp.fetch(endpoint + path, request);
+  var status = response.getResponseCode();
+  var text = response.getContentText();
+  var parsed;
+  try { parsed = JSON.parse(text); } catch (error) { parsed = {}; }
+  if (status < 200 || status >= 300 || parsed.ok === false) {
+    throw appError_('PRIMARY_STORAGE_UNAVAILABLE', parsed.message || ('Gateway NAS merespons HTTP ' + status + '.'));
+  }
+  return parsed;
+}
+
+function rowsAsObjects_(sheetName) {
+  if (sheetName === 'BACKUP_QUEUE' || !primaryDatabaseConfigured_()) return rowsAsSheetObjects_(sheetName);
+  var cached = PRIMARY_ROWS_MEMORY_[sheetName];
+  if (cached && Date.now() - cached.at < 2000) return cached.rows;
+  try {
+    var result = primaryDatabaseRequest_('/api/kebersihan/db/rows?table=' + encodeURIComponent(sheetName));
+    var rows = Array.isArray(result.rows) ? result.rows : [];
+    PRIMARY_ROWS_MEMORY_[sheetName] = { at: Date.now(), rows: rows };
+    return rows;
+  } catch (error) {
+    console.warn('MariaDB tidak tersedia; membaca cache Spreadsheet untuk ' + sheetName + ': ' + error.message);
+    return rowsAsSheetObjects_(sheetName);
+  }
+}
+
+function sheetAppendObject_(sheetName, object) {
   var sheet = getSheet_(sheetName);
   var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   sheet.appendRow(headers.map(function(header) {
@@ -80,7 +132,7 @@ function appendObject_(sheetName, object) {
   }));
 }
 
-function appendObjects_(sheetName, objects) {
+function sheetAppendObjects_(sheetName, objects) {
   if (!objects || !objects.length) return;
   var sheet = getSheet_(sheetName);
   var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
@@ -92,14 +144,150 @@ function appendObjects_(sheetName, objects) {
   sheet.getRange(sheet.getLastRow() + 1, 1, values.length, headers.length).setValues(values);
 }
 
-function updateObjectRow_(sheetName, rowNumber, updates) {
+function resolveSheetRow_(sheetName, rowReference) {
   var sheet = getSheet_(sheetName);
   var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  if (typeof rowReference === 'number' && rowReference >= 2) return rowReference;
+  var key = APP.PRIMARY_KEYS[sheetName];
+  var keyIndex = headers.indexOf(key);
+  if (keyIndex === -1) return 0;
+  var values = sheet.getDataRange().getValues();
+  for (var index = 1; index < values.length; index++) {
+    if (String(values[index][keyIndex]) === String(rowReference)) return index + 1;
+  }
+  return 0;
+}
+
+function sheetUpdateObject_(sheetName, rowReference, updates) {
+  var sheet = getSheet_(sheetName);
+  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var rowNumber = resolveSheetRow_(sheetName, rowReference);
+  if (!rowNumber) return false;
   var values = sheet.getRange(rowNumber, 1, 1, headers.length).getValues()[0];
   headers.forEach(function(header, index) {
     if (updates[header] !== undefined) values[index] = updates[header];
   });
   sheet.getRange(rowNumber, 1, 1, headers.length).setValues([values]);
+  return true;
+}
+
+function mirrorUpsert_(sheetName, object) {
+  var key = APP.PRIMARY_KEYS[sheetName];
+  var keyValue = key ? object[key] : '';
+  var rowNumber = keyValue === undefined ? 0 : resolveSheetRow_(sheetName, String(keyValue));
+  if (rowNumber) sheetUpdateObject_(sheetName, rowNumber, object);
+  else sheetAppendObject_(sheetName, object);
+}
+
+function localQueueMutation_(eventType, payload, inspectionId) {
+  if (!getSpreadsheet_().getSheetByName('BACKUP_QUEUE')) return;
+  sheetAppendObject_('BACKUP_QUEUE', {
+    QueueId: id_('QUEUE'), InspectionId: inspectionId || '', EventType: eventType,
+    PayloadJson: JSON.stringify(payload || {}), Status: 'PENDING', AttemptCount: 0,
+    LastError: '', CreatedAt: nowIso_(), UpdatedAt: nowIso_()
+  });
+}
+
+function appendObject_(sheetName, object) {
+  if (sheetName === 'BACKUP_QUEUE' || !primaryDatabaseConfigured_()) {
+    sheetAppendObject_(sheetName, object);
+    return;
+  }
+  try {
+    primaryDatabaseRequest_('/api/kebersihan/db/upsert', {
+      method: 'post', payload: { table: sheetName, row: object }
+    });
+  } catch (error) {
+    localQueueMutation_('DB_UPSERT', { table: sheetName, row: object }, object.InspectionId || '');
+  }
+  invalidatePrimaryRows_(sheetName);
+  mirrorUpsert_(sheetName, object);
+}
+
+function appendObjects_(sheetName, objects) {
+  if (!objects || !objects.length) return;
+  if (sheetName === 'BACKUP_QUEUE' || !primaryDatabaseConfigured_()) {
+    sheetAppendObjects_(sheetName, objects);
+    return;
+  }
+  try {
+    primaryDatabaseRequest_('/api/kebersihan/db/batch', {
+      method: 'post', payload: { table: sheetName, rows: objects }
+    });
+  } catch (error) {
+    localQueueMutation_('DB_BATCH', { table: sheetName, rows: objects }, objects[0].InspectionId || '');
+  }
+  invalidatePrimaryRows_(sheetName);
+  objects.forEach(function(object) { mirrorUpsert_(sheetName, object); });
+}
+
+function appendTransaction_(mutations) {
+  mutations = Array.isArray(mutations) ? mutations : [];
+  if (!primaryDatabaseConfigured_()) {
+    mutations.forEach(function(mutation) { sheetAppendObjects_(mutation.table, mutation.rows || []); });
+    return;
+  }
+  try {
+    primaryDatabaseRequest_('/api/kebersihan/db/transaction', {
+      method: 'post', payload: { mutations: mutations }
+    });
+  } catch (error) {
+    localQueueMutation_('DB_TRANSACTION', { mutations: mutations },
+      mutations.length && mutations[0].rows && mutations[0].rows.length ? mutations[0].rows[0].InspectionId || '' : '');
+  }
+  mutations.forEach(function(mutation) {
+    invalidatePrimaryRows_(mutation.table);
+    (mutation.rows || []).forEach(function(object) { mirrorUpsert_(mutation.table, object); });
+  });
+}
+
+function updateObjectRow_(sheetName, rowReference, updates) {
+  if (sheetName === 'BACKUP_QUEUE') {
+    sheetUpdateObject_(sheetName, rowReference, updates);
+    return;
+  }
+  var keyName = APP.PRIMARY_KEYS[sheetName];
+  var keyValue = rowReference;
+  if (typeof rowReference === 'number') {
+    var sheet = getSheet_(sheetName);
+    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    var keyIndex = headers.indexOf(keyName);
+    if (keyIndex >= 0 && rowReference <= sheet.getLastRow()) keyValue = sheet.getRange(rowReference, keyIndex + 1).getValue();
+  }
+  if (primaryDatabaseConfigured_()) {
+    try {
+      primaryDatabaseRequest_('/api/kebersihan/db/update', {
+        method: 'post', payload: { table: sheetName, key: String(keyValue), updates: updates }
+      });
+    } catch (error) {
+      localQueueMutation_('DB_UPDATE', { table: sheetName, key: String(keyValue), updates: updates }, updates.InspectionId || '');
+    }
+  }
+  invalidatePrimaryRows_(sheetName);
+  sheetUpdateObject_(sheetName, String(keyValue), updates);
+}
+
+function deleteObject_(sheetName, rowReference) {
+  var keyName = APP.PRIMARY_KEYS[sheetName];
+  var rowNumber = resolveSheetRow_(sheetName, rowReference);
+  var keyValue = rowReference;
+  if (rowNumber) {
+    var sheet = getSheet_(sheetName);
+    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    var keyIndex = headers.indexOf(keyName);
+    if (keyIndex >= 0) keyValue = sheet.getRange(rowNumber, keyIndex + 1).getValue();
+  }
+  if (primaryDatabaseConfigured_()) {
+    try {
+      primaryDatabaseRequest_('/api/kebersihan/db/delete', {
+        method: 'post', payload: { table: sheetName, key: String(keyValue) }
+      });
+    } catch (error) {
+      localQueueMutation_('DB_DELETE', { table: sheetName, key: String(keyValue) }, '');
+    }
+  }
+  invalidatePrimaryRows_(sheetName);
+  if (rowNumber) getSheet_(sheetName).deleteRow(rowNumber);
 }
 
 function findBy_(sheetName, key, value) {

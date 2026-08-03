@@ -1,15 +1,16 @@
 {
   "name": "monitoring-kebersihan-gateway",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js"
+    "check": "node --check server.js && node --check database.js"
   },
   "dependencies": {
     "express": "^4.21.1",
     "express-rate-limit": "^7.4.1",
-    "helmet": "^8.0.0"
+    "helmet": "^8.0.0",
+    "mysql2": "^3.14.4"
   }
 }

@@ -185,16 +185,34 @@ function savePhoto_(dataUrl, fileName) {
   var extension = match[1].split('/')[1].replace('jpeg', 'jpg');
   var bytes = Utilities.base64Decode(match[2]);
   var blob = Utilities.newBlob(bytes, match[1], fileName + '.' + extension);
+  if (primaryDatabaseConfigured_()) {
+    try {
+      return uploadEvidenceBlobToNas_(blob, fileName + '.' + extension);
+    } catch (error) {
+      console.warn('NAS tidak tersedia; evidence disimpan sementara di Drive: ' + error.message);
+    }
+  }
   var folderId = PropertiesService.getScriptProperties().getProperty('PHOTO_FOLDER_ID');
   assert_(folderId, 'PHOTO_FOLDER_MISSING', 'Folder penyimpanan foto belum tersedia.');
-  return DriveApp.getFolderById(folderId).createFile(blob).getId();
+  var driveId = DriveApp.getFolderById(folderId).createFile(blob).getId();
+  localQueueMutation_('EVIDENCE_UPLOAD', {
+    driveFileId: driveId,
+    fileName: fileName + '.' + extension
+  }, '');
+  return 'DRIVE:' + driveId;
 }
 
 function getPhoto_(payload) {
   var fileId = String(payload.fileId || '');
   var inspection = findBy_('INSPECTIONS', 'EvidenceFileId', fileId);
-  assert_(inspection, 'PHOTO_NOT_FOUND', 'Foto evidence tidak ditemukan.');
-  var blob = DriveApp.getFileById(fileId).getBlob();
+  var detail = findBy_('INSPECTION_DETAILS', 'PhotoFileId', fileId);
+  assert_(inspection || detail, 'PHOTO_NOT_FOUND', 'Foto evidence tidak ditemukan.');
+  var blob;
+  if (fileId.indexOf('DRIVE:') === 0) {
+    blob = DriveApp.getFileById(fileId.slice(6)).getBlob();
+  } else {
+    blob = downloadEvidenceBlobFromNas_(fileId);
+  }
   assert_(blob.getBytes().length <= APP.MAX_PHOTO_BYTES * 2, 'PHOTO_TOO_LARGE', 'Foto terlalu besar untuk ditampilkan.');
   return {
     fileId: fileId,

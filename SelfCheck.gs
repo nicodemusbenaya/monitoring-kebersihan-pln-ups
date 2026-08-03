@@ -34,8 +34,16 @@ function runSelfCheck() {
   })});
 
   var properties = PropertiesService.getScriptProperties();
-  checks.push({ name: 'Folder foto tersedia', passed: Boolean(properties.getProperty('PHOTO_FOLDER_ID')) });
-  checks.push({ name: 'Folder laporan tersedia', passed: Boolean(properties.getProperty('REPORT_FOLDER_ID')) });
+  checks.push({ name: 'Folder evidence sementara tersedia', passed: Boolean(properties.getProperty('PHOTO_FOLDER_ID')) });
+  checks.push({ name: 'Mode penyimpanan utama MariaDB + NAS', passed: properties.getProperty('PRIMARY_STORAGE_MODE') === 'MARIADB_NAS' });
+  try {
+    var status = primaryDatabaseRequest_('/api/kebersihan/status');
+    checks.push({ name: 'MariaDB terhubung', passed: Boolean(status.databaseConnected) });
+    checks.push({ name: 'Folder NAS dapat ditulis', passed: Boolean(status.storageRoot) });
+  } catch (error) {
+    checks.push({ name: 'MariaDB terhubung', passed: false });
+    checks.push({ name: 'Folder NAS dapat ditulis', passed: false });
+  }
 
   var failed = checks.filter(function(check) { return !check.passed; });
   return {
@@ -49,10 +57,11 @@ function runSelfCheck() {
  * Opsional: pasang sebagai time-driven trigger mingguan untuk membersihkan sesi lama.
  */
 function cleanupExpiredSessions() {
-  var sheet = getSheet_('SESSIONS');
   var rows = rowsAsObjects_('SESSIONS').filter(function(session) {
     return new Date(session.ExpiresAt).getTime() < Date.now() - 7 * 24 * 60 * 60 * 1000;
-  }).sort(function(a, b) { return b._row - a._row; });
-  rows.forEach(function(session) { sheet.deleteRow(session._row); });
+  }).sort(function(a, b) {
+    return typeof a._row === 'number' && typeof b._row === 'number' ? b._row - a._row : 0;
+  });
+  rows.forEach(function(session) { deleteObject_('SESSIONS', session._row); });
   return { removed: rows.length };
 }

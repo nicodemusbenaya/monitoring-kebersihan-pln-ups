@@ -60,16 +60,15 @@ function generateMonthlyPdf_(payload) {
 
   var docFile = DriveApp.getFileById(doc.getId());
   var pdfBlob = docFile.getAs(MimeType.PDF).setName(title + '.pdf');
-  var reportFolderId = PropertiesService.getScriptProperties().getProperty('REPORT_FOLDER_ID');
-  var pdfFile = DriveApp.getFolderById(reportFolderId).createFile(pdfBlob);
+  var storedPath = uploadReportBlobToNas_(pdfBlob, title + '.pdf');
   var dataUrl = 'data:application/pdf;base64,' + Utilities.base64Encode(pdfBlob.getBytes());
   docFile.setTrashed(true);
-  logAudit_(session.user.UserId, 'GENERATE_PDF', 'REPORT', pdfFile.getId(), { month: month });
+  logAudit_(session.user.UserId, 'GENERATE_PDF', 'REPORT', storedPath, { month: month });
 
   return {
-    fileId: pdfFile.getId(),
-    name: pdfFile.getName(),
-    url: pdfFile.getUrl(),
+    fileId: storedPath,
+    name: title + '.pdf',
+    url: '',
     dataUrl: dataUrl,
     month: month
   };
