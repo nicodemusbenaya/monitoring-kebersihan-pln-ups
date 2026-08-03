@@ -252,9 +252,23 @@ function monitoringInspectionSummary_(inspection) {
 
 function parseRoomQrToken_(payload) {
   var value = String(payload || '').trim();
-  var match = value.match(/^PLNUPS:ROOM:([A-Za-z0-9_-]+)$/);
-  assert_(match, 'INVALID_QR', 'QR Code bukan QR ruangan aplikasi ini.');
-  return match[1];
+  var directMatch = value.match(/^PLNUPS:ROOM:([A-Za-z0-9_-]+)$/);
+  if (directMatch) return directMatch[1];
+
+  // QR yang dicetak aplikasi berisi URL Web App agar tetap kompatibel dengan
+  // Google Lens. Pemindai internal membaca URL utuh, jadi ambil token room-nya.
+  var urlMatch = value.match(/[?&]room=([^&#]+)/i);
+  if (urlMatch) {
+    var token = '';
+    try {
+      token = decodeURIComponent(urlMatch[1].replace(/\+/g, '%20'));
+    } catch (error) {
+      token = '';
+    }
+    if (/^[A-Za-z0-9_-]+$/.test(token)) return token;
+  }
+
+  throw appError_('INVALID_QR', 'QR Code bukan QR ruangan aplikasi ini.');
 }
 
 function isWorkday_(workDays) {
