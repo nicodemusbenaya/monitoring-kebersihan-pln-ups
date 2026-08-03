@@ -5,8 +5,8 @@ Arsitektur akhir:
 ```text
 HP pengguna -> Google Apps Script -> Gateway NAS
                                   |-> MariaDB: seluruh data operasional
-                                  |-> /share/MONITORING-KEBERSIHAN/EVIDENCE: foto
-                                  |-> /share/MONITORING-KEBERSIHAN/REPORTS: laporan
+                                  |-> /share/Container/gateway-v3/MONITORING-KEBERSIHAN-DATA/EVIDENCE: foto
+                                  |-> /share/Container/gateway-v3/MONITORING-KEBERSIHAN-DATA/REPORTS: laporan
 
 Saat gateway gagal:
 Google Spreadsheet = cache/outbox sementara
@@ -87,7 +87,7 @@ Mapping yang digunakan tetap:
 Host 18080 -> container 8080
 /share/UPS-EARSIP -> /data
 /share/Container/monitoring-kebersihan-gateway -> /monitoring (read-only)
-/share/MONITORING-KEBERSIHAN -> /monitoring-data
+/share/Container/gateway-v3/MONITORING-KEBERSIHAN-DATA -> /monitoring-data
 ```
 
 Container akan membuat seluruh tabel aplikasi secara otomatis. User database memerlukan izin `CREATE` saat proses pertama. Setelah endpoint monitoring pada port 18080 berhasil diuji, container `monitoring-kebersihan-gateway` lama dapat dihentikan.
