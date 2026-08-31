@@ -507,15 +507,18 @@ function dashboardRoomStatus_(room, roomSlots, inspections, scheduled) {
 }
 
 function dashboardGroupStatus_(key, label, slots, completed, scheduled) {
-  if (!scheduled) return { key: key, label: label, status: 'NOT_SCHEDULED', text: 'Tidak dijadwalkan' };
-  if (!slots.length) return { key: key, label: label, status: 'NA', text: '-' };
+  if (!scheduled) return { key: key, label: label, status: 'NOT_SCHEDULED', text: 'Tidak dijadwalkan', inspectionId: '' };
+  if (!slots.length) return { key: key, label: label, status: 'NA', text: '-', inspectionId: '' };
   var results = slots.map(function(slot) { return completed[String(slot.SlotId)] || null; });
-  var completedCount = results.filter(Boolean).length;
-  var hasFinding = results.some(function(item) { return item && item.OverallStatus === 'ADA_TEMUAN'; });
-  if (hasFinding) return { key: key, label: label, status: 'FINDING', text: 'Ada temuan' };
-  if (completedCount === slots.length) return { key: key, label: label, status: 'DONE', text: 'Selesai' };
-  if (completedCount) return { key: key, label: label, status: 'PARTIAL', text: completedCount + '/' + slots.length + ' selesai' };
-  return { key: key, label: label, status: 'PENDING', text: 'Menunggu' };
+  var completedItems = results.filter(Boolean);
+  var completedCount = completedItems.length;
+  var findingItem = results.find(function(item) { return item && item.OverallStatus === 'ADA_TEMUAN'; });
+  var primaryItem = findingItem || completedItems[0];
+  var inspId = primaryItem ? primaryItem.InspectionId : '';
+  if (findingItem) return { key: key, label: label, status: 'FINDING', text: 'Ada temuan', inspectionId: inspId };
+  if (completedCount === slots.length) return { key: key, label: label, status: 'DONE', text: 'Selesai', inspectionId: inspId };
+  if (completedCount) return { key: key, label: label, status: 'PARTIAL', text: completedCount + '/' + slots.length + ' selesai', inspectionId: inspId };
+  return { key: key, label: label, status: 'PENDING', text: 'Menunggu', inspectionId: '' };
 }
 
 function dashboardTime_(value) {

@@ -1474,9 +1474,10 @@
     return groups.map(function(group) {
       return '<section class="recent-date-group"><h3>' + esc(formatLongDateKey_(group.key)) + '</h3><div>' + group.items.map(function(item) {
         var status = item.overallStatus === 'ADA_TEMUAN' ? 'finding' : 'done';
-        return '<article class="recent-tile"><span class="person-mark">' + esc(initials_(item.officerName)) + '</span><div><strong>' + esc(item.officerName || 'Petugas') +
+        var clickAttr = item.inspectionId ? ' role="button" tabindex="0" onclick="openDashboardInspection_(\'' + jsq(item.inspectionId) + '\')" title="Klik untuk membuka detail pemeriksaan"' : '';
+        return '<article class="recent-tile"' + clickAttr + '><span class="person-mark">' + esc(initials_(item.officerName)) + '</span><div><strong>' + esc(item.officerName || 'Petugas') +
           '</strong><span>' + esc(item.roomName + ' · ' + item.slotName) + '</span></div><div class="recent-result"><span class="recent-state ' + status + '">' +
-          statusSymbol_(status) + (status === 'finding' ? 'Temuan' : 'Selesai') + '</span><time>' + esc(item.shortTime || '') + '</time></div></article>';
+          statusSymbol_(status) + (status === 'finding' ? 'Temuan' : 'Selesai') + '</span><time>' + esc(item.shortTime || '') + ' WIB</time></div></article>';
       }).join('') + '</div></section>';
     }).join('');
   }
@@ -1501,14 +1502,15 @@
   }
 
   function dashboardGroup_(room, key) {
-    return (room.groups || []).find(function(group) { return group.key === key; }) || { status: 'NA', text: '-' };
+    return (room.groups || []).find(function(group) { return group.key === key; }) || { status: 'NA', text: '-', inspectionId: '' };
   }
 
   function dashboardStatusMarkup_(item) {
-    item = item || { status: 'NA', text: '-' };
+    item = item || { status: 'NA', text: '-', inspectionId: '' };
     var classes = { DONE: 'done', FINDING: 'finding', PENDING: 'pending', PARTIAL: 'pending', NOT_SCHEDULED: 'neutral', NA: 'neutral' };
     var type = classes[item.status] || 'neutral';
-    return '<span class="operation-status ' + type + '"><i>' + statusSymbol_(type) + '</i>' + esc(item.text || '-') + '</span>';
+    var clickAttr = item.inspectionId ? ' role="button" tabindex="0" onclick="openDashboardInspection_(\'' + attr(item.inspectionId) + '\')" style="cursor:pointer" title="Klik untuk membuka detail pemeriksaan"' : '';
+    return '<span class="operation-status ' + type + '"' + clickAttr + '><i>' + statusSymbol_(type) + '</i>' + esc(item.text || '-') + '</span>';
   }
 
   function initials_(name) {
