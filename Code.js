@@ -241,12 +241,15 @@ function api(action, payload) {
       generateEvaluationPdf: generateEvaluationPdf_,
       previewWorkbook: previewMonitoringWorkbook_,
       exportWorkbook: exportMonitoringWorkbook_,
+      previewMonthlyWorkbook: previewMonthlyMonitoringWorkbook_,
+      exportMonthlyWorkbook: exportMonthlyMonitoringWorkbook_,
       getQrData: monitoringGetQrData_,
       retryNasBackup: retryNasBackup_,
       backupSpreadsheetNow: backupSpreadsheetNow_,
       testNasConnection: testNasConnection_,
       setNasConfiguration: setNasConfiguration_,
       setReportTemplate: setReportTemplate_,
+      setMonthlyReportTemplate: setMonthlyReportTemplate_,
       getOfficerPerformanceReport: getOfficerPerformanceReport_
     };
 

@@ -6,7 +6,10 @@ function getDashboard_(payload) {
 function buildDashboard_(month) {
   if (!/^\d{4}-\d{2}$/.test(month)) month = monthKey_();
   var allRooms = rowsAsObjects_('ROOMS');
-  var rooms = allRooms.filter(function(room) { return truthy_(room.Active); }).sort(sortByOrder_);
+  var hiddenRoomMap = sharedHiddenRoomMap_();
+  var rooms = allRooms.filter(function(room) {
+    return truthy_(room.Active) && !hiddenRoomMap[String(room.RoomId)];
+  }).sort(sortByOrder_);
   var users = rowsAsObjects_('USERS');
   var userMap = {};
   users.forEach(function(user) { userMap[user.UserId] = user; });
@@ -110,7 +113,11 @@ function buildDashboard_(month) {
 function getAdminData_(payload) {
   requireAdmin_(payload);
   var source = rowsAsObjectsBatch_(['ROOMS', 'ACTIVITIES', 'ROOM_ACTIVITIES', 'USERS', 'ROOM_TYPES']);
-  var rooms = source.ROOMS.map(monitoringPublicRoom_).sort(sortByOrder_);
+  var activeRooms = source.ROOMS.filter(function(room) { return truthy_(room.Active); });
+  var hiddenRoomMap = sharedHiddenRoomMap_();
+  var rooms = activeRooms.map(function(room) {
+    return monitoringPublicRoom_(room, hiddenRoomMap);
+  }).sort(sortByOrder_);
   var activities = source.ACTIVITIES.map(function(activity) {
     var seededStandard = monitoringStandardFor_(activity.RoomTypeId, activity.Name);
     return {
@@ -170,7 +177,8 @@ function saveRoom_(payload) {
   });
   assert_(!duplicate, 'DUPLICATE_ROOM', 'Kode ruangan sudah digunakan.');
   var duplicateOrder = roomRows.find(function(room) {
-    return Number(room.SortOrder) === sortOrder && String(room.RoomId) !== String(data.roomId || '');
+    return truthy_(room.Active) && data.active !== false && Number(room.SortOrder) === sortOrder &&
+      String(room.RoomId) !== String(data.roomId || '');
   });
   assert_(!duplicateOrder, 'DUPLICATE_ROOM_ORDER', duplicateOrder ?
     'Nomor urut ' + sortOrder + ' sudah digunakan oleh ' + duplicateOrder.Name + '. Gunakan nomor lain atau pilih Rapikan urutan.' : 'Nomor urut sudah digunakan.');
@@ -179,66 +187,350 @@ function saveRoom_(payload) {
   if (roomId) {
     var room = findBy_('ROOMS', 'RoomId', roomId);
     assert_(room, 'ROOM_NOT_FOUND', 'Ruangan tidak ditemukan.');
+    assert_(!data.regenerateQr, 'QR_TOKEN_IMMUTABLE',
+      'Token QR ruangan yang sudah ada tidak dapat dibuat ulang.');
     updateObjectRow_('ROOMS', room._row, {
       Code: code,
       Name: name,
       RoomTypeId: roomTypeId,
       Active: data.active !== false,
       SortOrder: sortOrder,
-      QrToken: data.regenerateQr ? secureToken_() : room.QrToken,
       UpdatedAt: nowIso_()
     });
   } else {
     roomId = id_('ROOM');
+    var newQrToken = secureToken_();
     appendObject_('ROOMS', {
       RoomId: roomId,
       Code: code,
       Name: name,
       RoomTypeId: roomTypeId,
-      QrToken: secureToken_(),
+      QrToken: newQrToken,
       Active: data.active !== false,
       SortOrder: sortOrder,
       CreatedAt: nowIso_(),
       UpdatedAt: nowIso_()
     });
+    registerRoomQrTokenBaseline_(roomId, newQrToken);
   }
   logAudit_(session.user.UserId, 'SAVE_ROOM', 'ROOM', roomId, { code: code, name: name });
+  if (data.active === false) normalizeActiveRoomOrderRows_();
   return getAdminData_(payload);
 }
 
-function normalizeRoomOrder_(payload) {
+function auditRoomQrIntegrity_(payload) {
+  requireAdmin_(payload);
+  return buildRoomQrIntegrityAudit_();
+}
+
+function runRoomQrReconciliationCheck() {
+  var result = buildRoomQrIntegrityAudit_();
+  console.log(JSON.stringify(result, null, 2));
+  return result;
+}
+
+function buildRoomQrIntegrityAudit_(source) {
+  source = source || {};
+  var rooms = Array.isArray(source.ROOMS) ? source.ROOMS : rowsAsSheetObjects_('ROOMS');
+  var roomTypes = Array.isArray(source.ROOM_TYPES) ? source.ROOM_TYPES : rowsAsSheetObjects_('ROOM_TYPES');
+  var typeMap = {};
+  roomTypes.forEach(function(type) { typeMap[String(type.RoomTypeId)] = type; });
+  var tokenMap = {};
+  var roomIdMap = {};
+  var codeMap = {};
+  var issues = [];
+
+  rooms.forEach(function(room) {
+    var token = String(room.QrToken || '').trim();
+    var roomId = String(room.RoomId || '').trim();
+    var code = String(room.Code || '').trim().toUpperCase();
+    if (!token) issues.push({ severity: 'ERROR', code: 'QR_TOKEN_EMPTY', roomId: roomId, roomCode: code });
+    else if (!/^[A-Za-z0-9_-]+$/.test(token)) {
+      issues.push({ severity: 'ERROR', code: 'QR_TOKEN_FORMAT', roomId: roomId, roomCode: code });
+    }
+    if (!roomId) issues.push({ severity: 'ERROR', code: 'ROOM_ID_EMPTY', roomCode: code });
+    if (!code) issues.push({ severity: 'ERROR', code: 'ROOM_CODE_EMPTY', roomId: roomId });
+    if (!typeMap[String(room.RoomTypeId)]) {
+      issues.push({ severity: 'ERROR', code: 'ROOM_TYPE_NOT_FOUND', roomId: roomId, roomCode: code });
+    }
+    if (token) (tokenMap[token] = tokenMap[token] || []).push(room);
+    if (roomId) (roomIdMap[roomId] = roomIdMap[roomId] || []).push(room);
+    if (code) (codeMap[code] = codeMap[code] || []).push(room);
+  });
+
+  [
+    { map: tokenMap, issue: 'QR_TOKEN_DUPLICATE' },
+    { map: roomIdMap, issue: 'ROOM_ID_DUPLICATE' },
+    { map: codeMap, issue: 'ROOM_CODE_DUPLICATE' }
+  ].forEach(function(check) {
+    Object.keys(check.map).forEach(function(value) {
+      if (check.map[value].length > 1) {
+        issues.push({
+          severity: 'ERROR', code: check.issue, value: value,
+          roomIds: check.map[value].map(function(room) { return String(room.RoomId || ''); })
+        });
+      }
+    });
+  });
+
+  var baseline = readRoomQrTokenBaseline_();
+  Object.keys(baseline).forEach(function(roomId) {
+    var current = rooms.find(function(room) { return String(room.RoomId) === String(roomId); });
+    if (!current) {
+      issues.push({ severity: 'ERROR', code: 'BASELINE_ROOM_MISSING', roomId: roomId });
+    } else if (String(current.QrToken || '') !== String(baseline[roomId] || '')) {
+      issues.push({
+        severity: 'ERROR', code: 'QR_TOKEN_CHANGED', roomId: roomId,
+        roomCode: String(current.Code || '')
+      });
+    }
+  });
+
+  return {
+    ok: issues.filter(function(issue) { return issue.severity === 'ERROR'; }).length === 0,
+    databaseMode: applicationDatabaseMode_(),
+    roomCount: rooms.length,
+    activeRoomCount: rooms.filter(function(room) { return truthy_(room.Active); }).length,
+    uniqueTokenCount: Object.keys(tokenMap).length,
+    baselineTokenCount: Object.keys(baseline).length,
+    qrTokensChanged: false,
+    issues: issues,
+    checkedAt: nowIso_()
+  };
+}
+
+var ROOM_QR_TOKEN_BASELINE_PROPERTY_ = 'ROOM_QR_TOKEN_BASELINE_V1';
+
+function readRoomQrTokenBaseline_() {
+  var value = PropertiesService.getScriptProperties().getProperty(ROOM_QR_TOKEN_BASELINE_PROPERTY_);
+  if (!value) return {};
+  try {
+    var parsed = JSON.parse(value);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  } catch (error) {
+    return {};
+  }
+}
+
+function captureRoomQrTokenBaseline_() {
+  var baseline = {};
+  rowsAsSheetObjects_('ROOMS').forEach(function(room) {
+    if (room.RoomId && room.QrToken) baseline[String(room.RoomId)] = String(room.QrToken);
+  });
+  PropertiesService.getScriptProperties().setProperty(
+    ROOM_QR_TOKEN_BASELINE_PROPERTY_, JSON.stringify(baseline));
+  return Object.keys(baseline).length;
+}
+
+function registerRoomQrTokenBaseline_(roomId, token) {
+  var properties = PropertiesService.getScriptProperties();
+  if (!properties.getProperty(ROOM_QR_TOKEN_BASELINE_PROPERTY_)) return;
+  var baseline = readRoomQrTokenBaseline_();
+  baseline[String(roomId)] = String(token);
+  properties.setProperty(ROOM_QR_TOKEN_BASELINE_PROPERTY_, JSON.stringify(baseline));
+}
+
+function softDeleteRoom_(payload) {
   var session = requireAdmin_(payload);
+  var roomId = String(payload.roomId || '');
+  var room = findBy_('ROOMS', 'RoomId', roomId);
+  assert_(room, 'ROOM_NOT_FOUND', 'Ruangan tidak ditemukan.');
+  assert_(truthy_(room.Active), 'ROOM_ALREADY_INACTIVE', 'Ruangan sudah dinonaktifkan.');
+  updateObjectRow_('ROOMS', room._row, { Active: false, UpdatedAt: nowIso_() });
+  normalizeActiveRoomOrderRows_();
+  logAudit_(session.user.UserId, 'SOFT_DELETE_ROOM', 'ROOM', roomId, {
+    code: room.Code,
+    name: room.Name,
+    qrTokenChanged: false
+  });
+  return getAdminData_(payload);
+}
+
+function normalizeActiveRoomOrderRows_() {
   var now = nowIso_();
   var rooms = rowsAsObjects_('ROOMS').sort(function(a, b) {
+    var activeA = truthy_(a.Active) ? 0 : 1;
+    var activeB = truthy_(b.Active) ? 0 : 1;
+    if (activeA !== activeB) return activeA - activeB;
     var orderA = Number(a.SortOrder || 0);
     var orderB = Number(b.SortOrder || 0);
     if (orderA !== orderB) return orderA - orderB;
     return Number(a._row || 0) - Number(b._row || 0);
   });
-  var normalized = rooms.map(function(room, index) {
-    var copy = {};
-    Object.keys(room).forEach(function(key) { if (key !== '_row') copy[key] = room[key]; });
-    copy.SortOrder = index + 1;
-    copy.UpdatedAt = now;
-    return copy;
+  rooms.forEach(function(room, index) {
+    updateObjectRow_('ROOMS', room._row, { SortOrder: index + 1, UpdatedAt: now });
   });
+  return rooms.filter(function(room) { return truthy_(room.Active); }).length;
+}
 
-  if (primaryDatabaseConfigured_()) {
-    try {
-      primaryDatabaseRequest_('/api/kebersihan/db/batch', {
-        method: 'post', payload: { table: 'ROOMS', rows: normalized }
-      });
-    } catch (error) {
-      localQueueMutation_('DB_BATCH', { table: 'ROOMS', rows: normalized }, '');
-    }
-    normalized.forEach(function(room) { mirrorUpsert_('ROOMS', room); });
-  } else {
-    rooms.forEach(function(room, index) {
-      sheetUpdateObject_('ROOMS', room._row, { SortOrder: index + 1, UpdatedAt: now });
+function restoreAllRoomsOnce_() {
+  var properties = PropertiesService.getScriptProperties();
+  var key = 'RESTORE_ALL_ROOMS_V2';
+  if (properties.getProperty(key)) return;
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    if (properties.getProperty(key)) return;
+    ensureSheet_(getSpreadsheet_(), 'ROOMS', APP.SHEETS.ROOMS);
+    var rooms = rowsAsObjects_('ROOMS');
+    var restored = [];
+    rooms.forEach(function(room) {
+      var wasInactive = !truthy_(room.Active);
+      if (!wasInactive) return;
+      updateObjectRow_('ROOMS', room.RoomId, { Active: true, UpdatedAt: nowIso_() });
+      restored.push({ roomId: room.RoomId, code: room.Code, name: room.Name });
     });
+    normalizeActiveRoomOrderRows_();
+    logAudit_('SYSTEM', 'RESTORE_ALL_ROOMS', 'ROOMS', 'ALL', {
+      restoredCount: restored.length,
+      qrTokensChanged: false
+    });
+    properties.setProperty(key, JSON.stringify({
+      appliedAt: nowIso_(), restoredCount: restored.length, qrTokensChanged: false
+    }));
+  } finally {
+    lock.releaseLock();
   }
-  invalidatePrimaryRows_('ROOMS');
-  logAudit_(session.user.UserId, 'NORMALIZE_ROOM_ORDER', 'ROOMS', 'ALL', { count: normalized.length, qrTokensChanged: false });
+}
+
+function setRoomVisibility_(payload) {
+  var session = requireAdmin_(payload);
+  var roomId = String(payload.roomId || '');
+  var hidden = Boolean(payload.hidden);
+  var room = findBy_('ROOMS', 'RoomId', roomId);
+  assert_(room, 'ROOM_NOT_FOUND', 'Ruangan tidak ditemukan.');
+  assert_(truthy_(room.Active), 'ROOM_INACTIVE', 'Ruangan tidak aktif dan tidak dapat diubah tampilannya.');
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var hiddenIds = sharedHiddenRoomIds_();
+    var existingIndex = hiddenIds.indexOf(roomId);
+    if (hidden && existingIndex === -1) hiddenIds.push(roomId);
+    if (!hidden && existingIndex !== -1) hiddenIds.splice(existingIndex, 1);
+    saveSharedHiddenRoomIds_(hiddenIds);
+  } finally {
+    lock.releaseLock();
+  }
+  logAudit_(session.user.UserId, hidden ? 'HIDE_ROOM' : 'UNHIDE_ROOM', 'ROOM', roomId, {
+    code: room.Code, name: room.Name, qrTokenChanged: false
+  });
+  return getAdminData_(payload);
+}
+
+var SHARED_HIDDEN_ROOMS_SETTING_KEY_ = 'UI_HIDDEN_ROOM_IDS';
+
+function sharedHiddenRoomIds_() {
+  var setting = findBy_('SETTINGS', 'Key', SHARED_HIDDEN_ROOMS_SETTING_KEY_);
+  if (!setting || !setting.Value) return [];
+  try {
+    var parsed = JSON.parse(String(setting.Value));
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map(function(item) { return String(item); }).filter(function(item, index, list) {
+      return item && list.indexOf(item) === index;
+    });
+  } catch (error) {
+    return [];
+  }
+}
+
+function sharedHiddenRoomMap_() {
+  var map = {};
+  sharedHiddenRoomIds_().forEach(function(roomId) { map[String(roomId)] = true; });
+  return map;
+}
+
+function saveSharedHiddenRoomIds_(roomIds) {
+  var ids = (roomIds || []).map(function(item) { return String(item); }).filter(function(item, index, list) {
+    return item && list.indexOf(item) === index;
+  });
+  var value = JSON.stringify(ids);
+  var now = nowIso_();
+  var setting = findBy_('SETTINGS', 'Key', SHARED_HIDDEN_ROOMS_SETTING_KEY_);
+  if (setting) {
+    updateObjectRow_('SETTINGS', setting._row, { Value: value, UpdatedAt: now });
+  } else {
+    appendObject_('SETTINGS', { Key: SHARED_HIDDEN_ROOMS_SETTING_KEY_, Value: value, UpdatedAt: now });
+  }
+}
+
+function approvedOperationalRoomCodes_() {
+  return [
+    'SENIOR_MANAGER', 'TOILET_SENIOR_MANAGER', 'LOBBY', 'RAPAT',
+    'TOILET_WANITA_GEDUNG_UTAMA', 'TOILET_PRIA_GEDUNG_UTAMA',
+    'ATK_FAST_MOVING', 'ASET_SLOW_MOVING', 'WELLBEING', 'PMKU', 'PSA', 'PMA', 'PKSM',
+    'PANTRY', 'LOBBY_TUK', 'TUK', 'ADMIN', 'PJT', 'RAPAT_KECIL_TUK',
+    'TOILET_WANITA_TUK', 'TOILET_PRIA_TUK', 'RAPAT_DIGITAL_ZOOM',
+    'ARSIP_AKTIF', 'ARSIP_UTAMA_INAKTIF'
+  ];
+}
+
+/** Migrasi satu kali dari editor/clasp: nonaktifkan ruangan di luar daftar yang disetujui. */
+function applyApprovedRoomListMigration() {
+  throw appError_('ROOM_LIST_MIGRATION_DISABLED',
+    'Migrasi daftar ruangan dinonaktifkan karena dapat membuat QR yang sudah dicetak menjadi tidak aktif.');
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var approved = {};
+    approvedOperationalRoomCodes_().forEach(function(code) { approved[code] = true; });
+    var rows = rowsAsObjects_('ROOMS').sort(sortByOrder_);
+    var keeperByCode = {};
+    rows.forEach(function(room) {
+      var code = String(room.Code || '').toUpperCase();
+      if (!approved[code]) return;
+      if (!keeperByCode[code] || (!truthy_(keeperByCode[code].Active) && truthy_(room.Active))) keeperByCode[code] = room;
+    });
+    var deactivated = [];
+    var activated = [];
+    rows.forEach(function(room) {
+      var code = String(room.Code || '').toUpperCase();
+      var keep = approved[code] && keeperByCode[code] && String(keeperByCode[code].RoomId) === String(room.RoomId);
+      if (keep && !truthy_(room.Active)) {
+        updateObjectRow_('ROOMS', room._row, { Active: true, UpdatedAt: nowIso_() });
+        activated.push({ roomId: room.RoomId, code: room.Code, name: room.Name });
+      }
+      if (!keep && truthy_(room.Active)) {
+        updateObjectRow_('ROOMS', room._row, { Active: false, UpdatedAt: nowIso_() });
+        deactivated.push({ roomId: room.RoomId, code: room.Code, name: room.Name });
+      }
+    });
+    var activeCount = normalizeActiveRoomOrderRows_();
+    logAudit_('SYSTEM', 'APPLY_APPROVED_ROOM_LIST', 'ROOMS', 'ALL', {
+      activeCount: activeCount,
+      activated: activated,
+      deactivated: deactivated,
+      qrTokensChanged: false
+    });
+    return { activeCount: activeCount, activated: activated, deactivated: deactivated, qrTokensChanged: false };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function applyApprovedRoomListOnce_() {
+  throw appError_('ROOM_LIST_MIGRATION_DISABLED',
+    'Migrasi daftar ruangan otomatis dinonaktifkan untuk mempertahankan seluruh QR aktif.');
+  var properties = PropertiesService.getScriptProperties();
+  var key = 'APPROVED_ROOM_LIST_MIGRATION_V1';
+  if (properties.getProperty(key)) return;
+  var result = applyApprovedRoomListMigration();
+  if (Number(result.activeCount) === approvedOperationalRoomCodes_().length) {
+    properties.setProperty(key, JSON.stringify({
+      appliedAt: nowIso_(),
+      activeCount: result.activeCount,
+      deactivatedCount: result.deactivated.length,
+      qrTokensChanged: false
+    }));
+  }
+}
+
+function normalizeRoomOrder_(payload) {
+  var session = requireAdmin_(payload);
+  var activeCount = normalizeActiveRoomOrderRows_();
+  logAudit_(session.user.UserId, 'NORMALIZE_ROOM_ORDER', 'ROOMS', 'ALL', {
+    count: activeCount,
+    qrTokensChanged: false
+  });
   return getAdminData_(payload);
 }
 

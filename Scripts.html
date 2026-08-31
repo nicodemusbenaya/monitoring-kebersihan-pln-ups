@@ -1153,10 +1153,34 @@
       body.innerHTML = '<div class="dashboard-detail-summary"><div><span>Ruangan</span><strong>' + esc(summary.roomName || (data.room || {}).name || '-') + '</strong></div><div><span>Slot</span><strong>' + esc(summary.slotName || (data.slot || {}).name || '-') + '</strong></div><div><span>Petugas</span><strong>' + esc(summary.officerName || '-') + '</strong></div><div><span>Waktu</span><strong>' + esc(summary.displayTime || '-') + ' WIB</strong></div></div>' +
         '<section class="dashboard-detail-section"><header><div><span>Indikator bermasalah</span><strong>' + issues.length + ' temuan</strong></div></header><div class="dashboard-detail-issues">' + (issueMarkup || '<div class="dashboard-empty">Tidak ada rincian indikator bermasalah.</div>') + '</div></section>' +
         '<section class="dashboard-detail-section"><header><div><span>Evidence pemeriksaan</span><strong>' + Number((data.photos || []).length) + ' foto</strong></div></header><div id="dashboard-evidence-grid" class="dashboard-evidence-grid"><div class="dashboard-evidence-loading">Menyiapkan evidence...</div></div></section>';
+      var todayKey = (state.bootstrap && state.bootstrap.dashboard ? state.bootstrap.dashboard.todayKey : '') || new Date().toISOString().slice(0, 10);
+      var isToday = summary.dateKey === todayKey;
+      var isSubmitted = summary.state !== 'REOPENED';
+      var actions = (isToday && isSubmitted)
+        ? '<button type="button" class="btn btn-danger" onclick="confirmReopenInspection_(\'' + jsq(inspectionId) + '\')">Buka kembali pemeriksaan hari ini</button><button class="btn btn-secondary" onclick="closeModal()">Tutup</button>'
+        : '<button class="btn btn-secondary" onclick="closeModal()">Tutup</button>';
+      var modalActions = document.querySelector('#modal-root .modal-actions');
+      if (modalActions) modalActions.innerHTML = actions;
       loadDashboardEvidence_(data.photos || []);
     } catch (error) {
       var body = document.querySelector('#modal-root .modal-body');
       if (body) body.innerHTML = '<div class="notice notice-warning"><strong>Detail tidak dapat dimuat.</strong><br>' + esc(error.message || 'Silakan coba kembali.') + '</div>';
+    }
+  }
+
+  async function confirmReopenInspection_(inspectionId) {
+    if (!confirm('Pemeriksaan ini akan dibuka kembali sehingga petugas dapat melakukan scan QR dan mengisi ulang checklist slot ini hari ini.\n\nLanjutkan?')) return;
+    try {
+      await apiCall('reopenInspection', {
+        inspectionId: inspectionId,
+        month: (state.bootstrap && state.bootstrap.dashboard ? state.bootstrap.dashboard.month : '')
+      });
+      closeModal();
+      toast('Pemeriksaan berhasil dibuka kembali. Petugas kini dapat mengisi ulang.', 'success');
+      if (state.adminTab === 'dashboard') refreshDashboard();
+      else refreshApplicationData_();
+    } catch (error) {
+      handleApiError(error);
     }
   }
 
@@ -2616,6 +2640,7 @@
       '<nav class="management-sections" aria-label="Jenis data pengelolaan">' +
       managementSectionButton_('rooms', 'Ruangan', state.adminData.rooms.filter(function(item) { return item.active && !item.hidden; }).length, section) +
       managementSectionButton_('hiddenRooms', 'Disembunyikan', state.adminData.rooms.filter(function(item) { return item.active && item.hidden; }).length, section) +
+      managementSectionButton_('templates', 'Template', (state.adminData.roomTypes || []).length, section) +
       managementSectionButton_('activities', 'Indikator', state.adminData.activities.length, section) +
       managementSectionButton_('users', 'Pengguna', state.adminData.users.length, section) +
       '</nav><div id="management-content"></div>';
@@ -2637,9 +2662,84 @@
     var root = document.getElementById('management-content');
     if (!root || !state.adminData) return;
     if (state.managementSection === 'hiddenRooms') return renderManagementHiddenRooms_(root);
+    if (state.managementSection === 'templates') return renderManagementTemplates_(root);
     if (state.managementSection === 'activities') return renderManagementActivities_(root);
     if (state.managementSection === 'users') return renderManagementUsers_(root);
     renderManagementRooms_(root);
+  }
+
+  function renderManagementTemplates_(root) {
+    var types = (state.adminData && state.adminData.roomTypes) || [];
+    var rooms = (state.adminData && state.adminData.rooms) || [];
+    root.innerHTML = managementWorkspaceHead_('Template ruangan', 'Template menentukan form checklist, indikator 5S, sheet ekspor laporan, dan jadwal kerja.',
+      '<button class="btn btn-primary" onclick="editRoomTypeAdmin()">Tambah template ruangan</button>') +
+      '<div class="management-record-grid">' + (types.length ? types.map(function(item) {
+        var usingCount = rooms.filter(function(r) { return r.active && r.roomTypeId === item.roomTypeId; }).length;
+        return managementTemplateRecord_(item, usingCount);
+      }).join('') : managementEmpty_('Belum ada template ruangan.')) + '</div>' +
+      '<div class="management-note"><strong>Panduan template</strong><span>Setiap template dapat memiliki indikator checklist tersendiri di menu Indikator dan dihubungkan ke sheet acuan workbook ekspor.</span></div>' +
+      '</section>';
+  }
+
+  function managementTemplateRecord_(item, usingCount) {
+    return '<article class="management-record management-room-record"><div class="management-record-copy"><strong>' + esc(item.name) +
+      ' <small style="color:var(--muted);font-weight:600">(' + esc(item.roomTypeId) + ')</small></strong><span>Sheet: ' + esc(item.templateSheet || '-') +
+      ' &middot; ' + esc(item.workDays || 'Senin-Jumat') + ' &middot; Digunakan ' + Number(usingCount || 0) + ' ruangan</span></div>' +
+      '<span class="management-record-status active">Aktif</span><div class="management-record-actions">' +
+      '<button class="btn btn-secondary btn-sm" type="button" onclick="editRoomTypeAdmin(\'' + jsq(item.roomTypeId) + '\')">Ubah</button>' +
+      '</div></article>';
+  }
+
+  function editRoomTypeAdmin(roomTypeId) {
+    var type = roomTypeId ? (state.adminData.roomTypes || []).find(function(item) { return item.roomTypeId === roomTypeId; }) : null;
+    var sheetOptions = [
+      'Ceklis Ruangan New',
+      'Ceklis Toilet New',
+      'Ceklis Pantry',
+      'Ceklis Ruang Arsip',
+      'Ceklis Ruang Kelas'
+    ];
+    var currentSheet = type ? type.templateSheet : 'Ceklis Ruangan New';
+    var sheetOptionsHtml = sheetOptions.map(function(sheet) {
+      return '<option value="' + attr(sheet) + '"' + (currentSheet === sheet ? ' selected' : '') + '>' + esc(sheet) + '</option>';
+    }).join('');
+    if (type && sheetOptions.indexOf(type.templateSheet) === -1 && type.templateSheet) {
+      sheetOptionsHtml += '<option value="' + attr(type.templateSheet) + '" selected>' + esc(type.templateSheet) + ' (Custom)</option>';
+    }
+
+    showModal(type ? 'Ubah template ruangan' : 'Tambah template ruangan',
+      '<div class="field"><label>ID / Kode Template</label><input id="roomtype-id" value="' + attr(type ? type.roomTypeId : '') + '" placeholder="Contoh: GENERAL, TOILET, SERVER" ' + (type ? 'readonly style="background:#f2f5f7"' : '') + '><div class="field-hint">Hanya huruf kapital, angka, dan garis bawah.</div></div>' +
+      '<div class="field"><label>Nama Template Ruangan</label><input id="roomtype-name" value="' + attr(type ? type.name : '') + '" placeholder="Contoh: Ruang Server & UPS"></div>' +
+      '<div class="field"><label>Sheet Acuan Ekspor Bulanan</label><select id="roomtype-sheet">' + sheetOptionsHtml + '</select><div class="field-hint">Format sheet acuan yang dipakai saat rekap bulanan diekspor.</div></div>' +
+      '<div class="field"><label>Jadwal Kerja Default</label><select id="roomtype-days">' +
+        '<option value="Senin-Jumat"' + (!type || type.workDays === 'Senin-Jumat' ? ' selected' : '') + '>Senin - Jumat (5 Hari Kerja)</option>' +
+        '<option value="Senin-Minggu"' + (type && type.workDays === 'Senin-Minggu' ? ' selected' : '') + '>Senin - Minggu (Setiap Hari)</option>' +
+      '</select></div>' +
+      '<div class="field"><label>Nomor Urut</label><input id="roomtype-order" type="number" min="1" value="' + (type ? Number(type.sortOrder || 1) : ((state.adminData.roomTypes || []).length + 1)) + '"></div>' +
+      '<label class="checkbox-row"><input id="roomtype-active" type="checkbox"' + (!type || type.active ? ' checked' : '') + '><span>Template Aktif</span></label>',
+      '<button class="btn btn-secondary" onclick="closeModal()">Batal</button><button class="btn btn-primary" onclick="saveRoomTypeAdmin(\'' +
+      jsq(roomTypeId || '') + '\')">Simpan</button>');
+  }
+
+  async function saveRoomTypeAdmin(roomTypeId) {
+    var name = document.getElementById('roomtype-name') ? document.getElementById('roomtype-name').value.trim() : '';
+    var typeId = document.getElementById('roomtype-id') ? document.getElementById('roomtype-id').value.trim() : '';
+    if (!name) return toast('Nama template ruangan wajib diisi.', 'error');
+    try {
+      state.adminData = await apiCall('saveRoomType', { roomType: {
+        roomTypeId: typeId || roomTypeId || '',
+        name: name,
+        templateSheet: document.getElementById('roomtype-sheet').value,
+        workDays: document.getElementById('roomtype-days').value,
+        sortOrder: Number(document.getElementById('roomtype-order').value || 1),
+        active: document.getElementById('roomtype-active').checked
+      }});
+      closeModal();
+      renderManagementShell_();
+      toast('Template ruangan berhasil disimpan.', 'success');
+    } catch (error) {
+      handleApiError(error);
+    }
   }
 
   function renderManagementRooms_(root) {

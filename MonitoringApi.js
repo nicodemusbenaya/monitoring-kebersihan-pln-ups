@@ -24,12 +24,14 @@ function monitoringScanRoom_(payload) {
   var session = payload._session;
   assert_(['PETUGAS', 'SUPERVISOR'].indexOf(session.user.Role) !== -1, 'FORBIDDEN', 'Akun ini tidak dapat mengisi checklist.');
   var token = parseRoomQrToken_(payload.qrPayload);
-  // Jalur pemindaian membaca mirror Spreadsheet secara langsung agar UI tidak
-  // ikut menunggu timeout gateway NAS. Setiap mutasi tetap dicerminkan ke sini.
+  // Jalur pemindaian membaca database Spreadsheet dan tidak bergantung pada NAS.
   var source = rowsAsLocalObjectsBatch_(['ROOMS', 'ROOM_TYPES', 'SLOTS', 'INSPECTIONS', 'ACTIVITIES', 'USERS']);
+  // Untuk indikator scan-critical, baca Sheet langsung sebelum menyatakan
+  // form kosong agar cache lama tidak menghasilkan penolakan palsu.
   var room = source.ROOMS.find(function(item) {
     return String(item.QrToken) === String(token) && truthy_(item.Active);
   }) || null;
+  if (room) source.ACTIVITIES = activityRowsForRoomType_(room.RoomTypeId, source.ACTIVITIES);
   var localRoomType = room ? source.ROOM_TYPES.find(function(item) {
     return String(item.RoomTypeId) === String(room.RoomTypeId) && truthy_(item.Active);
   }) : null;
@@ -37,14 +39,18 @@ function monitoringScanRoom_(payload) {
     return String(item.RoomTypeId) === String(room.RoomTypeId) &&
       String(item.Role) === String(session.user.Role) && truthy_(item.Active);
   }) : false;
-  if (!room || !localRoomType || !hasLocalSlot) {
+  if (room) source.ACTIVITIES = activityRowsForRoomType_(room.RoomTypeId, source.ACTIVITIES);
+  var hasLocalActivities = room ? source.ACTIVITIES.some(function(item) {
+    return String(item.RoomTypeId) === String(room.RoomTypeId) && truthy_(item.Active);
+  }) : false;
+  if (!room || !localRoomType || !hasLocalSlot || !hasLocalActivities) {
     var recovered = recoverActiveRoomForScan_(token);
     if (recovered) {
       room = recovered.room;
       source.ROOMS = recovered.ROOMS;
       source.ROOM_TYPES = recovered.ROOM_TYPES;
       source.SLOTS = recovered.SLOTS;
-      source.ACTIVITIES = recovered.ACTIVITIES;
+      source.ACTIVITIES = activityRowsForRoomType_(room.RoomTypeId, recovered.ACTIVITIES);
     }
   }
   assert_(room, 'INVALID_ROOM', 'QR Code ruangan tidak valid atau sudah tidak aktif.');
@@ -71,6 +77,8 @@ function monitoringScanRoom_(payload) {
   allToday.forEach(function(row) {
     completedMap[row.SlotId] = monitoringInspectionSummaryFromSource_(row, source);
   });
+  var activities = monitoringActivitiesFor_(room.RoomTypeId, source.ACTIVITIES);
+  assert_(activities.length, 'ACTIVITIES_UNAVAILABLE', 'Indikator pemeriksaan belum tersedia. Muat ulang data lalu pindai kembali QR ruangan.');
 
   return {
     room: monitoringPublicRoom_(room),
@@ -83,7 +91,7 @@ function monitoringScanRoom_(payload) {
         completed: completedMap[slot.SlotId] || null
       };
     }),
-    activities: monitoringActivitiesFor_(room.RoomTypeId),
+    activities: activities,
     petugasResults: session.user.Role === 'SUPERVISOR' ? allToday.filter(function(row) {
       var slot = findBy_('SLOTS', 'SlotId', row.SlotId);
       return slot && slot.Role === 'PETUGAS';
@@ -92,23 +100,15 @@ function monitoringScanRoom_(payload) {
 }
 
 function recoverActiveRoomForScan_(token) {
-  if (!primaryDatabaseConfigured_()) return null;
   try {
-    // QR yang tidak ada pada mirror diverifikasi ke sumber utama sebelum
-    // dinyatakan tidak valid. Token disalin apa adanya; tidak pernah dibuat ulang.
-    var source = rowsAsObjectsBatch_(['ROOMS', 'ROOM_TYPES', 'SLOTS', 'ACTIVITIES']);
+    // Cache tidak boleh membuat QR aktif tampak tidak valid. Lakukan pembacaan
+    // langsung ke Spreadsheet sebelum mengembalikan INVALID_ROOM.
+    var source = rowsAsLocalObjectsBatchDirect_(['ROOMS', 'ROOM_TYPES', 'SLOTS', 'ACTIVITIES']);
     var room = source.ROOMS.find(function(item) {
       return String(item.QrToken) === String(token) && truthy_(item.Active);
     }) || null;
     if (!room) return null;
-
-    mirrorUpsert_('ROOMS', room);
-    source.ROOM_TYPES.filter(function(item) {
-      return String(item.RoomTypeId) === String(room.RoomTypeId);
-    }).forEach(function(item) { mirrorUpsert_('ROOM_TYPES', item); });
-    source.SLOTS.filter(function(item) {
-      return String(item.RoomTypeId) === String(room.RoomTypeId);
-    }).forEach(function(item) { mirrorUpsert_('SLOTS', item); });
+    ['ROOMS', 'ROOM_TYPES', 'SLOTS', 'ACTIVITIES'].forEach(invalidatePrimaryRows_);
     return {
       room: room,
       ROOMS: source.ROOMS,
@@ -117,22 +117,36 @@ function recoverActiveRoomForScan_(token) {
       ACTIVITIES: source.ACTIVITIES
     };
   } catch (error) {
-    console.warn('Pemulihan mirror ROOMS saat scan gagal: ' + error.message);
+    console.warn('Pembacaan langsung ROOMS saat scan gagal: ' + error.message);
     return null;
   }
 }
 
 function monitoringSubmitInspection_(payload) {
   var session = payload._session;
-  var scan = findBy_('SCAN_EVENTS', 'ScanId', payload.scanId);
-  assert_(scan && scan.UserId === session.user.UserId, 'INVALID_SCAN', 'Sesi pemindaian tidak valid. Pindai ulang QR Code.');
-  var room = findActiveRoomById_(scan.RoomId);
+  // Scan dan submit membaca database Spreadsheet yang sama sehingga tidak ada
+  // ketergantungan pada replikasi atau ketersediaan NAS.
+  var localSource = rowsAsLocalObjectsBatch_(['SCAN_EVENTS', 'ROOMS', 'SLOTS', 'ROOM_TYPES', 'ACTIVITIES']);
+  var scan = localSource.SCAN_EVENTS.find(function(item) {
+    return String(item.ScanId) === String(payload.scanId);
+  }) || findBy_('SCAN_EVENTS', 'ScanId', payload.scanId);
+  assert_(scan && String(scan.UserId) === String(session.user.UserId), 'INVALID_SCAN', 'Sesi pemindaian tidak valid. Pindai ulang QR Code.');
+  var room = localSource.ROOMS.find(function(item) {
+    return String(item.RoomId) === String(scan.RoomId) && truthy_(item.Active);
+  }) || findActiveRoomById_(scan.RoomId);
   assert_(room, 'ROOM_INACTIVE', 'Ruangan sudah tidak aktif.');
-  var slot = findBy_('SLOTS', 'SlotId', String(payload.slotId || ''));
+  localSource.ACTIVITIES = activityRowsForRoomType_(room.RoomTypeId, localSource.ACTIVITIES);
+  var slot = localSource.SLOTS.find(function(item) {
+    return String(item.SlotId) === String(payload.slotId || '');
+  }) || findBy_('SLOTS', 'SlotId', String(payload.slotId || ''));
   assert_(slot && slot.RoomTypeId === room.RoomTypeId && truthy_(slot.Active), 'INVALID_SLOT', 'Slot pemeriksaan tidak valid.');
   assert_(slot.Role === session.user.Role, 'FORBIDDEN', 'Slot ini tidak sesuai dengan peran akun.');
-  var roomType = findBy_('ROOM_TYPES', 'RoomTypeId', room.RoomTypeId);
+  var roomType = localSource.ROOM_TYPES.find(function(item) {
+    return String(item.RoomTypeId) === String(room.RoomTypeId);
+  }) || findBy_('ROOM_TYPES', 'RoomTypeId', room.RoomTypeId);
   assert_(isWorkday_(Number(roomType.WorkDays || 6)), 'OUTSIDE_SCHEDULE', 'Hari ini tidak termasuk jadwal pemeriksaan.');
+
+  localSource.ACTIVITIES = activityRowsForRoomType_(room.RoomTypeId, localSource.ACTIVITIES);
 
   var evidenceDataList = Array.isArray(payload.evidenceDataList) ? payload.evidenceDataList.slice() : [];
   // Kompatibilitas dengan prototype: payload lama masih dapat mengirim satu foto.
@@ -145,7 +159,8 @@ function monitoringSubmitInspection_(payload) {
     validatePhotoData_(data);
   });
 
-  var activities = monitoringActivitiesFor_(room.RoomTypeId);
+  var activities = monitoringActivitiesFor_(room.RoomTypeId, localSource.ACTIVITIES);
+  assert_(activities.length, 'ACTIVITIES_UNAVAILABLE', 'Indikator pemeriksaan belum tersedia. Muat ulang data lalu pindai kembali QR ruangan.');
   var answers = Array.isArray(payload.answers) ? payload.answers : [];
   var answerMap = {};
   answers.forEach(function(answer) { answerMap[String(answer.activityId)] = answer; });
@@ -165,11 +180,7 @@ function monitoringSubmitInspection_(payload) {
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
   try {
-    var duplicate = rowsAsObjects_('INSPECTIONS').some(function(row) {
-      return row.RoomId === room.RoomId && row.DateKey === todayKey_() &&
-        row.SlotId === slot.SlotId && row.State === 'SUBMITTED';
-    });
-    assert_(!duplicate, 'ALREADY_SUBMITTED', 'Slot ini sudah diisi untuk ruangan tersebut hari ini.');
+    assert_(!hasSubmittedInspectionToday_(room.RoomId, slot.SlotId, todayKey_()), 'ALREADY_SUBMITTED', 'Slot ini sudah diisi untuk ruangan tersebut hari ini.');
 
     var inspectionId = id_('INSP');
     var submittedAt = nowIso_();
@@ -223,17 +234,61 @@ function monitoringSubmitInspection_(payload) {
   }
 }
 
+function hasSubmittedInspectionToday_(roomId, slotId, dateKey) {
+  dateKey = dateKey || todayKey_();
+  var sheet = getSheet_('INSPECTIONS');
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) return false;
+  var maxScanRows = Math.min(lastRow - 1, 200);
+  var startRow = lastRow - maxScanRows + 1;
+  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var dateKeyIdx = headers.indexOf('DateKey');
+  var roomIdIdx = headers.indexOf('RoomId');
+  var slotIdIdx = headers.indexOf('SlotId');
+  var stateIdx = headers.indexOf('State');
+  if (dateKeyIdx === -1 || roomIdIdx === -1 || slotIdIdx === -1 || stateIdx === -1) {
+    return rowsAsObjects_('INSPECTIONS').some(function(row) {
+      return String(row.RoomId) === String(roomId) && String(row.DateKey) === String(dateKey) &&
+        String(row.SlotId) === String(slotId) && String(row.State) === 'SUBMITTED';
+    });
+  }
+  var data = sheet.getRange(startRow, 1, maxScanRows, headers.length).getValues();
+  for (var i = data.length - 1; i >= 0; i--) {
+    var r = data[i];
+    if (String(r[dateKeyIdx]) === String(dateKey) && String(r[roomIdIdx]) === String(roomId) &&
+        String(r[slotIdIdx]) === String(slotId) && String(r[stateIdx]) === 'SUBMITTED') {
+      return true;
+    }
+  }
+  return false;
+}
+
 function monitoringGetInspection_(payload) {
   var inspection = findBy_('INSPECTIONS', 'InspectionId', payload.inspectionId);
   assert_(inspection, 'NOT_FOUND', 'Pemeriksaan tidak ditemukan.');
   var room = findBy_('ROOMS', 'RoomId', inspection.RoomId);
   var slot = findBy_('SLOTS', 'SlotId', inspection.SlotId);
+  var activityNames = {};
+  rowsAsObjects_('ACTIVITIES').forEach(function(activity) {
+    activityNames[String(activity.ActivityId)] = activity.Name || activity.ActivityId;
+  });
   return {
     summary: monitoringInspectionSummary_(inspection),
     room: room ? monitoringPublicRoom_(room) : null,
     slot: slot ? { name: slot.Name, code: slot.Code } : null,
     details: rowsAsObjects_('INSPECTION_DETAILS').filter(function(row) {
       return row.InspectionId === inspection.InspectionId;
+    }).map(function(row) {
+      return {
+        detailId: row.DetailId,
+        activityId: row.ActivityId,
+        activityName: activityNames[String(row.ActivityId)] || row.ActivityId || 'Indikator kebersihan',
+        qualityResult: row.QualityResult || row.Status || 'NA',
+        qualityLabel: row.QualityLabel || row.Status || '',
+        functionResult: row.FunctionResult || row.FuncStatus || 'NA',
+        functionLabel: row.FunctionLabel || row.FuncStatus || '',
+        note: row.Note || ''
+      };
     }),
     evidenceFileId: inspection.EvidenceFileId,
     photos: inspectionPhotosFor_(inspection.InspectionId, inspection)
@@ -259,8 +314,9 @@ function monitoringGetQrData_(payload) {
   requireAdmin_(payload);
   var baseUrl = ScriptApp.getService().getUrl();
   assert_(baseUrl, 'WEBAPP_NOT_DEPLOYED', 'Deploy aplikasi sebagai Web App sebelum membuat QR Code.');
+  var hiddenRoomMap = sharedHiddenRoomMap_();
   return rowsAsObjects_('ROOMS').filter(function(room) {
-    return truthy_(room.Active) && room.RoomTypeId;
+    return truthy_(room.Active) && !hiddenRoomMap[String(room.RoomId)] && room.RoomTypeId;
   }).sort(sortByOrder_).map(function(room) {
     return {
       roomId: room.RoomId,
@@ -276,6 +332,8 @@ function monitoringDashboard_(month, roomId) {
   month = /^\d{4}-\d{2}$/.test(String(month || '')) ? String(month) : monthKey_();
   var rooms = monitoringPublicRooms_();
   var visibleRooms = rooms.filter(function(room) { return !roomId || room.roomId === roomId; });
+  var visibleRoomMap = {};
+  visibleRooms.forEach(function(room) { visibleRoomMap[String(room.roomId)] = true; });
   var slots = rowsAsObjects_('SLOTS').filter(function(row) { return truthy_(row.Active); });
   var users = rowsAsObjects_('USERS');
   var roomTypes = rowsAsObjects_('ROOM_TYPES');
@@ -283,11 +341,11 @@ function monitoringDashboard_(month, roomId) {
     return String(row.State).toUpperCase() === 'SUBMITTED';
   });
   var monthly = allInspections.filter(function(row) {
-    return String(row.DateKey).slice(0, 7) === month && (!roomId || row.RoomId === roomId);
+    return String(row.DateKey).slice(0, 7) === month && visibleRoomMap[String(row.RoomId)];
   });
   var dateKey = todayKey_();
   var today = allInspections.filter(function(row) {
-    return String(row.DateKey) === dateKey && (!roomId || row.RoomId === roomId);
+    return String(row.DateKey) === dateKey && visibleRoomMap[String(row.RoomId)];
   });
   var maps = dashboardLookupMaps_(rooms, slots, users);
   var roomStatus = visibleRooms.map(function(room) {
@@ -307,6 +365,15 @@ function monitoringDashboard_(month, roomId) {
   var pendingRooms = roomStatus.filter(function(row) {
     return row.expectedCount > row.completedCount;
   }).length;
+  var scheduledRooms = roomStatus.filter(function(row) {
+    return row.scheduled && row.expectedCount > 0;
+  }).length;
+  var completeRooms = roomStatus.filter(function(row) {
+    return row.scheduled && row.expectedCount > 0 && row.completedCount >= row.expectedCount;
+  }).length;
+  var findingIndicators = todayFindings.reduce(function(total, row) {
+    return total + Number(row.DirtyCount || 0);
+  }, 0);
 
   var attention = todayFindings.slice().sort(function(a, b) {
     return new Date(b.SubmittedAt).getTime() - new Date(a.SubmittedAt).getTime();
@@ -327,8 +394,34 @@ function monitoringDashboard_(month, roomId) {
       });
     });
   });
+  var attentionCounts = attention.reduce(function(counts, item) {
+    if (item.kind === 'FINDING') counts.findings++;
+    else if (item.kind === 'PENDING') counts.pending++;
+    return counts;
+  }, { findings: 0, pending: 0 });
 
   var monthlyFindings = monthly.filter(function(row) { return row.OverallStatus === 'ADA_TEMUAN'; });
+  var dailyMap = {};
+  monthly.forEach(function(row) {
+    var key = String(row.DateKey || '');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return;
+    if (!dailyMap[key]) dailyMap[key] = { submissions: 0, findings: 0 };
+    dailyMap[key].submissions++;
+    if (row.OverallStatus === 'ADA_TEMUAN') dailyMap[key].findings++;
+  });
+  var monthParts = month.split('-').map(Number);
+  var daysInMonth = new Date(monthParts[0], monthParts[1], 0).getDate();
+  var daily = [];
+  for (var day = 1; day <= daysInMonth; day++) {
+    var dailyKey = month + '-' + String(day).padStart(2, '0');
+    var dailyValue = dailyMap[dailyKey] || { submissions: 0, findings: 0 };
+    daily.push({
+      dateKey: dailyKey,
+      day: day,
+      submissions: dailyValue.submissions,
+      findings: dailyValue.findings
+    });
+  }
   var satisfactionEnd = new Date(month + '-01T00:00:00+07:00');
   satisfactionEnd.setMonth(satisfactionEnd.getMonth() + 1);
   satisfactionEnd.setDate(0);
@@ -338,14 +431,17 @@ function monitoringDashboard_(month, roomId) {
     roomId: roomId || ''
   });
   return {
-    month: month, roomId: roomId || '', rooms: rooms, todayKey: dateKey,
+    month: month, roomId: roomId || '', rooms: rooms, todayKey: dateKey, generatedAt: nowIso_(),
     todayTotals: {
       completionRate: expectedSlots ? Math.round(completedCount / expectedSlots * 100) : 0,
       completed: completedCount,
       expected: expectedSlots,
       findings: todayFindings.length,
+      findingIndicators: findingIndicators,
       pending: Math.max(0, expectedSlots - completedCount),
-      pendingRooms: pendingRooms
+      pendingRooms: pendingRooms,
+      scheduledRooms: scheduledRooms,
+      completeRooms: completeRooms
     },
     totals: {
       submissions: monthly.length,
@@ -353,8 +449,12 @@ function monitoringDashboard_(month, roomId) {
       findings: monthlyFindings.length,
       pendingBackup: 0
     },
+    daily: daily,
     roomStatus: roomStatus,
-    attention: attention.slice(0, 8),
+    attention: attention,
+    attentionCounts: attentionCounts,
+    attentionTotal: attention.length,
+    recentTotal: monthly.length,
     recent: monthly.sort(function(a, b) {
       return new Date(b.SubmittedAt).getTime() - new Date(a.SubmittedAt).getTime();
     }).slice(0, 12).map(function(item) { return dashboardInspectionSummary_(item, maps); }),
@@ -422,11 +522,12 @@ function dashboardTime_(value) {
   return value ? Utilities.formatDate(new Date(value), APP.TIMEZONE, 'HH:mm') : '';
 }
 
-function monitoringActivitiesFor_(roomTypeId) {
+function monitoringActivitiesFor_(roomTypeId, sourceRows) {
   var configured = monitoringItems_().filter(function(item) {
     return item.type === roomTypeId;
   });
-  return rowsAsObjects_('ACTIVITIES').filter(function(row) {
+  var rows = Array.isArray(sourceRows) ? sourceRows : rowsAsObjects_('ACTIVITIES');
+  return rows.filter(function(row) {
     return row.RoomTypeId === roomTypeId && truthy_(row.Active);
   }).sort(sortByOrder_).map(function(row) {
     var fallback = configured.find(function(item) {
@@ -449,22 +550,42 @@ function monitoringActivitiesFor_(roomTypeId) {
   });
 }
 
+function activityRowsForRoomType_(roomTypeId, sourceRows) {
+  var rows = Array.isArray(sourceRows) ? sourceRows : [];
+  var hasMatchingRows = rows.some(function(row) {
+    return String(row.RoomTypeId) === String(roomTypeId) && truthy_(row.Active);
+  });
+  if (hasMatchingRows) return rows;
+
+  // Scan/submit harus dapat memakai Spreadsheet langsung meskipun cache
+  // sebelumnya berisi daftar indikator yang tidak lengkap.
+  var sheetRows = rowsAsSheetObjects_('ACTIVITIES');
+  if (sheetRows.some(function(row) {
+    return String(row.RoomTypeId) === String(roomTypeId) && truthy_(row.Active);
+  })) return sheetRows;
+
+  return rows;
+}
+
 function monitoringSlotsFor_(roomTypeId) {
   return rowsAsObjects_('SLOTS').filter(function(row) {
     return row.RoomTypeId === roomTypeId && truthy_(row.Active);
   }).sort(sortByOrder_);
 }
 
-function monitoringPublicRooms_() {
+function monitoringPublicRooms_(hiddenRoomMap) {
+  hiddenRoomMap = hiddenRoomMap || sharedHiddenRoomMap_();
   return rowsAsObjects_('ROOMS').filter(function(room) {
-    return truthy_(room.Active) && room.RoomTypeId;
-  }).sort(sortByOrder_).map(monitoringPublicRoom_);
+    return truthy_(room.Active) && !hiddenRoomMap[String(room.RoomId)] && room.RoomTypeId;
+  }).sort(sortByOrder_).map(function(room) { return monitoringPublicRoom_(room, hiddenRoomMap); });
 }
 
-function monitoringPublicRoom_(room) {
+function monitoringPublicRoom_(room, hiddenRoomMap) {
+  hiddenRoomMap = hiddenRoomMap || {};
   return {
     roomId: room.RoomId, code: room.Code, name: room.Name,
-    roomTypeId: room.RoomTypeId, active: truthy_(room.Active), sortOrder: Number(room.SortOrder || 0)
+    roomTypeId: room.RoomTypeId, active: truthy_(room.Active), hidden: Boolean(hiddenRoomMap[String(room.RoomId)]),
+    sortOrder: Number(room.SortOrder || 0)
   };
 }
 
