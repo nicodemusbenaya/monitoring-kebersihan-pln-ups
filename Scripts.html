@@ -1150,17 +1150,25 @@
       }).join('');
       var body = document.querySelector('#modal-root .modal-body');
       if (!body) return;
+      var isSubmitted = String(summary.state || '').toUpperCase() !== 'REOPENED';
+      var reopenBox = isSubmitted
+        ? '<div style="margin-top:20px;padding:16px 18px;border:1px dashed #ef4444;border-radius:12px;background:#fef2f2;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap">' +
+            '<div><strong style="display:block;color:#991b1b;font-size:13px;margin-bottom:2px">Perlu perbaikan atau pengisian ulang checklist?</strong>' +
+            '<span style="color:#b91c1c;font-size:11px">Buka kembali status pemeriksaan ini agar petugas dapat melakukan scan QR dan mengisi ulang slot ini hari ini.</span></div>' +
+            '<button type="button" class="btn btn-danger" onclick="confirmReopenInspection_(\'' + jsq(inspectionId) + '\')">Buka kembali pemeriksaan ini</button>' +
+          '</div>'
+        : '<div style="margin-top:20px;padding:14px 18px;border:1px solid #fed7aa;border-radius:12px;background:#fff7ed;color:#9a3412;font-size:12px">Pemeriksaan ini sedang dalam status <strong>DIBUKA KEMBALI</strong> untuk diisi ulang oleh petugas.</div>';
+
       body.innerHTML = '<div class="dashboard-detail-summary"><div><span>Ruangan</span><strong>' + esc(summary.roomName || (data.room || {}).name || '-') + '</strong></div><div><span>Slot</span><strong>' + esc(summary.slotName || (data.slot || {}).name || '-') + '</strong></div><div><span>Petugas</span><strong>' + esc(summary.officerName || '-') + '</strong></div><div><span>Waktu</span><strong>' + esc(summary.displayTime || '-') + ' WIB</strong></div></div>' +
         '<section class="dashboard-detail-section"><header><div><span>Indikator bermasalah</span><strong>' + issues.length + ' temuan</strong></div></header><div class="dashboard-detail-issues">' + (issueMarkup || '<div class="dashboard-empty">Tidak ada rincian indikator bermasalah.</div>') + '</div></section>' +
-        '<section class="dashboard-detail-section"><header><div><span>Evidence pemeriksaan</span><strong>' + Number((data.photos || []).length) + ' foto</strong></div></header><div id="dashboard-evidence-grid" class="dashboard-evidence-grid"><div class="dashboard-evidence-loading">Menyiapkan evidence...</div></div></section>';
-      var todayKey = (state.bootstrap && state.bootstrap.dashboard ? state.bootstrap.dashboard.todayKey : '') || new Date().toISOString().slice(0, 10);
-      var isToday = summary.dateKey === todayKey;
-      var isSubmitted = summary.state !== 'REOPENED';
-      var actions = (isToday && isSubmitted)
-        ? '<button type="button" class="btn btn-danger" onclick="confirmReopenInspection_(\'' + jsq(inspectionId) + '\')">Buka kembali pemeriksaan hari ini</button><button class="btn btn-secondary" onclick="closeModal()">Tutup</button>'
-        : '<button class="btn btn-secondary" onclick="closeModal()">Tutup</button>';
-      var modalActions = document.querySelector('#modal-root .modal-actions');
-      if (modalActions) modalActions.innerHTML = actions;
+        '<section class="dashboard-detail-section"><header><div><span>Evidence pemeriksaan</span><strong>' + Number((data.photos || []).length) + ' foto</strong></div></header><div id="dashboard-evidence-grid" class="dashboard-evidence-grid"><div class="dashboard-evidence-loading">Menyiapkan evidence...</div></div></section>' +
+        reopenBox;
+
+      var modalFoot = document.querySelector('#modal-root .modal-foot');
+      if (modalFoot) {
+        modalFoot.innerHTML = (isSubmitted ? '<button type="button" class="btn btn-danger" onclick="confirmReopenInspection_(\'' + jsq(inspectionId) + '\')">Buka kembali pemeriksaan</button>' : '') +
+          '<button class="btn btn-secondary" onclick="closeModal()">Tutup</button>';
+      }
       loadDashboardEvidence_(data.photos || []);
     } catch (error) {
       var body = document.querySelector('#modal-root .modal-body');
