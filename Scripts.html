@@ -1132,11 +1132,17 @@
     catch (error) { return String(value).slice(11, 16) || '--.--'; }
   }
 
+  state.inspectionCache = state.inspectionCache || {};
+
   async function openDashboardInspection_(inspectionId) {
     if (!inspectionId) return;
-    showModal('Detail pemeriksaan', loadingSkeleton_('Membuka detail temuan', 'Memuat indikator, catatan, dan evidence.'), '<button class="btn btn-secondary" onclick="closeModal()">Tutup</button>', 'dashboard-detail-modal');
+    showModal('Detail pemeriksaan', loadingSkeleton_('Membuka detail pemeriksaan', 'Memuat indikator, catatan, dan foto evidence...'), '<button class="btn btn-secondary" onclick="closeModal()">Tutup</button>', 'dashboard-detail-modal');
     try {
-      var data = await apiCall('getInspection', { inspectionId: inspectionId });
+      var data = state.inspectionCache[inspectionId];
+      if (!data) {
+        data = await apiCall('getInspection', { inspectionId: inspectionId });
+        state.inspectionCache[inspectionId] = data;
+      }
       var summary = data.summary || {};
       var issues = (data.details || []).filter(function(detail) {
         return ['NEGATIVE','TIDAK_BERSIH'].indexOf(String(detail.qualityResult || '').toUpperCase()) !== -1 ||
@@ -1151,22 +1157,18 @@
       var body = document.querySelector('#modal-root .modal-body');
       if (!body) return;
       var isSubmitted = String(summary.state || '').toUpperCase() !== 'REOPENED';
-      var reopenBox = isSubmitted
-        ? '<div style="margin-top:20px;padding:16px 18px;border:1px dashed #ef4444;border-radius:12px;background:#fef2f2;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap">' +
-            '<div><strong style="display:block;color:#991b1b;font-size:13px;margin-bottom:2px">Perlu perbaikan atau pengisian ulang checklist?</strong>' +
-            '<span style="color:#b91c1c;font-size:11px">Buka kembali status pemeriksaan ini agar petugas dapat melakukan scan QR dan mengisi ulang slot ini hari ini.</span></div>' +
-            '<button type="button" class="btn btn-danger" onclick="confirmReopenInspection_(\'' + jsq(inspectionId) + '\')">Buka kembali pemeriksaan ini</button>' +
-          '</div>'
-        : '<div style="margin-top:20px;padding:14px 18px;border:1px solid #fed7aa;border-radius:12px;background:#fff7ed;color:#9a3412;font-size:12px">Pemeriksaan ini sedang dalam status <strong>DIBUKA KEMBALI</strong> untuk diisi ulang oleh petugas.</div>';
+      var statusNotice = !isSubmitted
+        ? '<div style="margin-top:16px;padding:12px 16px;border:1px solid #fed7aa;border-radius:12px;background:#fff7ed;color:#9a3412;font-size:12px">Pemeriksaan ini sedang dalam status <strong>DIBUKA KEMBALI</strong> untuk diisi ulang oleh petugas.</div>'
+        : '';
 
       body.innerHTML = '<div class="dashboard-detail-summary"><div><span>Ruangan</span><strong>' + esc(summary.roomName || (data.room || {}).name || '-') + '</strong></div><div><span>Slot</span><strong>' + esc(summary.slotName || (data.slot || {}).name || '-') + '</strong></div><div><span>Petugas</span><strong>' + esc(summary.officerName || '-') + '</strong></div><div><span>Waktu</span><strong>' + esc(summary.displayTime || '-') + ' WIB</strong></div></div>' +
         '<section class="dashboard-detail-section"><header><div><span>Indikator bermasalah</span><strong>' + issues.length + ' temuan</strong></div></header><div class="dashboard-detail-issues">' + (issueMarkup || '<div class="dashboard-empty">Tidak ada rincian indikator bermasalah.</div>') + '</div></section>' +
         '<section class="dashboard-detail-section"><header><div><span>Evidence pemeriksaan</span><strong>' + Number((data.photos || []).length) + ' foto</strong></div></header><div id="dashboard-evidence-grid" class="dashboard-evidence-grid"><div class="dashboard-evidence-loading">Menyiapkan evidence...</div></div></section>' +
-        reopenBox;
+        statusNotice;
 
       var modalFoot = document.querySelector('#modal-root .modal-foot');
       if (modalFoot) {
-        modalFoot.innerHTML = (isSubmitted ? '<button type="button" class="btn btn-danger" onclick="confirmReopenInspection_(\'' + jsq(inspectionId) + '\')">Buka kembali pemeriksaan</button>' : '') +
+        modalFoot.innerHTML = (isSubmitted ? '<button type="button" class="btn btn-danger" onclick="confirmReopenInspection_(\'' + jsq(inspectionId) + '\')">Buka kembali pemeriksaan ini</button>' : '') +
           '<button class="btn btn-secondary" onclick="closeModal()">Tutup</button>';
       }
       loadDashboardEvidence_(data.photos || []);
@@ -1183,6 +1185,7 @@
         inspectionId: inspectionId,
         month: (state.bootstrap && state.bootstrap.dashboard ? state.bootstrap.dashboard.month : '')
       });
+      delete state.inspectionCache[inspectionId];
       closeModal();
       toast('Pemeriksaan berhasil dibuka kembali. Petugas kini dapat mengisi ulang.', 'success');
       if (state.adminTab === 'dashboard') refreshDashboard();
@@ -1195,8 +1198,16 @@
   function loadDashboardEvidence_(photos) {
     var target = document.getElementById('dashboard-evidence-grid');
     if (!target) return;
-    if (!photos.length) { target.innerHTML = '<div class="dashboard-empty">Tidak ada foto evidence pada pemeriksaan ini.</div>'; return; }
+    if (!photos || !photos.length) { target.innerHTML = '<div class="dashboard-empty">Tidak ada foto evidence pada pemeriksaan ini.</div>'; return; }
+    var allHaveDataUrl = photos.every(function(p) { return Boolean(p.dataUrl); });
+    if (allHaveDataUrl) {
+      target.innerHTML = photos.map(function(photo, index) {
+        return '<figure><img src="' + attr(photo.dataUrl) + '" alt="Foto evidence ' + (index + 1) + '" loading="eager"><figcaption>Evidence ' + (index + 1) + '</figcaption></figure>';
+      }).join('');
+      return;
+    }
     Promise.all(photos.map(function(photo) {
+      if (photo.dataUrl) return Promise.resolve({ ok: true, data: { dataUrl: photo.dataUrl } });
       return apiCall('getPhoto', { fileId: photo.fileId }).then(function(result) { return { ok: true, data: result }; }, function() { return { ok: false, name: photo.fileName || 'Evidence' }; });
     })).then(function(results) {
       var current = document.getElementById('dashboard-evidence-grid');

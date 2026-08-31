@@ -223,20 +223,63 @@ function monitoringSubmitInspection_(payload) {
   }
 }
 
+function photoDataUrlForFileId_(fileId) {
+  if (!fileId) return '';
+  try {
+    var blob;
+    if (String(fileId).indexOf('DRIVE:') === 0) {
+      blob = DriveApp.getFileById(String(fileId).slice(6)).getBlob();
+    } else {
+      blob = downloadEvidenceBlobFromNas_(fileId);
+    }
+    if (blob) {
+      return 'data:' + blob.getContentType() + ';base64,' + Utilities.base64Encode(blob.getBytes());
+    }
+  } catch (e) {
+    // fallback if error
+  }
+  return '';
+}
+
 function monitoringGetInspection_(payload) {
   var inspection = findBy_('INSPECTIONS', 'InspectionId', payload.inspectionId);
   assert_(inspection, 'NOT_FOUND', 'Pemeriksaan tidak ditemukan.');
   var room = findBy_('ROOMS', 'RoomId', inspection.RoomId);
   var slot = findBy_('SLOTS', 'SlotId', inspection.SlotId);
+  var activityNames = {};
+  rowsAsObjects_('ACTIVITIES').forEach(function(activity) {
+    activityNames[String(activity.ActivityId)] = activity.Name || activity.ActivityId;
+  });
+  var rawPhotos = inspectionPhotosFor_(inspection.InspectionId, inspection);
+  var photos = rawPhotos.map(function(item) {
+    return {
+      photoId: item.photoId,
+      fileId: item.fileId,
+      fileName: item.fileName,
+      sortOrder: item.sortOrder,
+      dataUrl: photoDataUrlForFileId_(item.fileId)
+    };
+  });
   return {
     summary: monitoringInspectionSummary_(inspection),
     room: room ? monitoringPublicRoom_(room) : null,
     slot: slot ? { name: slot.Name, code: slot.Code } : null,
     details: rowsAsObjects_('INSPECTION_DETAILS').filter(function(row) {
       return row.InspectionId === inspection.InspectionId;
+    }).map(function(row) {
+      return {
+        detailId: row.DetailId,
+        activityId: row.ActivityId,
+        activityName: activityNames[String(row.ActivityId)] || row.ActivityId || 'Indikator kebersihan',
+        qualityResult: row.QualityResult || row.Status || 'NA',
+        qualityLabel: row.QualityLabel || row.Status || '',
+        functionResult: row.FunctionResult || row.FuncStatus || 'NA',
+        functionLabel: row.FunctionLabel || row.FuncStatus || '',
+        note: row.Note || ''
+      };
     }),
     evidenceFileId: inspection.EvidenceFileId,
-    photos: inspectionPhotosFor_(inspection.InspectionId, inspection)
+    photos: photos
   };
 }
 

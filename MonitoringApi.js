@@ -263,6 +263,24 @@ function hasSubmittedInspectionToday_(roomId, slotId, dateKey) {
   return false;
 }
 
+function photoDataUrlForFileId_(fileId) {
+  if (!fileId) return '';
+  try {
+    var blob;
+    if (String(fileId).indexOf('DRIVE:') === 0) {
+      blob = DriveApp.getFileById(String(fileId).slice(6)).getBlob();
+    } else {
+      blob = downloadEvidenceBlobFromNas_(fileId);
+    }
+    if (blob) {
+      return 'data:' + blob.getContentType() + ';base64,' + Utilities.base64Encode(blob.getBytes());
+    }
+  } catch (e) {
+    // fallback if error
+  }
+  return '';
+}
+
 function monitoringGetInspection_(payload) {
   var inspection = findBy_('INSPECTIONS', 'InspectionId', payload.inspectionId);
   assert_(inspection, 'NOT_FOUND', 'Pemeriksaan tidak ditemukan.');
@@ -271,6 +289,16 @@ function monitoringGetInspection_(payload) {
   var activityNames = {};
   rowsAsObjects_('ACTIVITIES').forEach(function(activity) {
     activityNames[String(activity.ActivityId)] = activity.Name || activity.ActivityId;
+  });
+  var rawPhotos = inspectionPhotosFor_(inspection.InspectionId, inspection);
+  var photos = rawPhotos.map(function(item) {
+    return {
+      photoId: item.photoId,
+      fileId: item.fileId,
+      fileName: item.fileName,
+      sortOrder: item.sortOrder,
+      dataUrl: photoDataUrlForFileId_(item.fileId)
+    };
   });
   return {
     summary: monitoringInspectionSummary_(inspection),
@@ -291,7 +319,7 @@ function monitoringGetInspection_(payload) {
       };
     }),
     evidenceFileId: inspection.EvidenceFileId,
-    photos: inspectionPhotosFor_(inspection.InspectionId, inspection)
+    photos: photos
   };
 }
 
