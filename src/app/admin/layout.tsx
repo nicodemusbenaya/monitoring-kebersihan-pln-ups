@@ -74,17 +74,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             {/* Logo & Header */}
             <div className="p-4 flex items-center justify-between border-b border-[#0f3d54]">
               <div className="flex items-center gap-3 overflow-hidden">
-                {/* Yellow Square PLN Logo - Borderless & Max Size */}
-                <div className="w-11 h-11 bg-[#ffd100] rounded-xl flex items-center justify-center overflow-hidden shrink-0 shadow-md">
-                  <Image
-                    src="https://upload.wikimedia.org/wikipedia/commons/2/20/Logo_PLN.svg"
-                    alt="PLN"
-                    width={28}
-                    height={36}
-                    className="object-contain"
-                    priority
-                  />
-                </div>
+                {/* Full-size PLN Logo directly without outer border/wrapper */}
+                <Image
+                  src="https://upload.wikimedia.org/wikipedia/commons/2/20/Logo_PLN.svg"
+                  alt="PLN"
+                  width={48}
+                  height={48}
+                  className="h-11 w-auto object-contain shrink-0 drop-shadow-sm"
+                  priority
+                />
                 {!sidebarCollapsed && (
                   <div className="truncate">
                     <span className="font-extrabold text-sm tracking-wide text-white block leading-tight">
