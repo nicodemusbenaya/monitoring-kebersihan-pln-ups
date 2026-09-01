@@ -232,9 +232,6 @@ export function AppDateField({
   onChange: (v: string) => void;
   label?: string;
 }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
   const display = useMemo(() => {
     if (!value) return "Pilih tanggal";
     try {
@@ -242,41 +239,22 @@ export function AppDateField({
     } catch { return value; }
   }, [value]);
 
-  useEffect(() => {
-    const onDown = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
-    const onEsc = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onEsc);
-    return () => { document.removeEventListener("mousedown", onDown); document.removeEventListener("keydown", onEsc); };
-  }, []);
-
+  // Single native picker - no double panel. Input covers the field and triggers native calendar once.
   return (
-    <div ref={ref} className="relative min-w-[200px]">
+    <div className="relative min-w-[200px]">
       {label && <label className="text-[10px] font-bold text-[#718c99] uppercase tracking-wide block mb-1">{label}</label>}
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className={`w-full h-[42px] px-3.5 bg-white rounded-xl flex items-center justify-between gap-2 text-left shadow-sm transition-all ${
-          open ? "border-2 border-[#ffd100] ring-4 ring-[#fff7b0]" : "border border-[#cbdde6] hover:border-[#94a3b8]"
-        }`}
-      >
-        <span className={`text-xs font-bold truncate ${value ? "text-[#17313d]" : "text-[#94a3b8]"}`}>{display}</span>
-        <span className={`shrink-0 w-7 h-7 rounded-lg bg-white border flex items-center justify-center ${open ? "border-[#ffd100] text-[#0076a8]" : "border-[#e2e8f0] text-[#64748b]"}`}>
+      <div className="relative h-[42px] bg-white rounded-xl border border-[#cbdde6] hover:border-[#94a3b8] focus-within:border-2 focus-within:border-[#ffd100] focus-within:ring-4 focus-within:ring-[#fff7b0] shadow-sm flex items-center px-3.5 gap-2 transition-all group">
+        <span className={`text-xs font-bold truncate pointer-events-none ${value ? "text-[#17313d]" : "text-[#94a3b8]"}`}>{display}</span>
+        <span className="ml-auto shrink-0 w-7 h-7 rounded-lg bg-white border border-[#e2e8f0] group-focus-within:border-[#ffd100] group-focus-within:text-[#0076a8] text-[#64748b] flex items-center justify-center pointer-events-none">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>
         </span>
-      </button>
-      {open && (
-        <div className="absolute z-50 mt-2 w-full min-w-[280px] bg-white border border-[#d8e3ea] rounded-2xl shadow-xl p-3">
-          <input
-            type="date"
-            value={value}
-            onChange={(e) => { onChange(e.target.value); setOpen(false); }}
-            className="w-full px-3 py-2.5 bg-[#f8fafc] border-2 border-[#0076a8] rounded-xl text-xs font-bold text-[#17313d] focus:outline-none"
-            autoFocus
-          />
-          <p className="text-[10px] text-[#94a3b8] mt-2 text-center">Pilih tanggal lalu panel akan menutup otomatis</p>
-        </div>
-      )}
+        <input
+          type="date"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+        />
+      </div>
     </div>
   );
 }

@@ -33,6 +33,7 @@ export default function DashboardSummaryPage() {
   const [reopenId, setReopenId] = useState<string | null>(null);
 
   const hasFilterActive = appliedRoomFilter !== "ALL" || appliedPeriod !== currentMonthKey;
+  const isMonthFiltered = appliedPeriod !== currentMonthKey;
   const filterPeriodLabel = useMemo(() => {
     if (!appliedPeriod) return "";
     const [y, m] = appliedPeriod.split("-").map(Number);
@@ -43,6 +44,20 @@ export default function DashboardSummaryPage() {
     const visible = roomsData.filter((r: any) => !r.hidden);
     return [{ value: "ALL", label: "Semua ruangan" }, ...visible.map((r: any) => ({ value: r.id, label: r.name }))];
   }, [roomsData]);
+
+  // KPI untuk waktu filter: kalau periode beda bulan, hitung dari data bulanan agar angka jelas berbeda dengan hari ini
+  const filteredKpi = useMemo(() => {
+    if (!dashboardData) return { rate: 0, completed: 0, total: 0, isFiltered: false };
+    if (!isMonthFiltered) return { rate: dashboardData.summary.completionRate, completed: dashboardData.summary.completedSessions, total: dashboardData.summary.totalExpectedSessions, isFiltered: hasFilterActive };
+    const y = Number(appliedPeriod.split("-")[0]);
+    const m = Number(appliedPeriod.split("-")[1]);
+    const days = new Date(y, m, 0).getDate();
+    const dailyExpected = dashboardData.summary.totalExpectedSessions || 0;
+    const expectedMonthly = dailyExpected * days;
+    const monthlyDone = dashboardData.metrics?.monthlyInspectionsCount ?? 0;
+    const rate = expectedMonthly > 0 ? Math.round((monthlyDone / expectedMonthly) * 100) : 0;
+    return { rate: Math.min(100, rate), completed: monthlyDone, total: expectedMonthly, isFiltered: true };
+  }, [dashboardData, isMonthFiltered, appliedPeriod, hasFilterActive]);
 
   const loadData = async (roomId = appliedRoomFilter, month = appliedPeriod) => {
     setLoading(true);
@@ -273,7 +288,7 @@ export default function DashboardSummaryPage() {
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className={`relative overflow-hidden bg-white border rounded-2xl p-5 shadow-sm flex flex-col justify-between min-h-[140px] transition-all ${loading ? "border-[#ffd100]/50" : "border-[#d8e3ea]"} ${hasFilterActive ? "ring-1 ring-[#ffd100]/20" : ""}`}>
           <span className="text-xs font-bold text-[#647783] flex items-center gap-1.5">
-            {hasFilterActive ? "Penyelesaian jadwal waktu filter" : "Penyelesaian jadwal hari ini"}
+            {isMonthFiltered ? `Penyelesaian jadwal • ${filterPeriodLabel}` : hasFilterActive ? "Penyelesaian jadwal waktu filter" : "Penyelesaian jadwal hari ini"}
             {hasFilterActive && <span className="px-1.5 py-0.5 bg-[#fff6a1] border border-[#ffd100] rounded-md text-[9px] font-black tracking-wide text-[#92400e]">FILTER AKTIF</span>}
           </span>
           <div className="my-2">
@@ -281,7 +296,7 @@ export default function DashboardSummaryPage() {
               <div className="h-9 w-24 bg-gradient-to-r from-[#f1f5f9] via-[#e2e8f0] to-[#f1f5f9] animate-pulse rounded-xl"></div>
             ) : (
               <strong className="text-3xl font-black text-[#17313d]">
-                {dashboardData?.summary?.completionRate ?? 0}%
+                {filteredKpi.rate ?? 0}%
               </strong>
             )}
           </div>
@@ -291,9 +306,11 @@ export default function DashboardSummaryPage() {
             <div className="flex items-center gap-1.5 text-[11px] text-[#647783]">
               <span className="w-2 h-2 rounded-full bg-[#ffd100]"></span>
               <span>
-                {hasFilterActive
-                  ? `${dashboardData?.summary?.completedSessions ?? 0} dari ${dashboardData?.summary?.totalExpectedSessions ?? 0} jadwal • ${filterPeriodLabel}`
-                  : `${dashboardData?.summary?.completedSessions ?? 0} dari ${dashboardData?.summary?.totalExpectedSessions ?? 87} jadwal harian`}
+                {filteredKpi.isFiltered
+                  ? isMonthFiltered
+                    ? `${filteredKpi.completed} dari ${filteredKpi.total} jadwal bulan ini • ${filterPeriodLabel}`
+                    : `${filteredKpi.completed} dari ${filteredKpi.total} jadwal • Filter ruangan`
+                  : `${filteredKpi.completed} dari ${filteredKpi.total} jadwal harian`}
               </span>
             </div>
           )}
