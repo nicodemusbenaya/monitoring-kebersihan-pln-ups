@@ -67,42 +67,62 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {!isPresentationMode && (
         <aside
           className={`${
-            sidebarCollapsed ? "w-20" : "w-[260px]"
+            sidebarCollapsed ? "w-[72px]" : "w-[260px]"
           } shrink-0 bg-[#072d3f] text-white flex flex-col justify-between transition-all duration-300 z-30 h-screen shadow-xl border-r border-[#0e3b52] select-none`}
         >
           <div>
             {/* Logo & Header */}
-            <div className="p-4 flex items-center justify-between border-b border-[#0f3d54]">
-              <div className="flex items-center gap-3 overflow-hidden">
-                {/* Official PLN Emblem Square without text */}
+            {sidebarCollapsed ? (
+              <div className="py-3 px-2 flex flex-col items-center gap-2 border-b border-[#0f3d54]">
                 <Image
                   src="/pln-emblem.svg"
                   alt="PLN"
-                  width={34}
-                  height={34}
-                  className="w-8 h-8 object-contain shrink-0 rounded-lg shadow-sm"
+                  width={32}
+                  height={32}
+                  className="w-8 h-8 object-contain rounded-lg shadow-sm"
                   priority
                 />
-                {!sidebarCollapsed && (
+                <button
+                  type="button"
+                  onClick={() => setSidebarCollapsed(false)}
+                  className="w-6 h-6 rounded-md bg-[#0e3a50] hover:bg-[#144b67] text-[#97b7c8] hover:text-white transition-colors flex items-center justify-center shadow-inner"
+                  title="Buka menu navigasi"
+                >
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <div className="p-4 flex items-center justify-between border-b border-[#0f3d54]">
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <Image
+                    src="/pln-emblem.svg"
+                    alt="PLN"
+                    width={34}
+                    height={34}
+                    className="w-8 h-8 object-contain shrink-0 rounded-lg shadow-sm"
+                    priority
+                  />
                   <div className="truncate">
                     <span className="font-extrabold text-sm tracking-wide text-white block leading-tight">
                       PLN UPS
                     </span>
                     <span className="text-[11px] text-[#86a6b8] block">Monitoring kebersihan</span>
                   </div>
-                )}
-              </div>
+                </div>
 
-              <button
-                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                className="p-1.5 rounded-lg bg-[#0e3a50] hover:bg-[#144b67] text-[#97b7c8] hover:text-white transition-colors"
-              >
-                {sidebarCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-              </button>
-            </div>
+                <button
+                  type="button"
+                  onClick={() => setSidebarCollapsed(true)}
+                  className="w-7 h-7 rounded-lg bg-[#0e3a50] hover:bg-[#144b67] text-[#97b7c8] hover:text-white transition-colors flex items-center justify-center shrink-0"
+                  title="Ciutkan menu"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+              </div>
+            )}
 
             {/* Navigation Menu */}
-            <nav className="p-3 space-y-5 overflow-y-auto max-h-[calc(100vh-140px)]">
+            <nav className={`overflow-y-auto max-h-[calc(100vh-140px)] ${sidebarCollapsed ? "p-2 space-y-3" : "p-3 space-y-5"}`}>
               {/* Section 1: Pemantauan */}
               <div>
                 {!sidebarCollapsed && (
@@ -113,11 +133,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <div className="space-y-1">
                   <Link
                     href="/admin"
-                    className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                      pathname === "/admin"
-                        ? "bg-[#093950] text-[#ffd100] border border-[#ffd100] shadow-md shadow-[#ffd100]/10"
-                        : "text-[#b2c8d4] hover:bg-[#0c364d] hover:text-white"
-                    }`}
+                    title="Ringkasan"
+                    className={
+                      sidebarCollapsed
+                        ? `w-10 h-10 mx-auto flex items-center justify-center rounded-xl transition-all ${
+                            pathname === "/admin"
+                              ? "bg-[#093950] text-[#ffd100] border border-[#ffd100] shadow-md shadow-[#ffd100]/10"
+                              : "text-[#b2c8d4] hover:bg-[#0c364d] hover:text-white"
+                          }`
+                        : `w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                            pathname === "/admin"
+                              ? "bg-[#093950] text-[#ffd100] border border-[#ffd100] shadow-md shadow-[#ffd100]/10"
+                              : "text-[#b2c8d4] hover:bg-[#0c364d] hover:text-white"
+                          }`
+                    }
                   >
                     <LayoutGrid className="w-4 h-4 shrink-0" />
                     {!sidebarCollapsed && <span>Ringkasan</span>}
@@ -125,11 +154,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
                   <Link
                     href="/admin/performance"
-                    className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                      pathname === "/admin/performance"
-                        ? "bg-[#093950] text-[#ffd100] border border-[#ffd100] shadow-md"
-                        : "text-[#b2c8d4] hover:bg-[#0c364d] hover:text-white"
-                    }`}
+                    title="Performa Petugas"
+                    className={
+                      sidebarCollapsed
+                        ? `w-10 h-10 mx-auto flex items-center justify-center rounded-xl transition-all ${
+                            pathname === "/admin/performance"
+                              ? "bg-[#093950] text-[#ffd100] border border-[#ffd100] shadow-md"
+                              : "text-[#b2c8d4] hover:bg-[#0c364d] hover:text-white"
+                          }`
+                        : `w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                            pathname === "/admin/performance"
+                              ? "bg-[#093950] text-[#ffd100] border border-[#ffd100] shadow-md"
+                              : "text-[#b2c8d4] hover:bg-[#0c364d] hover:text-white"
+                          }`
+                    }
                   >
                     <Users className="w-4 h-4 shrink-0" />
                     {!sidebarCollapsed && <span>Performa petugas</span>}
@@ -137,11 +175,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
                   <Link
                     href="/admin/evaluations"
-                    className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                      pathname === "/admin/evaluations"
-                        ? "bg-[#093950] text-[#ffd100] border border-[#ffd100] shadow-md"
-                        : "text-[#b2c8d4] hover:bg-[#0c364d] hover:text-white"
-                    }`}
+                    title="Kepuasan Pengguna"
+                    className={
+                      sidebarCollapsed
+                        ? `w-10 h-10 mx-auto flex items-center justify-center rounded-xl transition-all ${
+                            pathname === "/admin/evaluations"
+                              ? "bg-[#093950] text-[#ffd100] border border-[#ffd100] shadow-md"
+                              : "text-[#b2c8d4] hover:bg-[#0c364d] hover:text-white"
+                          }`
+                        : `w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                            pathname === "/admin/evaluations"
+                              ? "bg-[#093950] text-[#ffd100] border border-[#ffd100] shadow-md"
+                              : "text-[#b2c8d4] hover:bg-[#0c364d] hover:text-white"
+                          }`
+                    }
                   >
                     <MessageSquare className="w-4 h-4 shrink-0" />
                     {!sidebarCollapsed && <span>Kepuasan pengguna</span>}
@@ -159,11 +206,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <div className="space-y-1">
                   <Link
                     href="/admin/qr"
-                    className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                      pathname === "/admin/qr"
-                        ? "bg-[#093950] text-[#ffd100] border border-[#ffd100] shadow-md"
-                        : "text-[#b2c8d4] hover:bg-[#0c364d] hover:text-white"
-                    }`}
+                    title="QR Ruangan"
+                    className={
+                      sidebarCollapsed
+                        ? `w-10 h-10 mx-auto flex items-center justify-center rounded-xl transition-all ${
+                            pathname === "/admin/qr"
+                              ? "bg-[#093950] text-[#ffd100] border border-[#ffd100] shadow-md"
+                              : "text-[#b2c8d4] hover:bg-[#0c364d] hover:text-white"
+                          }`
+                        : `w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                            pathname === "/admin/qr"
+                              ? "bg-[#093950] text-[#ffd100] border border-[#ffd100] shadow-md"
+                              : "text-[#b2c8d4] hover:bg-[#0c364d] hover:text-white"
+                          }`
+                    }
                   >
                     <QrCode className="w-4 h-4 shrink-0" />
                     {!sidebarCollapsed && <span>QR ruangan</span>}
@@ -171,11 +227,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
                   <Link
                     href="/admin/export"
-                    className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                      pathname === "/admin/export"
-                        ? "bg-[#093950] text-[#ffd100] border border-[#ffd100] shadow-md"
-                        : "text-[#b2c8d4] hover:bg-[#0c364d] hover:text-white"
-                    }`}
+                    title="Ekspor Excel"
+                    className={
+                      sidebarCollapsed
+                        ? `w-10 h-10 mx-auto flex items-center justify-center rounded-xl transition-all ${
+                            pathname === "/admin/export"
+                              ? "bg-[#093950] text-[#ffd100] border border-[#ffd100] shadow-md"
+                              : "text-[#b2c8d4] hover:bg-[#0c364d] hover:text-white"
+                          }`
+                        : `w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                            pathname === "/admin/export"
+                              ? "bg-[#093950] text-[#ffd100] border border-[#ffd100] shadow-md"
+                              : "text-[#b2c8d4] hover:bg-[#0c364d] hover:text-white"
+                          }`
+                    }
                   >
                     <FileSpreadsheet className="w-4 h-4 shrink-0" />
                     {!sidebarCollapsed && <span>Ekspor Excel</span>}
@@ -193,11 +258,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <div className="space-y-1">
                   <Link
                     href="/admin/users"
-                    className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                      pathname === "/admin/users"
-                        ? "bg-[#093950] text-[#ffd100] border border-[#ffd100] shadow-md"
-                        : "text-[#b2c8d4] hover:bg-[#0c364d] hover:text-white"
-                    }`}
+                    title="Pengguna"
+                    className={
+                      sidebarCollapsed
+                        ? `w-10 h-10 mx-auto flex items-center justify-center rounded-xl transition-all ${
+                            pathname === "/admin/users"
+                              ? "bg-[#093950] text-[#ffd100] border border-[#ffd100] shadow-md"
+                              : "text-[#b2c8d4] hover:bg-[#0c364d] hover:text-white"
+                          }`
+                        : `w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                            pathname === "/admin/users"
+                              ? "bg-[#093950] text-[#ffd100] border border-[#ffd100] shadow-md"
+                              : "text-[#b2c8d4] hover:bg-[#0c364d] hover:text-white"
+                          }`
+                    }
                   >
                     <UserCheck className="w-4 h-4 shrink-0" />
                     {!sidebarCollapsed && <span>Pengguna</span>}
@@ -205,11 +279,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
                   <Link
                     href="/admin/rooms"
-                    className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                      pathname === "/admin/rooms"
-                        ? "bg-[#093950] text-[#ffd100] border border-[#ffd100] shadow-md"
-                        : "text-[#b2c8d4] hover:bg-[#0c364d] hover:text-white"
-                    }`}
+                    title="Pengelolaan Data"
+                    className={
+                      sidebarCollapsed
+                        ? `w-10 h-10 mx-auto flex items-center justify-center rounded-xl transition-all ${
+                            pathname === "/admin/rooms"
+                              ? "bg-[#093950] text-[#ffd100] border border-[#ffd100] shadow-md"
+                              : "text-[#b2c8d4] hover:bg-[#0c364d] hover:text-white"
+                          }`
+                        : `w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                            pathname === "/admin/rooms"
+                              ? "bg-[#093950] text-[#ffd100] border border-[#ffd100] shadow-md"
+                              : "text-[#b2c8d4] hover:bg-[#0c364d] hover:text-white"
+                          }`
+                    }
                   >
                     <Database className="w-4 h-4 shrink-0" />
                     {!sidebarCollapsed && <span>Pengelolaan data</span>}
@@ -217,11 +300,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
                   <Link
                     href="/admin/config"
-                    className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                      pathname === "/admin/config"
-                        ? "bg-[#093950] text-[#ffd100] border border-[#ffd100] shadow-md"
-                        : "text-[#b2c8d4] hover:bg-[#0c364d] hover:text-white"
-                    }`}
+                    title="Konfigurasi"
+                    className={
+                      sidebarCollapsed
+                        ? `w-10 h-10 mx-auto flex items-center justify-center rounded-xl transition-all ${
+                            pathname === "/admin/config"
+                              ? "bg-[#093950] text-[#ffd100] border border-[#ffd100] shadow-md"
+                              : "text-[#b2c8d4] hover:bg-[#0c364d] hover:text-white"
+                          }`
+                        : `w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                            pathname === "/admin/config"
+                              ? "bg-[#093950] text-[#ffd100] border border-[#ffd100] shadow-md"
+                              : "text-[#b2c8d4] hover:bg-[#0c364d] hover:text-white"
+                          }`
+                    }
                   >
                     <Settings className="w-4 h-4 shrink-0" />
                     {!sidebarCollapsed && <span>Konfigurasi</span>}
@@ -232,7 +324,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
 
           {/* Bottom Status Footprint */}
-          <div className="p-4 border-t border-[#0f3d54] text-xs">
+          <div className={sidebarCollapsed ? "p-3 flex justify-center border-t border-[#0f3d54]" : "p-4 border-t border-[#0f3d54] text-xs"}>
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-[#10b981] animate-pulse"></span>
               {!sidebarCollapsed && (
