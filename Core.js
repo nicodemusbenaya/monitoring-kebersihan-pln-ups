@@ -80,11 +80,71 @@ function rowsAsSheetObjects_(sheetName) {
 }
 
 function primaryDatabaseConfigured_() {
+  // MariaDB tidak lagi menjadi sumber data aplikasi. Fungsi ini dipertahankan
+  // hanya agar deployment lama gagal secara aman alih-alih kembali memakai NAS
+  // sebagai database ketika endpoint evidence dikonfigurasi.
+  return false;
+}
+
+function applicationDatabaseMode_() {
+  var properties = PropertiesService.getScriptProperties();
+  return String(properties.getProperty('DATABASE_MODE') ||
+    properties.getProperty('PRIMARY_STORAGE_MODE') || 'SPREADSHEET').toUpperCase();
+}
+
+function propertyFlag_(name, defaultValue) {
+  var value = PropertiesService.getScriptProperties().getProperty(name);
+  if (value === null || value === '') return Boolean(defaultValue);
+  return truthy_(value);
+}
+
+function nasGatewayConfigured_() {
   var properties = PropertiesService.getScriptProperties();
   return Boolean(properties.getProperty('NAS_GATEWAY_URL') && properties.getProperty('NAS_GATEWAY_TOKEN'));
 }
 
+function isNasCircuitOpen_() {
+  if (PRIMARY_DATABASE_CIRCUIT_OPEN_) return true;
+  try {
+    var cached = CacheService.getScriptCache().get(PRIMARY_DATABASE_CIRCUIT_KEY_);
+    if (cached === '1') {
+      PRIMARY_DATABASE_CIRCUIT_OPEN_ = true;
+      return true;
+    }
+  } catch (e) {}
+  return false;
+}
+
+function tripNasCircuit_() {
+  PRIMARY_DATABASE_CIRCUIT_OPEN_ = true;
+  try {
+    CacheService.getScriptCache().put(PRIMARY_DATABASE_CIRCUIT_KEY_, '1', PRIMARY_DATABASE_CIRCUIT_SECONDS_);
+  } catch (e) {}
+}
+
+function resetNasCircuit_() {
+  PRIMARY_DATABASE_CIRCUIT_OPEN_ = false;
+  try {
+    CacheService.getScriptCache().remove(PRIMARY_DATABASE_CIRCUIT_KEY_);
+  } catch (e) {}
+}
+
+function nasEvidenceEnabled_() {
+  if (isNasCircuitOpen_()) return false;
+  return propertyFlag_('NAS_EVIDENCE_ENABLED', true) && nasGatewayConfigured_();
+}
+
+function nasSheetBackupEnabled_() {
+  if (isNasCircuitOpen_()) return false;
+  return propertyFlag_('NAS_SHEET_BACKUP_ENABLED', true) && nasGatewayConfigured_();
+}
+
+function driveEvidenceFallbackEnabled_() {
+  return propertyFlag_('DRIVE_EVIDENCE_FALLBACK_ENABLED', true);
+}
+
 var PRIMARY_ROWS_MEMORY_ = {};
+var LOCAL_ROWS_MEMORY_ = {};
 var PRIMARY_DATABASE_CIRCUIT_OPEN_ = false;
 var PRIMARY_DATABASE_CIRCUIT_KEY_ = 'MONITORING_NAS_CIRCUIT_OPEN';
 var PRIMARY_DATABASE_CIRCUIT_SECONDS_ = 300;
@@ -125,15 +185,15 @@ function writeLocalStaticRowsCache_(sheetName, rows) {
 }
 
 function rowsAsLocalObjects_(sheetName) {
-  var memory = PRIMARY_ROWS_MEMORY_[sheetName];
+  var memory = LOCAL_ROWS_MEMORY_[sheetName];
   if (memory && Date.now() - memory.at < 5000) return memory.rows;
   var cached = readLocalStaticRowsCache_(sheetName);
   if (cached) {
-    PRIMARY_ROWS_MEMORY_[sheetName] = { at: Date.now(), rows: cached };
+    LOCAL_ROWS_MEMORY_[sheetName] = { at: Date.now(), rows: cached };
     return cached;
   }
   var rows = rowsAsSheetObjects_(sheetName);
-  PRIMARY_ROWS_MEMORY_[sheetName] = { at: Date.now(), rows: rows };
+  LOCAL_ROWS_MEMORY_[sheetName] = { at: Date.now(), rows: rows };
   writeLocalStaticRowsCache_(sheetName, rows);
   return rows;
 }
@@ -144,6 +204,16 @@ function rowsAsLocalObjectsBatch_(sheetNames) {
     return name && list.indexOf(name) === index;
   }).forEach(function(name) {
     result[name] = rowsAsLocalObjects_(name);
+  });
+  return result;
+}
+
+function rowsAsLocalObjectsBatchDirect_(sheetNames) {
+  var result = {};
+  (sheetNames || []).filter(function(name, index, list) {
+    return name && list.indexOf(name) === index;
+  }).forEach(function(name) {
+    result[name] = rowsAsSheetObjects_(name);
   });
   return result;
 }
@@ -168,18 +238,21 @@ function resetPrimaryDatabaseCircuit_() {
 
 function invalidatePrimaryRows_(sheetName) {
   delete PRIMARY_ROWS_MEMORY_[sheetName];
+  delete LOCAL_ROWS_MEMORY_[sheetName];
   if (LOCAL_STATIC_ROWS_CACHE_SHEETS_[sheetName]) {
     try { CacheService.getScriptCache().remove(localRowsCacheKey_(sheetName)); } catch (error) {}
   }
 }
 
 function primaryDatabaseRequest_(path, options) {
+  throw appError_('MARIADB_DISABLED', 'MariaDB dinonaktifkan. Database aplikasi menggunakan Google Spreadsheet.');
+}
+
+function nasGatewayRequest_(path, options) {
   var properties = PropertiesService.getScriptProperties();
   var endpoint = String(properties.getProperty('NAS_GATEWAY_URL') || '').replace(/\/+$/, '');
   var token = String(properties.getProperty('NAS_GATEWAY_TOKEN') || '');
-  assert_(endpoint && token, 'PRIMARY_STORAGE_NOT_CONFIGURED', 'Gateway NAS belum dikonfigurasi.');
-  assert_(!primaryDatabaseCircuitOpen_(), 'PRIMARY_STORAGE_UNAVAILABLE',
-    'Gateway NAS sedang dalam masa pemulihan singkat; menggunakan cache Spreadsheet.');
+  assert_(endpoint && token, 'NAS_NOT_CONFIGURED', 'Gateway NAS belum dikonfigurasi.');
   options = options || {};
   var request = {
     method: options.method || 'get',
@@ -194,93 +267,31 @@ function primaryDatabaseRequest_(path, options) {
   try {
     response = UrlFetchApp.fetch(endpoint + path, request);
   } catch (error) {
-    openPrimaryDatabaseCircuit_();
-    throw appError_('PRIMARY_STORAGE_UNAVAILABLE', 'Gateway NAS tidak dapat dijangkau: ' + error.message);
+    throw appError_('NAS_UNAVAILABLE', 'Gateway NAS tidak dapat dijangkau: ' + error.message);
   }
   var status = response.getResponseCode();
   var text = response.getContentText();
   var parsed;
   try { parsed = JSON.parse(text); } catch (error) { parsed = {}; }
   if (status < 200 || status >= 300 || parsed.ok === false) {
-    openPrimaryDatabaseCircuit_();
-    throw appError_('PRIMARY_STORAGE_UNAVAILABLE', parsed.message || ('Gateway NAS merespons HTTP ' + status + '.'));
+    throw appError_('NAS_UNAVAILABLE', parsed.message || ('Gateway NAS merespons HTTP ' + status + '.'));
   }
-  resetPrimaryDatabaseCircuit_();
   return parsed;
 }
 
 function rowsAsObjects_(sheetName) {
-  if (sheetName === 'BACKUP_QUEUE') return rowsAsSheetObjects_(sheetName);
-  var cached = PRIMARY_ROWS_MEMORY_[sheetName];
-  if (cached && Date.now() - cached.at < 2000) return cached.rows;
-  if (!primaryDatabaseConfigured_()) {
-    var localRows = rowsAsLocalObjects_(sheetName);
-    PRIMARY_ROWS_MEMORY_[sheetName] = { at: Date.now(), rows: localRows };
-    return localRows;
-  }
-  try {
-    var result = primaryDatabaseRequest_('/api/kebersihan/db/rows?table=' + encodeURIComponent(sheetName));
-    var rows = Array.isArray(result.rows) ? result.rows : [];
-    PRIMARY_ROWS_MEMORY_[sheetName] = { at: Date.now(), rows: rows };
-    writeLocalStaticRowsCache_(sheetName, rows);
-    return rows;
-  } catch (error) {
-    console.warn('MariaDB tidak tersedia; membaca cache Spreadsheet untuk ' + sheetName + ': ' + error.message);
-    var fallbackRows = rowsAsLocalObjects_(sheetName);
-    PRIMARY_ROWS_MEMORY_[sheetName] = { at: Date.now(), rows: fallbackRows };
-    return fallbackRows;
-  }
+  return sheetName === 'BACKUP_QUEUE' ? rowsAsSheetObjects_(sheetName) : rowsAsLocalObjects_(sheetName);
 }
 
 function rowsAsObjectsBatch_(sheetNames) {
   var names = (sheetNames || []).filter(function(name, index, list) {
-    return name && name !== 'BACKUP_QUEUE' && list.indexOf(name) === index;
+    return name && list.indexOf(name) === index;
   });
-  var fallback = function() {
-    var local = {};
-    names.forEach(function(name) {
-      var rows = rowsAsLocalObjects_(name);
-      local[name] = rows;
-      PRIMARY_ROWS_MEMORY_[name] = { at: Date.now(), rows: rows };
-    });
-    return local;
-  };
-  if (!names.length) return {};
-  if (!primaryDatabaseConfigured_() || primaryDatabaseCircuitOpen_()) return fallback();
-
-  var properties = PropertiesService.getScriptProperties();
-  var endpoint = String(properties.getProperty('NAS_GATEWAY_URL') || '').replace(/\/+$/, '');
-  var token = String(properties.getProperty('NAS_GATEWAY_TOKEN') || '');
-  var requests = names.map(function(name) {
-    return {
-      url: endpoint + '/api/kebersihan/db/rows?table=' + encodeURIComponent(name),
-      method: 'get',
-      headers: { Authorization: 'Bearer ' + token },
-      muteHttpExceptions: true
-    };
+  var result = {};
+  names.forEach(function(name) {
+    result[name] = name === 'BACKUP_QUEUE' ? rowsAsSheetObjects_(name) : rowsAsLocalObjects_(name);
   });
-
-  try {
-    var responses = UrlFetchApp.fetchAll(requests);
-    var result = {};
-    responses.forEach(function(response, index) {
-      var status = response.getResponseCode();
-      var parsed;
-      try { parsed = JSON.parse(response.getContentText()); } catch (error) { parsed = {}; }
-      assert_(status >= 200 && status < 300 && parsed.ok !== false, 'PRIMARY_STORAGE_UNAVAILABLE',
-        parsed.message || ('Gateway NAS merespons HTTP ' + status + '.'));
-      var rows = Array.isArray(parsed.rows) ? parsed.rows : [];
-      result[names[index]] = rows;
-      PRIMARY_ROWS_MEMORY_[names[index]] = { at: Date.now(), rows: rows };
-      writeLocalStaticRowsCache_(names[index], rows);
-    });
-    resetPrimaryDatabaseCircuit_();
-    return result;
-  } catch (error) {
-    openPrimaryDatabaseCircuit_();
-    console.warn('MariaDB tidak tersedia; membaca seluruh data admin dari cache Spreadsheet: ' + error.message);
-    return fallback();
-  }
+  return result;
 }
 
 function sheetAppendObject_(sheetName, object) {
@@ -348,118 +359,46 @@ function localQueueMutation_(eventType, payload, inspectionId) {
 }
 
 function appendObject_(sheetName, object) {
-  if (sheetName === 'BACKUP_QUEUE' || !primaryDatabaseConfigured_()) {
-    sheetAppendObject_(sheetName, object);
-    invalidatePrimaryRows_(sheetName);
-    return;
-  }
-  try {
-    primaryDatabaseRequest_('/api/kebersihan/db/upsert', {
-      method: 'post', payload: { table: sheetName, row: object }
-    });
-  } catch (error) {
-    localQueueMutation_('DB_UPSERT', { table: sheetName, row: object }, object.InspectionId || '');
-  }
+  sheetAppendObject_(sheetName, object);
   invalidatePrimaryRows_(sheetName);
-  mirrorUpsert_(sheetName, object);
 }
 
 function appendObjectDeferredPrimary_(sheetName, object) {
-  // Untuk event interaktif yang harus cepat tampil di perangkat. Spreadsheet
-  // menerima data lebih dahulu; sinkronisasi NAS diproses melalui outbox.
+  // Nama fungsi dipertahankan untuk kompatibilitas. Spreadsheet adalah satu-
+  // satunya database dan menerima data secara langsung.
   sheetAppendObject_(sheetName, object);
   invalidatePrimaryRows_(sheetName);
-  if (primaryDatabaseConfigured_()) {
-    localQueueMutation_('DB_UPSERT', { table: sheetName, row: object }, object.InspectionId || '');
-  }
 }
 
 function appendObjects_(sheetName, objects) {
   if (!objects || !objects.length) return;
-  if (sheetName === 'BACKUP_QUEUE' || !primaryDatabaseConfigured_()) {
-    sheetAppendObjects_(sheetName, objects);
-    invalidatePrimaryRows_(sheetName);
-    return;
-  }
-  try {
-    primaryDatabaseRequest_('/api/kebersihan/db/batch', {
-      method: 'post', payload: { table: sheetName, rows: objects }
-    });
-  } catch (error) {
-    localQueueMutation_('DB_BATCH', { table: sheetName, rows: objects }, objects[0].InspectionId || '');
-  }
+  sheetAppendObjects_(sheetName, objects);
   invalidatePrimaryRows_(sheetName);
-  objects.forEach(function(object) { mirrorUpsert_(sheetName, object); });
 }
 
 function appendTransaction_(mutations) {
   mutations = Array.isArray(mutations) ? mutations : [];
-  if (!primaryDatabaseConfigured_()) {
-    mutations.forEach(function(mutation) {
-      sheetAppendObjects_(mutation.table, mutation.rows || []);
-      invalidatePrimaryRows_(mutation.table);
-    });
-    return;
-  }
-  try {
-    primaryDatabaseRequest_('/api/kebersihan/db/transaction', {
-      method: 'post', payload: { mutations: mutations }
-    });
-  } catch (error) {
-    localQueueMutation_('DB_TRANSACTION', { mutations: mutations },
-      mutations.length && mutations[0].rows && mutations[0].rows.length ? mutations[0].rows[0].InspectionId || '' : '');
-  }
   mutations.forEach(function(mutation) {
+    sheetAppendObjects_(mutation.table, mutation.rows || []);
     invalidatePrimaryRows_(mutation.table);
-    (mutation.rows || []).forEach(function(object) { mirrorUpsert_(mutation.table, object); });
   });
 }
 
 function updateObjectRow_(sheetName, rowReference, updates) {
-  if (sheetName === 'BACKUP_QUEUE') {
-    sheetUpdateObject_(sheetName, rowReference, updates);
-    return;
-  }
-  var keyName = APP.PRIMARY_KEYS[sheetName];
   var keyValue = rowReference;
-  if (typeof rowReference === 'number') {
+  if (typeof rowReference === 'number' && sheetName !== 'BACKUP_QUEUE') {
+    var keyName = APP.PRIMARY_KEYS[sheetName];
     var sheet = getSheet_(sheetName);
     var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
     var keyIndex = headers.indexOf(keyName);
     if (keyIndex >= 0 && rowReference <= sheet.getLastRow()) keyValue = sheet.getRange(rowReference, keyIndex + 1).getValue();
   }
-  if (primaryDatabaseConfigured_()) {
-    try {
-      primaryDatabaseRequest_('/api/kebersihan/db/update', {
-        method: 'post', payload: { table: sheetName, key: String(keyValue), updates: updates }
-      });
-    } catch (error) {
-      localQueueMutation_('DB_UPDATE', { table: sheetName, key: String(keyValue), updates: updates }, updates.InspectionId || '');
-    }
-  }
   invalidatePrimaryRows_(sheetName);
-  sheetUpdateObject_(sheetName, String(keyValue), updates);
+  sheetUpdateObject_(sheetName, sheetName === 'BACKUP_QUEUE' ? rowReference : String(keyValue), updates);
 }
 
 function deleteObject_(sheetName, rowReference) {
-  var keyName = APP.PRIMARY_KEYS[sheetName];
   var rowNumber = resolveSheetRow_(sheetName, rowReference);
-  var keyValue = rowReference;
-  if (rowNumber) {
-    var sheet = getSheet_(sheetName);
-    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-    var keyIndex = headers.indexOf(keyName);
-    if (keyIndex >= 0) keyValue = sheet.getRange(rowNumber, keyIndex + 1).getValue();
-  }
-  if (primaryDatabaseConfigured_()) {
-    try {
-      primaryDatabaseRequest_('/api/kebersihan/db/delete', {
-        method: 'post', payload: { table: sheetName, key: String(keyValue) }
-      });
-    } catch (error) {
-      localQueueMutation_('DB_DELETE', { table: sheetName, key: String(keyValue) }, '');
-    }
-  }
   invalidatePrimaryRows_(sheetName);
   if (rowNumber) getSheet_(sheetName).deleteRow(rowNumber);
 }
@@ -522,6 +461,8 @@ function seedSettings_() {
 }
 
 function seedRoomsAndActivities_() {
+  throw appError_('LEGACY_SEED_DISABLED',
+    'Seed ruangan legacy dinonaktifkan agar tidak membuat token pengganti untuk QR lama.');
   var rooms = rowsAsObjects_('ROOMS');
   var activities = rowsAsObjects_('ACTIVITIES');
   var now = nowIso_();

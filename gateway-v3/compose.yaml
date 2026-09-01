@@ -13,6 +13,7 @@ services:
       NODE_PATH: /app/node_modules
       MONITORING_APP_PATH: /monitoring/server.js
       MONITORING_STORAGE_ROOT: /monitoring-data
+      MONITORING_TIMEZONE: Asia/Jakarta
     volumes:
       - /share/Container/gateway-v3:/app
       - gateway_v3_node_modules:/app/node_modules

@@ -43,10 +43,13 @@ CREATE TABLE IF NOT EXISTS `rooms` (
   UNIQUE KEY `uq_rooms_qr_token` (`QrToken`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+
 CREATE TABLE IF NOT EXISTS `activities` (
   `ActivityId` VARCHAR(80) PRIMARY KEY,
   `RoomTypeId` VARCHAR(80) NULL,
   `Name` VARCHAR(255) NOT NULL,
+  `StandardCategory` VARCHAR(255) NULL,
+  `StandardText` TEXT NULL,
   `QualityApplicable` TINYINT(1) NOT NULL DEFAULT 0,
   `QualityPositive` VARCHAR(255) NULL,
   `QualityNegative` VARCHAR(255) NULL,
@@ -60,6 +63,9 @@ CREATE TABLE IF NOT EXISTS `activities` (
   `UpdatedAt` VARCHAR(40) NULL,
   KEY `idx_activities_room_type` (`RoomTypeId`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE `activities` ADD COLUMN IF NOT EXISTS `StandardCategory` VARCHAR(255) NULL AFTER `Name`;
+ALTER TABLE `activities` ADD COLUMN IF NOT EXISTS `StandardText` TEXT NULL AFTER `StandardCategory`;
 
 CREATE TABLE IF NOT EXISTS `room_activities` (
   `MapId` VARCHAR(80) PRIMARY KEY,
@@ -136,6 +142,49 @@ CREATE TABLE IF NOT EXISTS `inspection_details` (
   `CorrectedAt` VARCHAR(40) NULL,
   `CorrectedBy` VARCHAR(80) NULL,
   KEY `idx_details_inspection` (`InspectionId`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `inspection_photos` (
+  `PhotoId` VARCHAR(80) PRIMARY KEY,
+  `InspectionId` VARCHAR(80) NOT NULL,
+  `FileId` VARCHAR(1000) NOT NULL,
+  `FileName` VARCHAR(255) NULL,
+  `CapturedAt` VARCHAR(40) NULL,
+  `SortOrder` INT NOT NULL DEFAULT 0,
+  KEY `idx_photos_inspection` (`InspectionId`),
+  KEY `idx_photos_file` (`FileId`(255))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `evaluation_aspects` (
+  `AspectId` VARCHAR(80) PRIMARY KEY,
+  `RoomTypeId` VARCHAR(80) NOT NULL,
+  `Code` VARCHAR(100) NOT NULL,
+  `Label` VARCHAR(255) NOT NULL,
+  `Active` TINYINT(1) NOT NULL DEFAULT 1,
+  `SortOrder` INT NOT NULL DEFAULT 0,
+  `CreatedAt` VARCHAR(40) NULL,
+  `UpdatedAt` VARCHAR(40) NULL,
+  UNIQUE KEY `uq_evaluation_aspect` (`RoomTypeId`, `Code`),
+  KEY `idx_evaluation_aspect_type` (`RoomTypeId`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `evaluations` (
+  `EvaluationId` VARCHAR(80) PRIMARY KEY,
+  `RoomId` VARCHAR(80) NOT NULL,
+  `RoomTypeId` VARCHAR(80) NOT NULL,
+  `Rating` TINYINT NOT NULL,
+  `RatingLabel` VARCHAR(255) NOT NULL,
+  `AspectCodes` TEXT NULL,
+  `Comment` TEXT NULL,
+  `DateKey` VARCHAR(10) NOT NULL,
+  `WeekStart` VARCHAR(10) NULL,
+  `MonthKey` VARCHAR(7) NULL,
+  `SubmittedAt` VARCHAR(40) NOT NULL,
+  `Source` VARCHAR(40) NOT NULL DEFAULT 'QR_ANONYMOUS',
+  `UserAgent` VARCHAR(1000) NULL,
+  KEY `idx_evaluations_period` (`DateKey`, `RoomId`),
+  KEY `idx_evaluations_submitted` (`SubmittedAt`),
+  KEY `idx_evaluations_rating` (`Rating`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `backup_queue` (

@@ -185,20 +185,19 @@ function savePhoto_(dataUrl, fileName) {
   var extension = match[1].split('/')[1].replace('jpeg', 'jpg');
   var bytes = Utilities.base64Decode(match[2]);
   var blob = Utilities.newBlob(bytes, match[1], fileName + '.' + extension);
-  if (primaryDatabaseConfigured_()) {
+  if (nasEvidenceEnabled_()) {
     try {
       return uploadEvidenceBlobToNas_(blob, fileName + '.' + extension);
     } catch (error) {
+      tripNasCircuit_();
       console.warn('NAS tidak tersedia; evidence disimpan sementara di Drive: ' + error.message);
     }
   }
+  assert_(driveEvidenceFallbackEnabled_(), 'EVIDENCE_STORAGE_UNAVAILABLE',
+    'NAS tidak tersedia dan penyimpanan sementara Drive dinonaktifkan.');
   var folderId = PropertiesService.getScriptProperties().getProperty('PHOTO_FOLDER_ID');
   assert_(folderId, 'PHOTO_FOLDER_MISSING', 'Folder penyimpanan foto belum tersedia.');
   var driveId = DriveApp.getFolderById(folderId).createFile(blob).getId();
-  localQueueMutation_('EVIDENCE_UPLOAD', {
-    driveFileId: driveId,
-    fileName: fileName + '.' + extension
-  }, '');
   return 'DRIVE:' + driveId;
 }
 

@@ -53,6 +53,21 @@ function clearSessionContextCachesForUser_(userId) {
   });
 }
 
+function ensureInspectorUserRecord_() {
+  var username = 'ipal';
+  var users = rowsAsObjects_('USERS');
+  var existing = users.find(function(user) {
+    return String(user.Username || '').toLowerCase() === username;
+  });
+  if (existing) return { userId: existing.UserId, created: false };
+
+  var userId = createUserRecord_(username, 'Ipal Hapidz', 'SUPERVISOR', 'ipal123', false);
+  logAudit_('SYSTEM', 'ENSURE_INSPECTOR_USER', 'USER', userId, {
+    username: username, role: 'SUPERVISOR', action: 'created-on-admin-login'
+  });
+  return { userId: userId, created: true };
+}
+
 function login_(payload) {
   var username = String(payload.username || '').trim().toLowerCase();
   var password = String(payload.password || '');
@@ -63,6 +78,11 @@ function login_(payload) {
   });
   assert_(user, 'INVALID_LOGIN', 'Username atau password salah.');
   assert_(verifyPassword_(password, user.Salt, user.PasswordHash), 'INVALID_LOGIN', 'Username atau password salah.');
+  if (String(user.Role || '').toUpperCase() === 'ADMIN') {
+    try { ensureInspectorUserRecord_(); } catch (error) {
+      console.warn('Akun inspektor belum dapat dibuat otomatis: ' + error.message);
+    }
+  }
 
   var token = secureToken_();
   var expiresAt = new Date(Date.now() + APP.SESSION_HOURS * 60 * 60 * 1000).toISOString();
@@ -244,6 +264,62 @@ function resetSimpleUserPasswords() {
     }
   });
   return { ok: true, updatedUsers: updated };
+}
+
+/**
+ * Menjamin akun inspektor bawaan tersedia tanpa membuat duplikat username.
+ * Jalankan sekali dari editor Apps Script setelah deployment jika akun belum
+ * ada. Role SUPERVISOR adalah role inspektor pada aplikasi ini.
+ */
+function ensureInspectorUserIpal() {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    assert_(isApplicationReady_(), 'NOT_CONFIGURED', 'Jalankan setupApplication terlebih dahulu.');
+    var username = 'ipal';
+    var fullName = 'Ipal Hapidz';
+    var role = 'SUPERVISOR';
+    var password = 'ipal123';
+    var users = rowsAsObjects_('USERS');
+    var user = users.find(function(item) {
+      return String(item.Username || '').toLowerCase() === username;
+    });
+    var now = nowIso_();
+    var userId;
+    var action;
+
+    if (user) {
+      var salt = secureToken_().slice(0, 24);
+      updateObjectRow_('USERS', user._row, {
+        FullName: fullName,
+        Role: role,
+        Salt: salt,
+        PasswordHash: passwordHash_(password, salt),
+        Active: true,
+        MustChangePassword: false,
+        UpdatedAt: now
+      });
+      userId = user.UserId;
+      action = 'updated';
+    } else {
+      userId = createUserRecord_(username, fullName, role, password, false);
+      action = 'created';
+    }
+
+    rowsAsObjects_('SESSIONS').forEach(function(session) {
+      if (String(session.UserId) === String(userId)) {
+        updateObjectRow_('SESSIONS', session._row, { ExpiresAt: now });
+        clearSessionContextCache_(session.SessionHash);
+      }
+    });
+    clearSessionContextCachesForUser_(userId);
+    logAudit_('SYSTEM', 'ENSURE_INSPECTOR_USER', 'USER', userId, {
+      username: username, role: role, action: action
+    });
+    return { ok: true, action: action, userId: userId, username: username, role: role };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function publicUser_(user) {

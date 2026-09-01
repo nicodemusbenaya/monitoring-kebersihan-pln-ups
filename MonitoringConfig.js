@@ -303,7 +303,8 @@ function monitoringEvaluationAspectSeeds_() {
   ];
 }
 
-function seedMonitoringConfiguration_() {
+function seedMonitoringConfiguration_(options) {
+  options = options || {};
   var now = nowIso_();
   var types = rowsAsObjects_('ROOM_TYPES');
   monitoringRoomTypes_().forEach(function(type) {
@@ -315,28 +316,18 @@ function seedMonitoringConfiguration_() {
     }
   });
 
+  // ROOMS yang sudah ada adalah sumber kebenaran untuk QR cetak. Saat repair
+  // referensi, jangan menambah ruangan atau membuat token baru. Seed ruangan
+  // hanya diizinkan untuk instalasi baru yang tabel ROOMS-nya masih kosong.
   var rooms = rowsAsObjects_('ROOMS');
-  monitoringRooms_().forEach(function(room, index) {
-    var existing = rooms.find(function(row) { return row.Code === room[0]; });
-    if (existing) {
-      var roomUpdates = { RoomTypeId: room[2], UpdatedAt: now };
-      // Migrasikan nama default lama untuk dua kode yang kini dibuat lebih
-      // spesifik. Nama yang sudah diubah admin tetap dipertahankan.
-      var legacyNames = {
-        RAPAT: ['Ruang Rapat'],
-        TUK: ['Ruang Kelas / TUK']
-      };
-      if (legacyNames[room[0]] && legacyNames[room[0]].indexOf(String(existing.Name)) !== -1) {
-        roomUpdates.Name = room[1];
-      }
-      updateObjectRow_('ROOMS', existing._row, roomUpdates);
-    } else {
+  if (!options.preserveExistingRooms && !rooms.length) {
+    monitoringRooms_().forEach(function(room, index) {
       appendObject_('ROOMS', {
         RoomId: id_('ROOM'), Code: room[0], Name: room[1], RoomTypeId: room[2],
         QrToken: secureToken_(), Active: true, SortOrder: index + 1, CreatedAt: now, UpdatedAt: now
       });
-    }
-  });
+    });
+  }
 
   var activities = rowsAsObjects_('ACTIVITIES');
   activities.filter(function(row) { return !row.RoomTypeId; }).forEach(function(row) {
@@ -395,6 +386,41 @@ function seedMonitoringConfiguration_() {
       });
     }
   });
+}
+
+/**
+ * Memulihkan data referensi checklist tanpa menyentuh ROOMS/QrToken maupun
+ * akun pengguna. Aman dijalankan berulang kali karena seed bersifat idempoten.
+ */
+function repairSpreadsheetReferenceData() {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    assert_(isApplicationReady_(), 'NOT_CONFIGURED', 'SPREADSHEET_ID belum tersedia.');
+    var before = buildRoomQrIntegrityAudit_();
+    assert_(before.ok, 'QR_RECONCILIATION_FAILED', 'Audit QR sebelum repair tidak lolos.');
+
+    seedMonitoringConfiguration_({ preserveExistingRooms: true });
+    ['ROOM_TYPES', 'ACTIVITIES', 'SLOTS', 'EVALUATION_ASPECTS'].forEach(invalidatePrimaryRows_);
+
+    var after = buildRoomQrIntegrityAudit_();
+    assert_(after.ok && !after.qrTokensChanged,
+      'QR_TOKEN_CHANGED', 'Repair dibatalkan karena audit token QR tidak lolos.');
+
+    var result = {
+      ok: true,
+      databaseMode: applicationDatabaseMode_(),
+      roomCount: after.roomCount,
+      qrTokensChanged: after.qrTokensChanged,
+      activityCount: rowsAsObjects_('ACTIVITIES').filter(function(row) { return truthy_(row.Active); }).length,
+      evaluationAspectCount: rowsAsObjects_('EVALUATION_ASPECTS').filter(function(row) { return truthy_(row.Active); }).length
+    };
+    logAudit_('SYSTEM', 'REPAIR_SPREADSHEET_REFERENCE_DATA', 'SYSTEM', 'DATABASE', result);
+    console.log(JSON.stringify(result, null, 2));
+    return result;
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function seedMonitoringUsers_() {

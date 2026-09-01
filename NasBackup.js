@@ -1,21 +1,30 @@
 /**
- * MariaDB dan folder NAS adalah penyimpanan utama.
- * Spreadsheet/Drive hanya menjadi cache dan outbox ketika gateway tidak tersedia.
+ * Spreadsheet adalah database utama. NAS hanya menyimpan evidence dan
+ * snapshot Excel; Drive menahan evidence sementara ketika NAS tidak aktif.
  */
-function configurePrimaryStorage(endpoint, token) {
+function configurePrimaryStorage(endpoint, token, options) {
   endpoint = String(endpoint || '').trim().replace(/\/+$/, '');
   token = String(token || '').trim();
+  options = options || {};
   assert_(/^https?:\/\//i.test(endpoint), 'INVALID_NAS_URL', 'Alamat gateway NAS wajib diawali http:// atau https://.');
   assert_(token.length >= 32, 'INVALID_NAS_TOKEN', 'Token NAS minimal 32 karakter.');
   var properties = PropertiesService.getScriptProperties();
+  properties.setProperty('DATABASE_MODE', 'SPREADSHEET');
+  properties.setProperty('PRIMARY_STORAGE_MODE', 'SPREADSHEET');
   properties.setProperty('NAS_GATEWAY_URL', endpoint);
   properties.setProperty('NAS_GATEWAY_TOKEN', token);
+  properties.setProperty('NAS_EVIDENCE_ENABLED', String(options.evidenceEnabled !== false));
+  properties.setProperty('NAS_SHEET_BACKUP_ENABLED', String(options.sheetBackupEnabled !== false));
+  properties.setProperty('DRIVE_EVIDENCE_FALLBACK_ENABLED', 'true');
   return testMonitoringNasConnection();
 }
 
 function setNasConfiguration_(payload) {
   requireAdmin_(payload);
-  var result = configurePrimaryStorage(payload.endpoint, payload.token);
+  var result = configurePrimaryStorage(payload.endpoint, payload.token, {
+    evidenceEnabled: payload.evidenceEnabled !== false,
+    sheetBackupEnabled: payload.sheetBackupEnabled !== false
+  });
   logAudit_(payload._session.user.UserId, 'SET_NAS_CONFIGURATION', 'SYSTEM', 'NAS', {
     endpoint: String(payload.endpoint || '').trim().replace(/\/+$/, '')
   });
@@ -37,17 +46,21 @@ function testNasConnection_(payload) {
   try { parsed = JSON.parse(response.getContentText()); } catch (error) { parsed = {}; }
   assert_(status >= 200 && status < 300, 'NAS_CONNECTION_FAILED',
     parsed.message || ('Gateway NAS belum dapat dihubungi (HTTP ' + status + ').'));
-  assert_(parsed.databaseConnected, 'DATABASE_CONNECTION_FAILED',
-    parsed.databaseMessage || 'Gateway aktif, tetapi MariaDB belum terhubung.');
-  resetPrimaryDatabaseCircuit_();
+  assert_(parsed.storageWritable !== false, 'NAS_STORAGE_NOT_WRITABLE',
+    parsed.message || 'Gateway aktif, tetapi folder NAS tidak dapat ditulis.');
+  resetNasCircuit_();
   return {
     configured: true,
     connected: true,
     endpoint: endpoint,
     storageRoot: parsed.storageRoot || '',
     availableBytes: Number(parsed.availableBytes || 0),
-    databaseConnected: true,
-    database: parsed.database || '',
+    storageWritable: parsed.storageWritable !== false,
+    evidenceEnabled: propertyFlag_('NAS_EVIDENCE_ENABLED', true),
+    sheetBackupEnabled: propertyFlag_('NAS_SHEET_BACKUP_ENABLED', true),
+    databaseMode: applicationDatabaseMode_(),
+    gatewayVersion: String(parsed.version || ''),
+    gatewayDatabaseMode: String(parsed.databaseMode || ''),
     secureTransport: /^https:\/\//i.test(endpoint)
   };
 }
@@ -67,7 +80,8 @@ function testMonitoringNasConnection() {
 }
 
 function uploadEvidenceBlobToNas_(blob, fileName) {
-  var result = primaryDatabaseRequest_('/api/kebersihan/evidence', {
+  assert_(nasEvidenceEnabled_(), 'NAS_EVIDENCE_DISABLED', 'Penyimpanan evidence NAS belum diaktifkan.');
+  var result = nasGatewayRequest_('/api/kebersihan/evidence', {
     method: 'post',
     payload: {
       fileName: fileName || blob.getName(),
@@ -80,18 +94,10 @@ function uploadEvidenceBlobToNas_(blob, fileName) {
   return result.storedPath;
 }
 
-function uploadReportBlobToNas_(blob, fileName) {
-  var result = primaryDatabaseRequest_('/api/kebersihan/report', {
-    method: 'post',
-    payload: {
-      fileName: fileName || blob.getName(),
-      contentType: blob.getContentType(),
-      createdAt: nowIso_(),
-      base64: Utilities.base64Encode(blob.getBytes())
-    }
-  });
-  assert_(result.storedPath, 'REPORT_UPLOAD_FAILED', 'Gateway tidak mengembalikan lokasi laporan.');
-  return result.storedPath;
+function storeReportBlobInDrive_(blob, fileName) {
+  var folderId = PropertiesService.getScriptProperties().getProperty('REPORT_FOLDER_ID');
+  assert_(folderId, 'REPORT_FOLDER_MISSING', 'Folder laporan belum tersedia.');
+  return 'DRIVE:' + DriveApp.getFolderById(folderId).createFile(blob.setName(fileName || blob.getName())).getId();
 }
 
 function downloadEvidenceBlobFromNas_(storedPath) {
@@ -128,7 +134,7 @@ function processPendingNasBackups(targetInspectionId) {
     return row.Status !== 'SYNCED' &&
       (!targetInspectionId || !row.InspectionId || String(row.InspectionId) === String(targetInspectionId));
   });
-  var priority = { DB_UPSERT: 1, DB_BATCH: 1, DB_TRANSACTION: 1, DB_UPDATE: 1, DB_DELETE: 1, EVIDENCE_UPLOAD: 2 };
+  var priority = { EVIDENCE_UPLOAD: 1 };
   rows.sort(function(a, b) {
     return Number(priority[a.EventType] || 9) - Number(priority[b.EventType] || 9) ||
       String(a.CreatedAt).localeCompare(String(b.CreatedAt));
@@ -151,29 +157,9 @@ function processPendingNasBackups(targetInspectionId) {
 function processOutboxRow_(row) {
   var payload;
   try { payload = JSON.parse(String(row.PayloadJson || '{}')); } catch (error) { payload = {}; }
-  if (row.EventType === 'DB_UPSERT') {
-    primaryDatabaseRequest_('/api/kebersihan/db/upsert', { method: 'post', payload: payload });
-    invalidatePrimaryRows_(payload.table);
-    return;
-  }
-  if (row.EventType === 'DB_BATCH') {
-    primaryDatabaseRequest_('/api/kebersihan/db/batch', { method: 'post', payload: payload });
-    invalidatePrimaryRows_(payload.table);
-    return;
-  }
-  if (row.EventType === 'DB_TRANSACTION') {
-    primaryDatabaseRequest_('/api/kebersihan/db/transaction', { method: 'post', payload: payload });
-    (payload.mutations || []).forEach(function(mutation) { invalidatePrimaryRows_(mutation.table); });
-    return;
-  }
-  if (row.EventType === 'DB_UPDATE') {
-    primaryDatabaseRequest_('/api/kebersihan/db/update', { method: 'post', payload: payload });
-    invalidatePrimaryRows_(payload.table);
-    return;
-  }
-  if (row.EventType === 'DB_DELETE') {
-    primaryDatabaseRequest_('/api/kebersihan/db/delete', { method: 'post', payload: payload });
-    invalidatePrimaryRows_(payload.table);
+  if (/^DB_(UPSERT|BATCH|TRANSACTION|UPDATE|DELETE)$/.test(String(row.EventType || ''))) {
+    // Antrean replikasi MariaDB dari deployment lama dianggap selesai. Data
+    // kanoniknya sudah berada di Spreadsheet dan tidak dikirim ke database lain.
     return;
   }
   if (row.EventType === 'EVIDENCE_UPLOAD') {
@@ -184,6 +170,7 @@ function processOutboxRow_(row) {
 }
 
 function syncTemporaryEvidence_(payload) {
+  assert_(nasEvidenceEnabled_(), 'NAS_EVIDENCE_DISABLED', 'Pengiriman evidence ke NAS belum diaktifkan.');
   var driveId = String(payload.driveFileId || '');
   assert_(driveId, 'INVALID_QUEUE', 'ID evidence sementara tidak tersedia.');
   var temporaryReference = 'DRIVE:' + driveId;
@@ -194,13 +181,6 @@ function syncTemporaryEvidence_(payload) {
   rowsAsSheetObjects_('INSPECTIONS').filter(function(row) {
     return String(row.EvidenceFileId) === temporaryReference;
   }).forEach(function(row) {
-    primaryDatabaseRequest_('/api/kebersihan/db/update', {
-      method: 'post',
-      payload: {
-        table: 'INSPECTIONS', key: row.InspectionId,
-        updates: { EvidenceFileId: storedPath, BackupStatus: 'SYNCED', BackupUpdatedAt: nowIso_() }
-      }
-    });
     sheetUpdateObject_('INSPECTIONS', row._row, {
       EvidenceFileId: storedPath, BackupStatus: 'SYNCED', BackupUpdatedAt: nowIso_()
     });
@@ -210,10 +190,6 @@ function syncTemporaryEvidence_(payload) {
   rowsAsSheetObjects_('INSPECTION_DETAILS').filter(function(row) {
     return String(row.PhotoFileId) === temporaryReference;
   }).forEach(function(row) {
-    primaryDatabaseRequest_('/api/kebersihan/db/update', {
-      method: 'post',
-      payload: { table: 'INSPECTION_DETAILS', key: row.DetailId, updates: { PhotoFileId: storedPath } }
-    });
     sheetUpdateObject_('INSPECTION_DETAILS', row._row, { PhotoFileId: storedPath });
     updated++;
   });
@@ -222,10 +198,6 @@ function syncTemporaryEvidence_(payload) {
     rowsAsSheetObjects_('INSPECTION_PHOTOS').filter(function(row) {
       return String(row.FileId) === temporaryReference;
     }).forEach(function(row) {
-      primaryDatabaseRequest_('/api/kebersihan/db/update', {
-        method: 'post',
-        payload: { table: 'INSPECTION_PHOTOS', key: row.PhotoId, updates: { FileId: storedPath } }
-      });
       sheetUpdateObject_('INSPECTION_PHOTOS', row._row, { FileId: storedPath });
       updated++;
     });
@@ -259,13 +231,45 @@ function ensureBackupTrigger_() {
 }
 
 function runFrequentNasQueue() {
-  return processPendingNasBackups('');
+  var result = processPendingNasBackups('');
+  result.snapshotRetry = retryPendingSpreadsheetSnapshot_();
+  return result;
 }
 
 function runScheduledNasBackup() {
   processPendingNasBackups('');
   cleanupSyncedOutbox_();
-  return processNasSpreadsheetSnapshot_();
+  try {
+    return processNasSpreadsheetSnapshot_();
+  } catch (error) {
+    PropertiesService.getScriptProperties().setProperty('NAS_SNAPSHOT_RETRY_PENDING', 'true');
+    throw error;
+  }
+}
+
+/** Uji snapshot manual dari editor tanpa membersihkan histori atau antrean. */
+function runManualNasSnapshotTest() {
+  var result = processNasSpreadsheetSnapshot_();
+  console.log(JSON.stringify(result));
+  return result;
+}
+
+function retryPendingSpreadsheetSnapshot_() {
+  var properties = PropertiesService.getScriptProperties();
+  if (!truthy_(properties.getProperty('NAS_SNAPSHOT_RETRY_PENDING'))) return { skipped: true, reason: 'NO_PENDING_SNAPSHOT' };
+  var lastAttempt = new Date(properties.getProperty('NAS_SNAPSHOT_LAST_RETRY_AT') || 0).getTime();
+  if (Date.now() - lastAttempt < 60 * 60 * 1000) return { skipped: true, reason: 'RETRY_INTERVAL' };
+  properties.setProperty('NAS_SNAPSHOT_LAST_RETRY_AT', nowIso_());
+  try {
+    var result = processNasSpreadsheetSnapshot_();
+    if (result.synced) {
+      properties.deleteProperty('NAS_SNAPSHOT_RETRY_PENDING');
+      properties.deleteProperty('NAS_SNAPSHOT_LAST_RETRY_AT');
+    }
+    return result;
+  } catch (error) {
+    return { synced: false, error: String(error.message || error).slice(0, 500) };
+  }
 }
 
 function cleanupSyncedOutbox_() {
@@ -279,24 +283,37 @@ function cleanupSyncedOutbox_() {
 }
 
 function backupSpreadsheetNow_(payload) {
-  requireAdmin_(payload);
-  return processNasSpreadsheetSnapshot_();
+  var session = requireAdmin_(payload);
+  var result = processNasSpreadsheetSnapshot_();
+  logAudit_(session.user.UserId, 'BACKUP_SPREADSHEET_NOW', 'SYSTEM', 'NAS', result);
+  return result;
 }
 
 function processNasSpreadsheetSnapshot_() {
-  if (!primaryDatabaseConfigured_()) return { skipped: true, reason: 'NAS_NOT_CONFIGURED' };
+  if (!propertyFlag_('NAS_SHEET_BACKUP_ENABLED', true)) return { skipped: true, reason: 'NAS_SHEET_BACKUP_DISABLED' };
+  if (!nasGatewayConfigured_()) return { skipped: true, reason: 'NAS_NOT_CONFIGURED' };
   var properties = PropertiesService.getScriptProperties();
   var spreadsheetId = properties.getProperty('SPREADSHEET_ID');
   var url = 'https://www.googleapis.com/drive/v3/files/' + spreadsheetId +
     '/export?mimeType=' + encodeURIComponent('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   var exported = UrlFetchApp.fetch(url, { headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() } }).getBlob();
-  var result = primaryDatabaseRequest_('/api/kebersihan/snapshot', {
-    method: 'post',
-    payload: {
-      createdAt: nowIso_(),
-      fileName: 'Monitoring Kebersihan Fallback Cache ' + todayKey_() + '.xlsx',
-      base64: Utilities.base64Encode(exported.getBytes())
-    }
-  });
-  return { synced: true, bytes: exported.getBytes().length, sha256: result.sha256 || '' };
+  try {
+    var createdAt = nowIso_();
+    var result = nasGatewayRequest_('/api/kebersihan/snapshot', {
+      method: 'post',
+      payload: {
+        createdAt: createdAt,
+        fileName: 'Monitoring Kebersihan Database ' + todayKey_() + '.xlsx',
+        base64: Utilities.base64Encode(exported.getBytes())
+      }
+    });
+    properties.setProperty('LAST_NAS_SNAPSHOT_AT', createdAt);
+    properties.setProperty('LAST_NAS_SNAPSHOT_SHA256', result.sha256 || '');
+    properties.deleteProperty('LAST_NAS_SNAPSHOT_ERROR');
+    properties.deleteProperty('NAS_SNAPSHOT_RETRY_PENDING');
+    return { synced: true, createdAt: createdAt, bytes: exported.getBytes().length, sha256: result.sha256 || '' };
+  } catch (error) {
+    properties.setProperty('LAST_NAS_SNAPSHOT_ERROR', String(error.message || error).slice(0, 1000));
+    throw error;
+  }
 }
