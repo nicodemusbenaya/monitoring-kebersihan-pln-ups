@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { Plus, Edit2, EyeOff, Eye, ArrowUpDown, Layers, ClipboardList } from "lucide-react";
+import { AppDropdown } from "@/components/AppDropdown";
 
 type TabKey = "RUANGAN" | "DISEMBUNYIKAN" | "TEMPLATE" | "INDIKATOR";
 
@@ -401,20 +402,13 @@ export default function RoomsManagementPage() {
                   className="w-full px-3 py-2 bg-[#f8fafc] border border-[#cbd5e1] rounded-xl font-bold"
                 />
               </div>
-              <div>
-                <label className="font-bold text-[#647783] block mb-1">Tipe Ruangan</label>
-                <select
-                  value={roomForm.roomTypeId}
-                  onChange={(e) => setRoomForm({ ...roomForm, roomTypeId: e.target.value })}
-                  className="w-full px-3 py-2 bg-[#f8fafc] border border-[#cbd5e1] rounded-xl font-bold"
-                >
-                  {roomTypes.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <AppDropdown
+                label="Tipe Ruangan"
+                value={roomForm.roomTypeId}
+                onChange={(v) => setRoomForm({ ...roomForm, roomTypeId: v })}
+                options={roomTypes.map((t: any) => ({ value: t.id, label: t.name }))}
+                placeholder="Pilih tipe"
+              />
               <div>
                 <label className="font-bold text-[#647783] block mb-1">Token QR</label>
                 <input

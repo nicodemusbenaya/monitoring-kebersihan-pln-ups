@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Plus, Edit2, Trash2 } from "lucide-react";
+import { AppDropdown } from "@/components/AppDropdown";
 
 export default function UsersManagementPage() {
   const [usersData, setUsersData] = useState<any[]>([]);
@@ -194,18 +195,16 @@ export default function UsersManagementPage() {
                 />
               </div>
 
-              <div>
-                <label className="font-bold text-[#647783] block mb-1">Peran (Role)</label>
-                <select
-                  value={userForm.role}
-                  onChange={(e) => setUserForm({ ...userForm, role: e.target.value })}
-                  className="w-full px-3 py-2 bg-[#f8fafc] border border-[#cbd5e1] rounded-xl font-bold"
-                >
-                  <option value="PETUGAS">PETUGAS (Cleaning Service)</option>
-                  <option value="SUPERVISOR">SUPERVISOR (Pengawas)</option>
-                  <option value="ADMIN">ADMIN (Administrator)</option>
-                </select>
-              </div>
+              <AppDropdown
+                label="Peran (Role)"
+                value={userForm.role}
+                onChange={(v) => setUserForm({ ...userForm, role: v })}
+                options={[
+                  { value: "PETUGAS", label: "PETUGAS (Cleaning Service)" },
+                  { value: "SUPERVISOR", label: "SUPERVISOR (Pengawas)" },
+                  { value: "ADMIN", label: "ADMIN (Administrator)" },
+                ]}
+              />
 
               <div>
                 <label className="font-bold text-[#647783] block mb-1">

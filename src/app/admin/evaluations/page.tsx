@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Download } from "lucide-react";
+import { AppDropdown, AppDateField } from "@/components/AppDropdown";
 
 export default function EvaluationsPage() {
   const [evaluationsData, setEvaluationsData] = useState<any>(null);
@@ -10,6 +11,8 @@ export default function EvaluationsPage() {
   const [evalEndDate, setEvalEndDate] = useState(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().slice(0, 10));
   const [evalRoomFilter, setEvalRoomFilter] = useState("ALL");
   const [evalQuickTab, setEvalQuickTab] = useState("bulan_ini");
+
+  const roomOptions = useMemo(() => [{ value: "ALL", label: "Semua ruangan" }, ...roomsData.filter((r: any) => !r.hidden).map((r: any) => ({ value: r.id, label: r.name }))], [roomsData]);
 
   const fetchEvaluationsData = async (start?: string, end?: string, room?: string) => {
     const s = start || evalStartDate;
@@ -54,39 +57,14 @@ export default function EvaluationsPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="text-xs font-bold text-[#647783] block mb-1">Tanggal mulai</label>
-            <input
-              type="date"
-              value={evalStartDate}
-              onChange={(e) => setEvalStartDate(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-[#f8fafc] border border-[#cbd5e1] rounded-xl text-xs font-bold text-[#17313d]"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-bold text-[#647783] block mb-1">Tanggal akhir</label>
-            <input
-              type="date"
-              value={evalEndDate}
-              onChange={(e) => setEvalEndDate(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-[#f8fafc] border border-[#cbd5e1] rounded-xl text-xs font-bold text-[#17313d]"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-bold text-[#647783] block mb-1">Ruangan</label>
-            <select
-              value={evalRoomFilter}
-              onChange={(e) => setEvalRoomFilter(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-[#f8fafc] border border-[#cbd5e1] rounded-xl text-xs font-bold text-[#17313d]"
-            >
-              <option value="ALL">Semua ruangan</option>
-              {roomsData.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          <AppDateField label="Tanggal mulai" value={evalStartDate} onChange={setEvalStartDate} />
+          <AppDateField label="Tanggal akhir" value={evalEndDate} onChange={setEvalEndDate} />
+          <AppDropdown
+            label="Ruangan"
+            value={evalRoomFilter}
+            onChange={setEvalRoomFilter}
+            options={roomOptions}
+          />
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3 pt-2">

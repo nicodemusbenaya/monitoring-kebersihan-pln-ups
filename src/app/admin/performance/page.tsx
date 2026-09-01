@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { AlertTriangle, ChevronDown } from "lucide-react";
+import { AppDateField } from "@/components/AppDropdown";
 
 export default function PerformancePage() {
   const [performanceData, setPerformanceData] = useState<any>(null);
@@ -53,24 +54,8 @@ export default function PerformancePage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="text-xs font-bold text-[#647783] block mb-1">Tanggal mulai</label>
-            <input
-              type="date"
-              value={perfStartDate}
-              onChange={(e) => setPerfStartDate(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-[#f8fafc] border border-[#cbd5e1] rounded-xl text-xs font-bold text-[#17313d]"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-bold text-[#647783] block mb-1">Tanggal akhir</label>
-            <input
-              type="date"
-              value={perfEndDate}
-              onChange={(e) => setPerfEndDate(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-[#f8fafc] border border-[#cbd5e1] rounded-xl text-xs font-bold text-[#17313d]"
-            />
-          </div>
+          <AppDateField label="Tanggal mulai" value={perfStartDate} onChange={setPerfStartDate} />
+          <AppDateField label="Tanggal akhir" value={perfEndDate} onChange={setPerfEndDate} />
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3 pt-2">

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, Fragment } from "react";
+import { useState, useEffect, Fragment, useMemo } from "react";
 import { Check, Download, FileSpreadsheet, Database } from "lucide-react";
+import { AppDropdown, AppDateField, MonthDropdown } from "@/components/AppDropdown";
 
 export default function ExportPage() {
   const [exportActiveTab, setExportActiveTab] = useState<"room" | "monthly" | "database">("room");
@@ -116,36 +117,22 @@ export default function ExportPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="text-xs font-bold text-[#647783] block mb-1">Ruangan</label>
-                <select
+                <AppDropdown
+                  label="Ruangan"
                   value={exportRoomId || (roomsData[0]?.id ?? "")}
-                  onChange={(e) => {
-                    setExportRoomId(e.target.value);
-                    fetchExportPreview(e.target.value, exportStartDate);
-                  }}
-                  className="w-full px-3.5 py-2.5 bg-[#f8fafc] border border-[#cbd5e1] rounded-xl text-xs font-bold text-[#17313d]"
-                >
-                  {roomsData.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => { setExportRoomId(v); fetchExportPreview(v, exportStartDate); }}
+                  options={roomsData.filter((r:any)=>!r.hidden).map((r:any)=>({ value: r.id, label: r.name }))}
+                />
                 <span className="text-[10px] text-[#94a3b8] block mt-1">
                   Template Excel mengikuti jenis ruangan yang dipilih.
                 </span>
               </div>
 
               <div>
-                <label className="text-xs font-bold text-[#647783] block mb-1">Tanggal Hari ke-1</label>
-                <input
-                  type="date"
+                <AppDateField
+                  label="Tanggal Hari ke-1"
                   value={exportStartDate}
-                  onChange={(e) => {
-                    setExportStartDate(e.target.value);
-                    fetchExportPreview(exportRoomId, e.target.value);
-                  }}
-                  className="w-full px-3.5 py-2.5 bg-[#f8fafc] border border-[#cbd5e1] rounded-xl text-xs font-bold text-[#17313d]"
+                  onChange={(v) => { setExportStartDate(v); fetchExportPreview(exportRoomId, v); }}
                 />
                 <span className="text-[10px] text-[#94a3b8] block mt-1">
                   Data pada tanggal ini ditempatkan di kolom Hari ke-1.
@@ -409,15 +396,7 @@ export default function ExportPage() {
           </div>
 
           <div className="space-y-4">
-            <div>
-              <label className="text-xs font-bold text-[#647783] block mb-1">Pilih Periode Bulan</label>
-              <input
-                type="month"
-                value={exportMonth}
-                onChange={(e) => setExportMonth(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-[#f8fafc] border border-[#cbd5e1] rounded-xl text-xs font-bold text-[#17313d]"
-              />
-            </div>
+            <MonthDropdown label="Pilih Periode Bulan" value={exportMonth} onChange={setExportMonth} />
 
             <div className="p-4 bg-[#f8fafc] border-l-4 border-[#0076a8] rounded-r-xl text-xs text-[#475569] space-y-1.5">
               <strong className="text-[#0076a8] block mb-1">Standar Rekapitulasi 4 Warna:</strong>
