@@ -81,13 +81,24 @@ export default function AdminDashboardPage() {
   const [editingUser, setEditingUser] = useState<any>(null);
   const [userForm, setUserForm] = useState({ username: "", fullName: "", role: "PETUGAS", password: "" });
 
+  const fetchPerformanceData = async (start?: string, end?: string) => {
+    const s = start || perfStartDate;
+    const e = end || perfEndDate;
+    try {
+      const res = await fetch(`/api/admin/performance?startDate=${s}&endDate=${e}`).then((r) => r.json());
+      if (res.ok) setPerformanceData(res.data);
+    } catch (err) {
+      console.error("Gagal memuat performa:", err);
+    }
+  };
+
   const loadAllData = async () => {
     setLoading(true);
     try {
       const [userRes, dashRes, perfRes, roomsRes, usersRes] = await Promise.all([
         fetch("/api/auth/me").then((r) => r.json()),
         fetch(`/api/admin/dashboard?month=${selectedPeriod}`).then((r) => r.json()),
-        fetch("/api/admin/performance").then((r) => r.json()),
+        fetch(`/api/admin/performance?startDate=${perfStartDate}&endDate=${perfEndDate}`).then((r) => r.json()),
         fetch("/api/admin/rooms").then((r) => r.json()),
         fetch("/api/admin/users").then((r) => r.json()),
       ]);
@@ -1131,26 +1142,57 @@ export default function AdminDashboardPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-                  <div className="flex gap-2">
-                    {["Hari ini", "7 hari", "30 hari", "Bulan ini", "Semester"].map((tab) => (
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { key: "hari_ini", label: "Hari ini" },
+                      { key: "7_hari", label: "7 hari" },
+                      { key: "30_hari", label: "30 hari" },
+                      { key: "bulan_ini", label: "Bulan ini" },
+                      { key: "semester", label: "Semester" },
+                    ].map((tab) => (
                       <button
-                        key={tab}
+                        key={tab.key}
                         type="button"
-                        onClick={() => setPerfQuickTab(tab.toLowerCase().replace(" ", "_"))}
+                        onClick={() => {
+                          setPerfQuickTab(tab.key);
+                          const d = new Date();
+                          let s = perfStartDate;
+                          let e = perfEndDate;
+                          if (tab.key === "hari_ini") {
+                            s = d.toISOString().slice(0, 10);
+                            e = d.toISOString().slice(0, 10);
+                          } else if (tab.key === "7_hari") {
+                            e = d.toISOString().slice(0, 10);
+                            s = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+                          } else if (tab.key === "30_hari") {
+                            e = d.toISOString().slice(0, 10);
+                            s = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+                          } else if (tab.key === "bulan_ini") {
+                            s = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
+                            e = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().slice(0, 10);
+                          } else if (tab.key === "semester") {
+                            e = d.toISOString().slice(0, 10);
+                            s = new Date(d.getFullYear(), d.getMonth() - 5, 1).toISOString().slice(0, 10);
+                          }
+                          setPerfStartDate(s);
+                          setPerfEndDate(e);
+                          fetchPerformanceData(s, e);
+                        }}
                         className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                          perfQuickTab === tab.toLowerCase().replace(" ", "_")
-                            ? "bg-[#0076a8] text-white"
+                          perfQuickTab === tab.key
+                            ? "bg-[#0076a8] text-white shadow-sm"
                             : "bg-[#f1f5f9] text-[#647783] hover:bg-[#e2e8f0]"
                         }`}
                       >
-                        {tab}
+                        {tab.label}
                       </button>
                     ))}
                   </div>
 
                   <button
                     type="button"
-                    className="px-6 py-2.5 bg-[#0076a8] hover:bg-[#00577d] text-white text-xs font-bold rounded-xl shadow-md"
+                    onClick={() => fetchPerformanceData(perfStartDate, perfEndDate)}
+                    className="px-6 py-2.5 bg-[#0076a8] hover:bg-[#00577d] text-white text-xs font-bold rounded-xl shadow-md transition-all"
                   >
                     Terapkan filter
                   </button>
@@ -1162,7 +1204,7 @@ export default function AdminDashboardPage() {
                 <div className="bg-white border border-[#d8e3ea] rounded-2xl p-5 shadow-sm">
                   <span className="text-xs font-bold text-[#647783] block">Total pemeriksaan</span>
                   <strong className="text-3xl font-black text-[#157a55] my-2 block">
-                    {performanceData?.summary?.totalInspections ?? 17}
+                    {performanceData?.summary?.totalInspections ?? 0}
                   </strong>
                   <span className="text-[11px] text-[#647783]">seluruh petugas • periode ini</span>
                 </div>
@@ -1170,7 +1212,7 @@ export default function AdminDashboardPage() {
                 <div className="bg-white border border-[#d8e3ea] rounded-2xl p-5 shadow-sm">
                   <span className="text-xs font-bold text-[#647783] block">Petugas aktif</span>
                   <strong className="text-3xl font-black text-[#0076a8] my-2 block">
-                    {performanceData?.officers?.length ?? 1}
+                    {performanceData?.summary?.activeOfficersCount ?? performanceData?.officers?.length ?? 1}
                   </strong>
                   <span className="text-[11px] text-[#647783]">petugas melakukan monitoring</span>
                 </div>
@@ -1178,9 +1220,12 @@ export default function AdminDashboardPage() {
                 <div className="bg-white border border-[#d8e3ea] rounded-2xl p-5 shadow-sm">
                   <span className="text-xs font-bold text-[#647783] block">Rata-rata rating</span>
                   <strong className="text-3xl font-black text-[#17313d] my-2 flex items-center gap-1">
-                    ★ 0<span className="text-lg font-bold text-[#94a3b8]">/4</span>
+                    ★ {performanceData?.summary?.avgRating ?? 0}
+                    <span className="text-lg font-bold text-[#94a3b8]">/4</span>
                   </strong>
-                  <span className="text-[11px] text-[#647783]">dari 0 evaluasi anonim</span>
+                  <span className="text-[11px] text-[#647783]">
+                    dari {performanceData?.summary?.totalEvaluations ?? 0} evaluasi anonim
+                  </span>
                 </div>
               </section>
 
@@ -1198,26 +1243,39 @@ export default function AdminDashboardPage() {
                   </div>
 
                   <div className="space-y-3 pt-2">
-                    {performanceData?.officers?.map((off: any) => (
-                      <div key={off.id} className="space-y-1.5">
-                        <div className="flex items-center justify-between text-xs font-bold">
-                          <div className="flex items-center gap-2">
-                            <span className="w-6 h-6 rounded-full bg-[#e8f5fa] text-[#0076a8] text-[10px] flex items-center justify-center font-bold">
-                              {off.fullName?.charAt(0)}
+                    {performanceData?.officers?.map((off: any) => {
+                      const maxInsp = Math.max(...(performanceData?.officers?.map((o: any) => o.totalCompleted) || [1]), 1);
+                      const widthPct = Math.min(100, Math.max(10, Math.round((off.totalCompleted / maxInsp) * 100)));
+
+                      return (
+                        <div key={off.id} className="space-y-1.5">
+                          <div className="flex items-center justify-between text-xs font-bold">
+                            <div className="flex items-center gap-2">
+                              <span className="w-6 h-6 rounded-full bg-[#e8f5fa] text-[#0076a8] text-[10px] flex items-center justify-center font-bold">
+                                {off.fullName?.charAt(0)}
+                              </span>
+                              <span>{off.fullName}</span>
+                            </div>
+                            <span>
+                              {off.totalCompleted} pemeriksaan{" "}
+                              <span className="text-[#157a55]">{off.cleanPercentage}% bersih</span>
                             </span>
-                            <span>{off.fullName}</span>
                           </div>
-                          <span>
-                            {off.totalCompleted} pemeriksaan <span className="text-[#157a55]">100% bersih</span>
-                          </span>
-                        </div>
-                        <div className="w-full h-4 bg-[#f1f5f9] rounded-md overflow-hidden relative">
-                          <div className="h-full bg-[#0076a8] rounded-md flex items-center justify-end pr-2 text-[9px] text-white font-black" style={{ width: "85%" }}>
-                            {off.totalCompleted}
+                          <div className="w-full h-4 bg-[#f1f5f9] rounded-md overflow-hidden relative">
+                            {off.totalCompleted > 0 ? (
+                              <div
+                                className="h-full bg-[#0076a8] rounded-md flex items-center justify-end pr-2 text-[9px] text-white font-black transition-all"
+                                style={{ width: `${widthPct}%` }}
+                              >
+                                {off.totalCompleted}
+                              </div>
+                            ) : (
+                              <div className="h-full bg-[#e2e8f0] rounded-md w-0"></div>
+                            )}
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -1260,7 +1318,7 @@ export default function AdminDashboardPage() {
                     </p>
                   </div>
                   <span className="px-3 py-1 bg-[#e8f5fa] text-[#0076a8] rounded-xl text-xs font-black">
-                    1.1% Target Tercapai
+                    {performanceData?.summary?.totalInspections ? ((performanceData.summary.totalInspections / 1590) * 100).toFixed(1) : "1.1"}% Target Tercapai
                   </span>
                 </div>
 
@@ -1295,20 +1353,23 @@ export default function AdminDashboardPage() {
                     </p>
                   </div>
                   <span className="px-3 py-1 bg-[#fff0ee] text-[#bd2d22] border border-[#fecaca] rounded-xl text-xs font-black">
-                    7 ruangan
+                    {performanceData?.uncoveredRoomsOverall?.length ?? 7} ruangan
                   </span>
                 </div>
 
                 <div className="flex flex-wrap gap-2.5 pt-1">
-                  {[
-                    "Pantry",
-                    "Ruang Arsip Utama Inaktif",
-                    "Ruang Penyimpanan Aset (Slow Moving)",
-                    "Ruang Penyimpanan ATK (Fast Moving)",
-                    "Ruang PMA",
-                    "Ruang PMKU",
-                    "Toilet Wanita Gedung Utama",
-                  ].map((roomName, idx) => (
+                  {(performanceData?.uncoveredRoomsOverall?.length
+                    ? performanceData.uncoveredRoomsOverall
+                    : [
+                        "Pantry",
+                        "Ruang Arsip Utama Inaktif",
+                        "Ruang Penyimpanan Aset (Slow Moving)",
+                        "Ruang Penyimpanan ATK (Fast Moving)",
+                        "Ruang PMA",
+                        "Ruang PMKU",
+                        "Toilet Wanita Gedung Utama",
+                      ]
+                  ).map((roomName: string, idx: number) => (
                     <span
                       key={idx}
                       className="px-4 py-2.5 bg-[#fff8f8] text-[#991b1b] border border-[#fecaca] rounded-xl text-xs font-bold shadow-sm"
@@ -1345,46 +1406,58 @@ export default function AdminDashboardPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#f1f5f9]">
-                      <tr className="hover:bg-[#f8fafc]">
-                        <td className="p-3.5">
-                          <strong className="text-xs font-black text-[#17313d] block">Sulaiman</strong>
-                          <span className="inline-flex items-center gap-1 text-[10px] text-[#9a6500] font-bold mt-0.5">
-                            ☀️ Pagi
-                          </span>
-                        </td>
-                        <td className="p-3.5 text-center font-bold text-[#17313d]">17</td>
-                        <td className="p-3.5 text-center font-bold text-[#157a55]">17</td>
-                        <td className="p-3.5 text-center font-bold text-[#647783]">0</td>
-                        <td className="p-3.5">
-                          <div className="flex items-center gap-2">
-                            <div className="w-20 h-2.5 bg-[#e2e8f0] rounded-full overflow-hidden">
-                              <div className="w-full h-full bg-[#0076a8] rounded-full"></div>
-                            </div>
-                            <span className="font-bold text-[#17313d]">100%</span>
-                          </div>
-                        </td>
-                        <td className="p-3.5 text-center text-[#94a3b8] font-bold">—</td>
-                        <td className="p-3.5 text-center text-[#94a3b8] font-bold">—</td>
-                        <td className="p-3.5">
-                          <div>
-                            <span className="font-bold text-[#17313d] block">17 / 24</span>
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                              <div className="w-16 h-1.5 bg-[#e2e8f0] rounded-full overflow-hidden">
-                                <div className="w-[70.8%] h-full bg-[#157a55] rounded-full"></div>
+                      {performanceData?.officers?.map((off: any) => (
+                        <tr key={off.id} className="hover:bg-[#f8fafc]">
+                          <td className="p-3.5">
+                            <strong className="text-xs font-black text-[#17313d] block">{off.fullName}</strong>
+                            <span className="inline-flex items-center gap-1 text-[10px] text-[#9a6500] font-bold mt-0.5">
+                              ☀️ {off.morningCount > 0 ? "Pagi" : "Aktif"}
+                            </span>
+                          </td>
+                          <td className="p-3.5 text-center font-bold text-[#17313d]">{off.totalCompleted}</td>
+                          <td className="p-3.5 text-center font-bold text-[#157a55]">{off.cleanCount}</td>
+                          <td className="p-3.5 text-center font-bold text-[#647783]">{off.findingsCount}</td>
+                          <td className="p-3.5">
+                            <div className="flex items-center gap-2">
+                              <div className="w-20 h-2.5 bg-[#e2e8f0] rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-[#0076a8] rounded-full"
+                                  style={{ width: `${off.cleanPercentage}%` }}
+                                ></div>
                               </div>
-                              <span className="text-[10px] text-[#157a55] font-bold">70.8%</span>
+                              <span className="font-bold text-[#17313d]">{off.cleanPercentage}%</span>
                             </div>
-                          </div>
-                        </td>
-                        <td className="p-3.5 text-center">
-                          <strong className="text-xs font-bold text-[#17313d] block">1</strong>
-                          <span className="text-[10px] text-[#94a3b8]">3.3% periode</span>
-                        </td>
-                        <td className="p-3.5 text-center">
-                          <strong className="text-xs font-bold text-[#17313d] block">17</strong>
-                          <span className="text-[10px] text-[#94a3b8]">r/hari aktif</span>
-                        </td>
-                      </tr>
+                          </td>
+                          <td className="p-3.5 text-center text-[#94a3b8] font-bold">—</td>
+                          <td className="p-3.5 text-center text-[#94a3b8] font-bold">—</td>
+                          <td className="p-3.5">
+                            <div>
+                              <span className="font-bold text-[#17313d] block">
+                                {off.coveredRoomsCount} / {roomsData.length || 24}
+                              </span>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <div className="w-16 h-1.5 bg-[#e2e8f0] rounded-full overflow-hidden">
+                                  <div
+                                    className="h-full bg-[#157a55] rounded-full"
+                                    style={{ width: `${off.coveragePercentage}%` }}
+                                  ></div>
+                                </div>
+                                <span className="text-[10px] text-[#157a55] font-bold">{off.coveragePercentage}%</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="p-3.5 text-center">
+                            <strong className="text-xs font-bold text-[#17313d] block">{off.activeDaysCount}</strong>
+                            <span className="text-[10px] text-[#94a3b8]">{off.activeDaysPercentage}% periode</span>
+                          </td>
+                          <td className="p-3.5 text-center">
+                            <strong className="text-xs font-bold text-[#17313d] block">
+                              {off.avgRoomsPerActiveDay}
+                            </strong>
+                            <span className="text-[10px] text-[#94a3b8]">r/hari aktif</span>
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
@@ -1399,63 +1472,70 @@ export default function AdminDashboardPage() {
                   </p>
                 </div>
 
-                <div className="border border-[#d8e3ea] rounded-2xl overflow-hidden">
-                  <div
-                    onClick={() => setExpandedOfficer(expandedOfficer === "Sulaiman" ? null : "Sulaiman")}
-                    className="p-4 bg-white hover:bg-[#f8fafc] cursor-pointer flex items-center justify-between gap-4 transition-colors"
-                  >
-                    <div className="flex flex-wrap items-center gap-2.5">
-                      <strong className="text-sm font-black text-[#17313d]">Sulaiman</strong>
-                      <span className="px-2.5 py-0.5 bg-[#f1f5f9] text-[#647783] rounded-full text-xs font-bold">
-                        Belum ada rating
-                      </span>
-                      <span className="px-2.5 py-0.5 bg-[#e8f5fa] text-[#0076a8] rounded-full text-xs font-bold">
-                        17 pemeriksaan
-                      </span>
-                      <span className="px-2.5 py-0.5 bg-[#e7f6ef] text-[#157a55] rounded-full text-xs font-bold">
-                        70.8% coverage
-                      </span>
-                      <span className="px-2.5 py-0.5 bg-[#fff7d6] text-[#9a6500] border border-[#fde68a] rounded-full text-xs font-bold">
-                        7 ruangan tidak tercover
-                      </span>
-                    </div>
+                <div className="space-y-3">
+                  {performanceData?.officers?.map((off: any) => {
+                    const isExpanded = expandedOfficer === off.id || (expandedOfficer === "Sulaiman" && off.fullName === "Sulaiman");
 
-                    <ChevronDown
-                      className={`w-4 h-4 text-[#647783] transition-transform duration-200 ${
-                        expandedOfficer === "Sulaiman" ? "rotate-180" : ""
-                      }`}
-                    />
-                  </div>
-
-                  {expandedOfficer === "Sulaiman" && (
-                    <div className="p-5 border-t border-[#d8e3ea] bg-[#f8fafc] space-y-4 text-xs">
-                      <div>
-                        <span className="font-bold text-[#647783] uppercase text-[10px] block mb-2">
-                          Ruangan Tidak Tercover Oleh Petugas Ini:
-                        </span>
-                        <div className="flex flex-wrap gap-2">
-                          {[
-                            "Pantry",
-                            "Ruang Arsip Utama Inaktif",
-                            "Ruang Penyimpanan Aset (Slow Moving)",
-                            "Ruang Penyimpanan ATK (Fast Moving)",
-                            "Ruang PMA",
-                            "Ruang PMKU",
-                            "Toilet Wanita Gedung Utama",
-                          ].map((r, i) => (
-                            <span key={i} className="px-2.5 py-1 bg-white border border-[#fde68a] text-[#9a6500] rounded-lg font-bold text-[11px]">
-                              {r}
+                    return (
+                      <div key={off.id} className="border border-[#d8e3ea] rounded-2xl overflow-hidden shadow-sm">
+                        <div
+                          onClick={() => setExpandedOfficer(isExpanded ? null : off.id)}
+                          className="p-4 bg-white hover:bg-[#f8fafc] cursor-pointer flex items-center justify-between gap-4 transition-colors"
+                        >
+                          <div className="flex flex-wrap items-center gap-2.5">
+                            <strong className="text-sm font-black text-[#17313d]">{off.fullName}</strong>
+                            <span className="px-2.5 py-0.5 bg-[#f1f5f9] text-[#647783] rounded-full text-xs font-bold">
+                              Belum ada rating
                             </span>
-                          ))}
-                        </div>
-                      </div>
+                            <span className="px-2.5 py-0.5 bg-[#e8f5fa] text-[#0076a8] rounded-full text-xs font-bold">
+                              {off.totalCompleted} pemeriksaan
+                            </span>
+                            <span className="px-2.5 py-0.5 bg-[#e7f6ef] text-[#157a55] rounded-full text-xs font-bold">
+                              {off.coveragePercentage}% coverage
+                            </span>
+                            <span className="px-2.5 py-0.5 bg-[#fff7d6] text-[#9a6500] border border-[#fde68a] rounded-full text-xs font-bold">
+                              {off.uncoveredCount} ruangan tidak tercover
+                            </span>
+                          </div>
 
-                      <div className="pt-3 border-t border-[#e2e8f0] flex items-center justify-between text-xs text-[#647783]">
-                        <span>Total 17 Ruangan Berhasil Dimonitoring Tuntas</span>
-                        <span className="font-bold text-[#157a55]">Kualitas 100% Bersih</span>
+                          <ChevronDown
+                            className={`w-4 h-4 text-[#647783] transition-transform duration-200 ${
+                              isExpanded ? "rotate-180" : ""
+                            }`}
+                          />
+                        </div>
+
+                        {isExpanded && (
+                          <div className="p-5 border-t border-[#d8e3ea] bg-[#f8fafc] space-y-4 text-xs">
+                            <div>
+                              <span className="font-bold text-[#647783] uppercase text-[10px] block mb-2">
+                                Ruangan Tidak Tercover Oleh Petugas Ini:
+                              </span>
+                              <div className="flex flex-wrap gap-2">
+                                {off.uncoveredRooms?.length > 0 ? (
+                                  off.uncoveredRooms.map((r: string, i: number) => (
+                                    <span
+                                      key={i}
+                                      className="px-2.5 py-1 bg-white border border-[#fde68a] text-[#9a6500] rounded-lg font-bold text-[11px]"
+                                    >
+                                      {r}
+                                    </span>
+                                  ))
+                                ) : (
+                                  <span className="text-[#157a55] font-bold">Seluruh ruangan berhasil tercover!</span>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="pt-3 border-t border-[#e2e8f0] flex items-center justify-between text-xs text-[#647783]">
+                              <span>Total {off.coveredRoomsCount} Ruangan Berhasil Dimonitoring Tuntas</span>
+                              <span className="font-bold text-[#157a55]">Kualitas {off.cleanPercentage}% Bersih</span>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  )}
+                    );
+                  })}
                 </div>
               </section>
             </div>
