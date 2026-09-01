@@ -30,6 +30,20 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      {
+        source: "/checklist/:token",
+        destination: "/scanner/room/:token",
+        permanent: true,
+      },
+      {
+        source: "/evaluasi/:token",
+        destination: "/evaluate/:token",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
