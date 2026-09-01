@@ -17,7 +17,10 @@ export async function GET() {
       orderBy: { sortOrder: "asc" },
     });
 
-    return NextResponse.json({ ok: true, data: { rooms, roomTypes } });
+    const slots = await prisma.slot.findMany({ where: { active: true } });
+    const activities = await prisma.activity.findMany({ where: { active: true } });
+
+    return NextResponse.json({ ok: true, data: { rooms, roomTypes, slots, activities } });
   } catch (error: any) {
     return NextResponse.json({ ok: false, message: error.message || "Gagal memuat data ruangan." }, { status: 500 });
   }
@@ -65,8 +68,8 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    const user = await requireAuth(["ADMIN"]);
-    const { id, name, roomTypeId, active, sortOrder, qrToken } = await request.json();
+    await requireAuth(["ADMIN"]);
+    const { id, name, roomTypeId, active, hidden, sortOrder, qrToken } = await request.json();
 
     if (!id) {
       return NextResponse.json({ ok: false, message: "ID ruangan diperlukan." }, { status: 400 });
@@ -78,6 +81,7 @@ export async function PUT(request: Request) {
         name: name ? name.trim() : undefined,
         roomTypeId: roomTypeId || undefined,
         active: typeof active === "boolean" ? active : undefined,
+        hidden: typeof hidden === "boolean" ? hidden : undefined,
         sortOrder: typeof sortOrder === "number" ? sortOrder : undefined,
         qrToken: qrToken ? String(qrToken).trim() : undefined,
       },

@@ -13,8 +13,10 @@ export async function GET(request: Request) {
     const endDate = searchParams.get("endDate") || `${currentMonth}-31`;
     const roomId = searchParams.get("roomId");
 
+    const hiddenIds = (await prisma.room.findMany({ where: { hidden: true }, select: { id: true } })).map((r) => r.id);
     const whereClause: any = {
       dateKey: { gte: startDate, lte: endDate },
+      ...(hiddenIds.length > 0 ? { roomId: { notIn: hiddenIds } } : {}),
     };
     if (roomId && roomId !== "ALL") {
       whereClause.roomId = roomId;

@@ -248,8 +248,9 @@ export async function GET(request: Request) {
     const monthNum = parseInt(monthStr, 10);
     const daysInMonth = new Date(year, monthNum, 0).getDate();
 
+    const hiddenIdsExport = (await prisma.room.findMany({ where: { hidden: true }, select: { id: true } })).map((r) => r.id);
     const rooms = await prisma.room.findMany({
-      where: { active: true },
+      where: { active: true, hidden: false },
       include: {
         roomType: {
           include: {
@@ -264,6 +265,7 @@ export async function GET(request: Request) {
       where: {
         dateKey: { startsWith: month },
         state: "SUBMITTED",
+        ...(hiddenIdsExport.length > 0 ? { roomId: { notIn: hiddenIdsExport } } : {}),
       },
       include: {
         slot: true,

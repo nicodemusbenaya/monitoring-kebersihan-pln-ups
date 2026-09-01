@@ -13,8 +13,10 @@ export async function GET(request: Request) {
     const startDate = searchParams.get("startDate") || `${currentMonth}-01`;
     const endDate = searchParams.get("endDate") || `${currentMonth}-31`;
 
-    const totalRooms = await prisma.room.count({ where: { active: true } });
-    const allRooms = await prisma.room.findMany({ where: { active: true } });
+    const hiddenIds = (await prisma.room.findMany({ where: { hidden: true }, select: { id: true } })).map((r) => r.id);
+    const hiddenFilter = hiddenIds.length > 0 ? { roomId: { notIn: hiddenIds } } : {};
+    const totalRooms = await prisma.room.count({ where: { active: true, hidden: false } });
+    const allRooms = await prisma.room.findMany({ where: { active: true, hidden: false } });
 
     // Strictly cleaning officers (role PETUGAS, exclude test/admin/spv)
     const officers = await prisma.user.findMany({
@@ -31,6 +33,7 @@ export async function GET(request: Request) {
       where: {
         dateKey: { gte: startDate, lte: endDate },
         state: "SUBMITTED",
+        ...(hiddenFilter as any),
       },
       include: {
         room: true,
@@ -42,6 +45,7 @@ export async function GET(request: Request) {
     const evaluations = await prisma.evaluation.findMany({
       where: {
         dateKey: { gte: startDate, lte: endDate },
+        ...(hiddenFilter as any),
       },
     });
 

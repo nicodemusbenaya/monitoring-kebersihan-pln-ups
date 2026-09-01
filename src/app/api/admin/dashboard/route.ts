@@ -11,10 +11,12 @@ export async function GET(request: Request) {
     const selectedRoomId = searchParams.get("roomId");
     const today = todayKey();
 
-    const roomWhere = selectedRoomId && selectedRoomId !== "ALL" ? { id: selectedRoomId, active: true } : { active: true };
+    const roomWhere: any = selectedRoomId && selectedRoomId !== "ALL" ? { id: selectedRoomId, active: true, hidden: false } : { active: true, hidden: false };
 
-    // 1. Total rooms and active rooms
-    const totalRooms = await prisma.room.count({ where: { active: true } });
+    // 1. Total rooms and active rooms (hidden excluded from display)
+    const hiddenRoomIdsForFilter = (await prisma.room.findMany({ where: { hidden: true }, select: { id: true } })).map((r: any) => r.id);
+    const hiddenFilter = hiddenRoomIdsForFilter.length > 0 ? { roomId: { notIn: hiddenRoomIdsForFilter } } : {};
+    const totalRooms = await prisma.room.count({ where: { active: true, hidden: false } });
     const rooms = await prisma.room.findMany({
       where: roomWhere,
       include: {
@@ -27,11 +29,12 @@ export async function GET(request: Request) {
       orderBy: { sortOrder: "asc" },
     });
 
-    // 2. Today's submitted inspections
+    // 2. Today's submitted inspections (exclude hidden rooms)
     const todayInspections = await prisma.inspection.findMany({
       where: {
         dateKey: today,
         state: "SUBMITTED",
+        ...(hiddenFilter as any),
         ...(selectedRoomId && selectedRoomId !== "ALL" ? { roomId: selectedRoomId } : {}),
       },
       include: { room: true, slot: true, user: true, photos: true },
@@ -69,11 +72,12 @@ export async function GET(request: Request) {
       }
     });
 
-    // 4. Monthly Inspections & Daily Trend
+    // 4. Monthly Inspections & Daily Trend (exclude hidden)
     const monthlyInspections = await prisma.inspection.findMany({
       where: {
         dateKey: { startsWith: selectedMonth },
         state: "SUBMITTED",
+        ...(hiddenFilter as any),
         ...(selectedRoomId && selectedRoomId !== "ALL" ? { roomId: selectedRoomId } : {}),
       },
       select: {
@@ -131,9 +135,12 @@ export async function GET(request: Request) {
         photos: i.photos.map((p) => p.fileUrl),
       }));
 
-    // 6. Recent Activity Feed (Latest 20 inspections in system)
+    // 6. Recent Activity Feed (Latest 20 inspections in system, exclude hidden)
     const recentInspections = await prisma.inspection.findMany({
       take: 20,
+      where: {
+        ...(hiddenFilter as any),
+      },
       orderBy: { submittedAt: "desc" },
       include: {
         room: { select: { name: true, code: true } },
