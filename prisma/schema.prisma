@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -12,7 +12,7 @@ model User {
   username           String       @unique
   fullName           String
   role               String       // PETUGAS, SUPERVISOR, ADMIN
-  passwordHash       String       @db.Text
+  passwordHash       String
   mustChangePassword Boolean      @default(false)
   active             Boolean      @default(true)
   createdAt          DateTime     @default(now())
@@ -59,7 +59,7 @@ model Activity {
   roomType           RoomType           @relation(fields: [roomTypeId], references: [id])
   name               String
   standardCategory   String?
-  standardText       String?            @db.Text
+  standardText       String?
   qualityApplicable  Boolean            @default(true)
   qualityPositive    String             @default("Bersih")
   qualityNegative    String             @default("Kotor")
@@ -95,8 +95,8 @@ model ScanEvent {
   userId    String
   user      User     @relation(fields: [userId], references: [id])
   scannedAt DateTime @default(now())
-  userAgent String?  @db.Text
-  qrPayload String?  @db.Text
+  userAgent String?
+  qrPayload String?
 }
 
 model Inspection {
@@ -140,7 +140,7 @@ model InspectionDetail {
   qualityLabel   String?
   functionResult String     // POSITIVE, NEGATIVE, NA
   functionLabel  String?
-  note           String?    @db.Text
+  note           String?
   correctedAt    DateTime?
   correctedBy    String?
 }
@@ -150,7 +150,7 @@ model InspectionPhoto {
   inspectionId String
   inspection   Inspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
   fileName     String
-  fileUrl      String     @db.Text
+  fileUrl      String
   sortOrder    Int        @default(1)
   capturedAt   DateTime   @default(now())
 }
@@ -174,14 +174,14 @@ model Evaluation {
   roomTypeId  String
   rating      Int      // 1, 2, 3, 4
   ratingLabel String
-  aspectCodes String   @db.Text // JSON array string
-  comment     String?  @db.Text
+  aspectCodes String   // JSON array string
+  comment     String?
   dateKey     String   // YYYY-MM-DD
   weekStart   String?  // YYYY-MM-DD
   monthKey    String   // YYYY-MM
   submittedAt DateTime @default(now())
   source      String   @default("QR_ANONYMOUS")
-  userAgent   String?  @db.Text
+  userAgent   String?
 
   @@index([dateKey])
   @@index([roomId])
@@ -189,7 +189,7 @@ model Evaluation {
 
 model Setting {
   key       String   @id
-  value     String   @db.Text
+  value     String
   updatedAt DateTime @updatedAt
 }
 
@@ -200,7 +200,7 @@ model AuditLog {
   action     String
   entityType String
   entityId   String
-  detail     String?  @db.Text
+  detail     String?
   createdAt  DateTime @default(now())
 
   @@index([createdAt])
