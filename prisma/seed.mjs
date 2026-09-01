@@ -16,15 +16,15 @@ async function main() {
   const rawData = fs.readFileSync(jsonPath, "utf-8");
   const data = JSON.parse(rawData);
 
-  // 1. Users
+  // 1. Users (HANYA set password default saat user baru pertama kali dibuat; JANGAN timpa password yang sudah diubah user!)
   for (const u of data.users || []) {
     await prisma.user.upsert({
       where: { username: u.username },
       update: {
         fullName: u.fullName,
         role: u.role,
-        passwordHash: u.passwordHash,
         active: u.active,
+        // passwordHash TIDAK di-update agar password yang sudah diganti user tetap tersimpan permanen
       },
       create: u,
     });
