@@ -86,13 +86,29 @@ export async function GET(request: Request) {
 
     // Check which officers worked on startDate
     const day1Inspections = inspections.filter((i) => i.dateKey === startDate);
-    const arifPagi = day1Inspections.some((i) => i.user?.username === "arif" && i.slot?.code?.includes("PAGI"));
-    const arifSore = day1Inspections.some((i) => i.user?.username === "arif" && i.slot?.code?.includes("SORE"));
-    const sulaimanPagi = day1Inspections.some((i) => i.user?.username === "sulaiman" && i.slot?.code?.includes("PAGI"));
-    const sulaimanSore = day1Inspections.some((i) => i.user?.username === "sulaiman" && i.slot?.code?.includes("SORE"));
+    const arifPagi = day1Inspections.some(
+      (i) =>
+        (i.user?.username === "arif" || i.user?.fullName.toLowerCase().includes("arif")) &&
+        (i.slot?.code?.includes("PAGI") || i.slotCode?.includes("PAGI"))
+    );
+    const arifSore = day1Inspections.some(
+      (i) =>
+        (i.user?.username === "arif" || i.user?.fullName.toLowerCase().includes("arif")) &&
+        (i.slot?.code?.includes("SORE") || i.slotCode?.includes("SORE"))
+    );
+    const sulaimanPagi = day1Inspections.some(
+      (i) =>
+        (i.user?.username === "sulaiman" || i.user?.fullName.toLowerCase().includes("sulaiman")) &&
+        (i.slot?.code?.includes("PAGI") || i.slotCode?.includes("PAGI"))
+    );
+    const sulaimanSore = day1Inspections.some(
+      (i) =>
+        (i.user?.username === "sulaiman" || i.user?.fullName.toLowerCase().includes("sulaiman")) &&
+        (i.slot?.code?.includes("SORE") || i.slotCode?.includes("SORE"))
+    );
 
-    // Build matrix of results: [activityId][dateKey][slotCode] -> { condition, isClean }
-    const matrix: Record<string, Record<string, Record<string, { condition: string; isClean: boolean }>>> = {};
+    // Build matrix of results: [activityId][dateKey][slotCode] -> { S, B, Y, T, isClean, isNormal, note }
+    const matrix: Record<string, Record<string, Record<string, any>>> = {};
     room.roomType?.activities.forEach((act) => {
       matrix[act.id] = {};
       days.forEach((day) => {
@@ -101,12 +117,26 @@ export async function GET(request: Request) {
     });
 
     inspections.forEach((insp) => {
-      const sCode = insp.slot?.code || "PAGI";
+      const sCode = insp.slot?.code || insp.slotCode || "PAGI";
       insp.details.forEach((dt) => {
         if (matrix[dt.activityId] && matrix[dt.activityId][insp.dateKey]) {
+          const isClean = dt.qualityResult === "POSITIVE" || dt.qualityResult === "BERSIH";
+          const isNormal =
+            dt.functionResult === "POSITIVE" ||
+            dt.functionResult === "NORMAL" ||
+            dt.functionResult === "BERFUNGSI";
+
           matrix[dt.activityId][insp.dateKey][sCode] = {
-            condition: dt.condition,
-            isClean: dt.condition === "BERSIH",
+            qualityResult: dt.qualityResult,
+            functionResult: dt.functionResult,
+            isClean,
+            isNormal,
+            // S: Sudah, B: Belum, Y: Ya/Normal, T: Tidak/Rusak
+            S: isClean ? "v" : "",
+            B: !isClean && dt.qualityResult === "NEGATIVE" ? "v" : "",
+            Y: isNormal ? "v" : "",
+            T: !isNormal && dt.functionResult === "NEGATIVE" ? "v" : "",
+            note: dt.note || null,
           };
         }
       });
@@ -120,7 +150,7 @@ export async function GET(request: Request) {
           name: room.name,
           code: room.code,
           typeName: room.roomType?.name,
-          isToilet: room.roomType?.id === "TOILET",
+          isToilet: room.roomType?.id === "TOILET" || room.roomType?.templateSheet === "TOILET",
         },
         startDate,
         endDate: days[days.length - 1].dateKey,
