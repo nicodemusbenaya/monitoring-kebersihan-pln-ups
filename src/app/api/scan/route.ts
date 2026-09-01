@@ -1,50 +1,25 @@
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { todayKey, formatDisplayDate } from "@/lib/utils";
-
-function parseQrToken(raw: string): string {
-  if (!raw) return "";
-  let clean = String(raw).trim();
-
-  // 1. If it's a full URL containing query parameters (?room=... or ?evaluate=...)
-  if (clean.includes("?")) {
-    try {
-      const url = new URL(clean.startsWith("http") ? clean : `https://dummy.com/${clean}`);
-      const roomParam = url.searchParams.get("room");
-      const evalParam = url.searchParams.get("evaluate");
-      if (roomParam) return roomParam.trim();
-      if (evalParam) return evalParam.trim();
-    } catch {
-      // fallback regex
-      const match = clean.match(/[?&](?:room|evaluate)=([^&#]+)/i);
-      if (match) return decodeURIComponent(match[1]).trim();
-    }
-  }
-
-  // 2. If it has prefix PLNUPS:ROOM:token
-  if (clean.toUpperCase().startsWith("PLNUPS:ROOM:")) {
-    return clean.slice(12).trim();
-  }
-
-  return clean;
-}
+import { todayKey, formatDisplayDate, extractQrToken } from "@/lib/utils";
 
 async function processScan(tokenRaw: string, sessionUser: any) {
-  const token = parseQrToken(tokenRaw);
+  const token = extractQrToken(tokenRaw);
 
   if (!token) {
     return { status: 400, body: { ok: false, message: "Token QR tidak valid." } };
   }
 
+  const upperToken = token.toUpperCase();
+
+  // Search by qrToken, code, uppercase code, or room id
   const room = await prisma.room.findFirst({
     where: {
       OR: [
         { qrToken: token },
         { code: token },
+        { code: upperToken },
         { id: token },
-        { qrToken: { equals: token } },
-        { code: { equals: token } },
       ],
       active: true,
     },

@@ -29,26 +29,15 @@ export default function ScannerPage() {
   }, [router]);
 
   const handleScanSuccess = (decodedText: string) => {
-    let token = decodedText.trim();
-    if (token.includes("?")) {
-      try {
-        const url = new URL(token.startsWith("http") ? token : `https://dummy.com/${token}`);
-        const room = url.searchParams.get("room");
-        const evalParam = url.searchParams.get("evaluate");
-        if (room) token = room;
-        else if (evalParam) token = evalParam;
-      } catch {
-        const match = token.match(/[?&](?:room|evaluate)=([^&#]+)/i);
-        if (match) token = decodeURIComponent(match[1]).trim();
-      }
-    }
-
-    if (token.toUpperCase().startsWith("PLNUPS:ROOM:")) {
-      token = token.slice(12).trim();
-    }
+    const token = extractQrToken(decodedText);
 
     if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
       html5QrCodeRef.current.stop().catch(() => {});
+    }
+
+    if (!token) {
+      setError("Format QR Code tidak dikenali.");
+      return;
     }
 
     router.push(`/scanner/room/${encodeURIComponent(token)}`);

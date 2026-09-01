@@ -61,14 +61,13 @@ async function main() {
     });
   }
 
-  // 6. Users
+  // 6. Users (Do NOT overwrite passwordHash if user already exists)
   for (const u of data.users || []) {
     await prisma.user.upsert({
       where: { username: u.username },
       update: {
         fullName: u.fullName,
         role: u.role,
-        passwordHash: u.passwordHash,
         active: u.active,
       },
       create: u,

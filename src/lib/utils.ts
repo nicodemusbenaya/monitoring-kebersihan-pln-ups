@@ -46,3 +46,54 @@ export function formatShortDate(dateStr: string): string {
   }
   return dateStr;
 }
+
+export function extractQrToken(raw: string): string {
+  if (!raw) return "";
+  let clean = String(raw).trim();
+
+  // Try decoding if encoded
+  try {
+    clean = decodeURIComponent(clean);
+  } catch {}
+
+  // 1. If it's a URL
+  if (clean.startsWith("http://") || clean.startsWith("https://") || clean.includes("?")) {
+    try {
+      const url = new URL(clean.startsWith("http") ? clean : `https://dummy.com/${clean}`);
+      
+      // Query parameters
+      const roomParam = url.searchParams.get("room") || url.searchParams.get("token") || url.searchParams.get("id");
+      const evalParam = url.searchParams.get("evaluate");
+      if (roomParam) return roomParam.trim();
+      if (evalParam) return evalParam.trim();
+
+      // Path parameters, e.g. /evaluate/TOKEN or /scanner/room/TOKEN
+      const segments = url.pathname.split("/").filter(Boolean);
+      if (segments.length > 0) {
+        const last = segments[segments.length - 1];
+        if (last && last !== "evaluate" && last !== "scanner" && last !== "room") {
+          return last.trim();
+        }
+      }
+    } catch {
+      const match = clean.match(/[?&](?:room|evaluate|token|id)=([^&#]+)/i);
+      if (match) return decodeURIComponent(match[1]).trim();
+    }
+  }
+
+  // 2. Path fallback if raw looks like "/scanner/room/TOKEN" or "/evaluate/TOKEN"
+  if (clean.includes("/")) {
+    const parts = clean.split("/").filter(Boolean);
+    const last = parts[parts.length - 1];
+    if (last) clean = last;
+  }
+
+  // 3. If prefixed with PLNUPS:ROOM: or PLNUPS:EVALUATE:
+  if (clean.toUpperCase().startsWith("PLNUPS:ROOM:")) {
+    clean = clean.slice(12).trim();
+  } else if (clean.toUpperCase().startsWith("PLNUPS:EVALUATE:")) {
+    clean = clean.slice(16).trim();
+  }
+
+  return clean.trim();
+}
