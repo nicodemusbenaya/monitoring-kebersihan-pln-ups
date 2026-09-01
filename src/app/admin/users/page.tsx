@@ -25,26 +25,39 @@ export default function UsersManagementPage() {
     loadUsers();
   }, []);
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const handleSaveUser = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     try {
+      let res;
       if (editingUser) {
-        await fetch(`/api/admin/users/${editingUser.id}`, {
+        res = await fetch(`/api/admin/users/${editingUser.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(userForm),
-        });
+        }).then((r) => r.json());
       } else {
-        await fetch("/api/admin/users", {
+        res = await fetch("/api/admin/users", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(userForm),
-        });
+        }).then((r) => r.json());
       }
-      setShowUserModal(false);
-      loadUsers();
+
+      if (res && res.ok) {
+        alert(editingUser ? "Data & password pengguna berhasil diperbarui!" : "Pengguna baru berhasil ditambahkan!");
+        setShowUserModal(false);
+        loadUsers();
+      } else {
+        alert(res?.message || "Gagal menyimpan pengguna.");
+      }
     } catch (e) {
       console.error("Gagal menyimpan pengguna:", e);
+      alert("Terjadi kesalahan koneksi saat menyimpan pengguna.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
