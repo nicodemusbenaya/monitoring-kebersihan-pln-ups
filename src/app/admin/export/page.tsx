@@ -44,6 +44,9 @@ export default function ExportPage() {
     loadData();
   }, []);
 
+  const selectedRoomObj = roomsData.find((r) => r.id === exportRoomId) || roomsData[0];
+  const isToilet = selectedRoomObj?.roomType?.id === "TOILET" || selectedRoomObj?.name?.toLowerCase().includes("toilet");
+
   return (
     <div className="space-y-6">
       {/* Header Title */}
@@ -175,7 +178,7 @@ export default function ExportPage() {
             </a>
           </section>
 
-          {/* Card: Preview Workbook */}
+          {/* Card: Preview Workbook (Matches Exact Ceklis Ruangan UPS Template) */}
           <section className="bg-white border border-[#d8e3ea] rounded-2xl p-6 shadow-sm space-y-4">
             <div className="flex items-center justify-between">
               <div>
@@ -189,13 +192,13 @@ export default function ExportPage() {
               </span>
             </div>
 
-            {/* PLN Styled Excel Table Sheet Preview */}
+            {/* Authentic PLN Template Sheet Preview Table */}
             <div className="border border-[#cbd5e1] rounded-xl overflow-x-auto bg-white">
-              <div className="min-w-[900px] p-6 space-y-4 font-mono text-xs">
+              <div className="min-w-[1000px] p-6 space-y-4 font-mono text-xs">
                 {/* Title Header */}
                 <div className="text-left space-y-1">
                   <h3 className="text-sm font-black text-[#17313d] uppercase tracking-wide">
-                    CEKLIS KEBERSIHAN RUANGAN & KESIAPAN RUANGAN
+                    CEKLIS KEBERSIHAN & KESIAPAN {exportPreviewData?.room?.name?.toUpperCase() || "RUANG RAPAT G. UTAMA"}
                   </h3>
                 </div>
 
@@ -211,11 +214,11 @@ export default function ExportPage() {
                   </div>
                   <div className="flex gap-2">
                     <span className="w-32 font-bold">Cleaning Service</span>
-                    <span>: Arif Budi Hartono  [ ] Pagi  [ ] Sore</span>
+                    <span>: Arif Budi Hartono  [   ] Pagi  [   ] Sore</span>
                   </div>
                   <div className="flex gap-2">
                     <span className="w-32 font-bold">Cleaning Service</span>
-                    <span>: Sulaiman  [✓] Pagi  [ ] Sore</span>
+                    <span>: Sulaiman  [✓] Pagi  [   ] Sore</span>
                   </div>
                   <div className="flex gap-2">
                     <span className="w-32 font-bold">Supervisor</span>
@@ -223,14 +226,14 @@ export default function ExportPage() {
                   </div>
                 </div>
 
-                {/* Excel Grid Matrix Table */}
+                {/* Excel Grid Matrix Table Matching Template Layout */}
                 <div className="overflow-x-auto">
                   <table className="w-full text-center border-collapse border border-[#94a3b8] text-[10px]">
                     <thead>
-                      {/* Row 1: Main Header */}
+                      {/* Row 1: Day Headers */}
                       <tr className="bg-[#f8fafc]">
-                        <th rowSpan={3} className="border border-[#94a3b8] p-2 w-10">NO</th>
-                        <th rowSpan={3} className="border border-[#94a3b8] p-2 text-left w-64">
+                        <th rowSpan={4} className="border border-[#94a3b8] p-2 w-10">NO</th>
+                        <th rowSpan={4} className="border border-[#94a3b8] p-2 text-left w-64">
                           BAGIAN YANG DIPERIKSA
                         </th>
                         {(exportPreviewData?.days || [
@@ -238,8 +241,12 @@ export default function ExportPage() {
                           { dayIndex: 2, dateFormatted: "2 September 2026", dateKey: "2026-09-02" },
                           { dayIndex: 3, dateFormatted: "3 September 2026", dateKey: "2026-09-03" },
                         ]).map((day: any) => (
-                          <th key={day.dayIndex} colSpan={6} className="border border-[#94a3b8] p-1.5 bg-[#f1f5f9]">
-                            <strong className="block text-[#17313d]">Hari ke-{day.dayIndex}</strong>
+                          <th
+                            key={day.dayIndex}
+                            colSpan={isToilet ? 24 : 12}
+                            className="border border-[#94a3b8] p-1.5 bg-[#f1f5f9]"
+                          >
+                            <strong className="block text-[#17313d]">Hari ke {day.dayIndex}</strong>
                             <span className="text-[9px] text-[#647783] font-normal">{day.dateFormatted}</span>
                           </th>
                         ))}
@@ -249,29 +256,51 @@ export default function ExportPage() {
                       <tr>
                         {(exportPreviewData?.days || [1, 2, 3]).map((_, dIdx: number) => (
                           <Fragment key={dIdx}>
-                            <th colSpan={2} className="border border-[#94a3b8] p-1 bg-[#e2e8f0] text-[#17313d] font-bold">
-                              Pagi
+                            <th colSpan={4} className="border border-[#94a3b8] p-1 bg-[#e2e8f0] text-[#17313d] font-bold">
+                              PAGI
                             </th>
-                            <th colSpan={2} className="border border-[#94a3b8] p-1 bg-[#22c55e] text-white font-bold">
-                              Sore
+                            <th colSpan={4} className="border border-[#94a3b8] p-1 bg-[#22c55e] text-white font-bold">
+                              SORE
                             </th>
-                            <th colSpan={2} className="border border-[#94a3b8] p-1 bg-[#eab308] text-white font-bold">
-                              Inspeksi
+                            <th colSpan={4} className="border border-[#94a3b8] p-1 bg-[#eab308] text-white font-bold">
+                              INSPEKSI
                             </th>
                           </Fragment>
                         ))}
                       </tr>
 
                       {/* Row 3: Subheaders (Aktv / Fung) */}
-                      <tr className="bg-[#f8fafc] text-[9px]">
+                      <tr className="bg-[#f8fafc] text-[9px] font-bold">
                         {(exportPreviewData?.days || [1, 2, 3]).map((_, dIdx: number) => (
                           <Fragment key={dIdx}>
-                            <th className="border border-[#94a3b8] p-0.5">Pos</th>
-                            <th className="border border-[#94a3b8] p-0.5">Neg</th>
-                            <th className="border border-[#94a3b8] p-0.5">Pos</th>
-                            <th className="border border-[#94a3b8] p-0.5">Neg</th>
-                            <th className="border border-[#94a3b8] p-0.5">Pos</th>
-                            <th className="border border-[#94a3b8] p-0.5">Neg</th>
+                            <th colSpan={2} className="border border-[#94a3b8] p-0.5">Aktv</th>
+                            <th colSpan={2} className="border border-[#94a3b8] p-0.5">Fung</th>
+                            <th colSpan={2} className="border border-[#94a3b8] p-0.5">Aktv</th>
+                            <th colSpan={2} className="border border-[#94a3b8] p-0.5">Fung</th>
+                            <th colSpan={2} className="border border-[#94a3b8] p-0.5">Aktv</th>
+                            <th colSpan={2} className="border border-[#94a3b8] p-0.5">Fung</th>
+                          </Fragment>
+                        ))}
+                      </tr>
+
+                      {/* Row 4: Indicator Subcolumns (S, B, Y, T) */}
+                      <tr className="bg-[#f8fafc] text-[8px] font-bold">
+                        {(exportPreviewData?.days || [1, 2, 3]).map((_, dIdx: number) => (
+                          <Fragment key={dIdx}>
+                            <th className="border border-[#94a3b8] p-0.5 w-5">S</th>
+                            <th className="border border-[#94a3b8] p-0.5 w-5">B</th>
+                            <th className="border border-[#94a3b8] p-0.5 w-5">Y</th>
+                            <th className="border border-[#94a3b8] p-0.5 w-5">T</th>
+
+                            <th className="border border-[#94a3b8] p-0.5 w-5">S</th>
+                            <th className="border border-[#94a3b8] p-0.5 w-5">B</th>
+                            <th className="border border-[#94a3b8] p-0.5 w-5">Y</th>
+                            <th className="border border-[#94a3b8] p-0.5 w-5">T</th>
+
+                            <th className="border border-[#94a3b8] p-0.5 w-5">S</th>
+                            <th className="border border-[#94a3b8] p-0.5 w-5">B</th>
+                            <th className="border border-[#94a3b8] p-0.5 w-5">Y</th>
+                            <th className="border border-[#94a3b8] p-0.5 w-5">T</th>
                           </Fragment>
                         ))}
                       </tr>
@@ -286,6 +315,17 @@ export default function ExportPage() {
                         { id: "5", name: "BAU RUANGAN" },
                         { id: "6", name: "SELASAR" },
                         { id: "7", name: "VENTILASI / JENDELA" },
+                        { id: "8", name: "AC (AIR CONDITIONER)" },
+                        { id: "9", name: "LAMPU" },
+                        { id: "10", name: "STOP KONTAK" },
+                        { id: "11", name: "LEMARI" },
+                        { id: "12", name: "MEJA" },
+                        { id: "13", name: "KURSI" },
+                        { id: "14", name: "PAPAN TULIS / WHITEBOARD" },
+                        { id: "15", name: "DISPENSER" },
+                        { id: "16", name: "JARINGAN WIFI / INTERNET" },
+                        { id: "17", name: "KOTAK P3K DAN ISINYA" },
+                        { id: "18", name: "MEDIA DISPLAY (PROYEKTOR / VIDEOTRON, DLL)" },
                       ]).map((act: any, idx: number) => (
                         <tr key={act.id} className="hover:bg-[#f8fafc]">
                           <td className="border border-[#94a3b8] p-1 font-bold">{idx + 1}</td>
@@ -293,24 +333,32 @@ export default function ExportPage() {
                             {act.name}
                           </td>
                           {(exportPreviewData?.days || [{ dateKey: "2026-09-01" }, { dateKey: "2026-09-02" }, { dateKey: "2026-09-03" }]).map((day: any, dIdx: number) => {
+                            // Day 1 has inspection by Sulaiman (Pagi: S & Y checkmarked)
                             const isDay1 = dIdx === 0;
 
                             return (
                               <Fragment key={dIdx}>
-                                {/* Pagi Pos */}
-                                <td className="border border-[#94a3b8] p-1 text-[#dc2626] font-black">
-                                  {isDay1 ? "✓" : ""}
+                                {/* PAGI: S, B, Y, T */}
+                                <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black">
+                                  {isDay1 ? "v" : ""}
                                 </td>
-                                {/* Pagi Neg */}
-                                <td className="border border-[#94a3b8] p-1"></td>
-                                {/* Sore Pos */}
-                                <td className="border border-[#94a3b8] p-1"></td>
-                                {/* Sore Neg */}
-                                <td className="border border-[#94a3b8] p-1"></td>
-                                {/* Inspeksi Pos */}
-                                <td className="border border-[#94a3b8] p-1"></td>
-                                {/* Inspeksi Neg */}
-                                <td className="border border-[#94a3b8] p-1"></td>
+                                <td className="border border-[#94a3b8] p-0.5"></td>
+                                <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black">
+                                  {isDay1 ? "v" : ""}
+                                </td>
+                                <td className="border border-[#94a3b8] p-0.5"></td>
+
+                                {/* SORE: S, B, Y, T */}
+                                <td className="border border-[#94a3b8] p-0.5"></td>
+                                <td className="border border-[#94a3b8] p-0.5"></td>
+                                <td className="border border-[#94a3b8] p-0.5"></td>
+                                <td className="border border-[#94a3b8] p-0.5"></td>
+
+                                {/* INSPEKSI: S, B, Y, T */}
+                                <td className="border border-[#94a3b8] p-0.5"></td>
+                                <td className="border border-[#94a3b8] p-0.5"></td>
+                                <td className="border border-[#94a3b8] p-0.5"></td>
+                                <td className="border border-[#94a3b8] p-0.5"></td>
                               </Fragment>
                             );
                           })}
@@ -318,6 +366,13 @@ export default function ExportPage() {
                       ))}
                     </tbody>
                   </table>
+                </div>
+
+                {/* Footer Legend Matching Ceklis Template */}
+                <div className="pt-3 text-[11px] text-[#475569] space-y-1">
+                  <strong className="text-[#17313d] block">Keterangan:</strong>
+                  <p>• <strong>Aktivitas</strong>: Sudah (S) / Belum (B) — Pembersihan, Pembuangan Sampah</p>
+                  <p>• <strong>Fungsi</strong>: Ya (Y) / Tidak (T) — Pengecekan apakah kondisi baik & berfungsi normal</p>
                 </div>
               </div>
             </div>
