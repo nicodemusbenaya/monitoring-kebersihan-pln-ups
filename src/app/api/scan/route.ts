@@ -118,7 +118,11 @@ async function processScan(tokenRaw: string, sessionUser: any) {
       name: room.name,
       qrToken: room.qrToken,
       roomTypeId: room.roomTypeId,
-      roomTypeName: room.roomType.name,
+      roomTypeName: room.roomType?.name || room.roomTypeId,
+      roomType: {
+        id: room.roomType?.id || room.roomTypeId,
+        name: room.roomType?.name || room.roomTypeId,
+      },
     },
     currentUser: {
       id: sessionUser.id,

@@ -251,10 +251,10 @@ export default function ScannerPage() {
           </div>
         )}
 
-        {/* Alternative Methods Panel (Upload Foto & Input Manual) */}
-        <section className="bg-white border border-[#d8e3ea] rounded-3xl p-6 shadow-sm space-y-5">
+        {/* Alternative Methods Panel (Upload Foto & Input Manual) - Desktop Only */}
+        <section className="hidden md:block bg-white border border-[#d8e3ea] rounded-3xl p-6 shadow-sm space-y-5">
           <div>
-            <h4 className="text-sm font-extrabold text-[#17313d]">Pilihan Pemindaian Alternatif</h4>
+            <h4 className="text-sm font-extrabold text-[#17313d]">Pilihan Pemindaian Alternatif (Desktop)</h4>
             <p className="text-xs text-[#647783] mt-0.5">
               Gunakan galeri foto jika kamera langsung tidak tersedia atau ketik kode ruangan secara manual.
             </p>

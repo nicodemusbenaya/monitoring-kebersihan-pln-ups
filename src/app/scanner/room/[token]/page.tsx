@@ -322,7 +322,7 @@ export default function RoomInspectionPage({
         <section className="room-banner">
           <div>
             <div className="eyebrow" style={{ color: "#ffd100" }}>
-              {data.room.roomType.name.toUpperCase()}
+              {(data.room.roomType?.name || data.room.name || "RUANGAN").toUpperCase()}
             </div>
             <h1>{data.room.name}</h1>
             <p>Pilih slot waktu pemeriksaan untuk memulai checklist standar 5S.</p>
