@@ -3,8 +3,17 @@ import path from "path";
 import fs from "fs";
 
 function getDatabaseUrl(): string {
-  // On Vercel / AWS Lambda, filesystem outside /tmp is read-only.
-  // We copy the database to /tmp so SQLite can open and write to it.
+  const envUrl = process.env.DATABASE_URL || "";
+  if (
+    envUrl.startsWith("mysql:") ||
+    envUrl.startsWith("mariadb:") ||
+    envUrl.startsWith("postgresql:") ||
+    envUrl.startsWith("postgres:")
+  ) {
+    return envUrl;
+  }
+
+  // On Vercel / AWS Lambda with SQLite, filesystem outside /tmp is read-only.
   const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
 
   if (isServerless) {
@@ -40,7 +49,7 @@ function getDatabaseUrl(): string {
     return `file:${tmpDbPath}`;
   }
 
-  return process.env.DATABASE_URL || "file:./dev.db";
+  return envUrl || "file:./dev.db";
 }
 
 const globalForPrisma = globalThis as unknown as {

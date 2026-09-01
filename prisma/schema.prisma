@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
@@ -12,7 +12,7 @@ model User {
   username           String       @unique
   fullName           String
   role               String       // PETUGAS, SUPERVISOR, ADMIN
-  passwordHash       String
+  passwordHash       String       @db.Text
   mustChangePassword Boolean      @default(false)
   active             Boolean      @default(true)
   createdAt          DateTime     @default(now())
@@ -23,14 +23,14 @@ model User {
 }
 
 model RoomType {
-  id            String       @id @default(cuid())
+  id            String             @id @default(cuid())
   name          String
-  templateSheet String       // GENERAL, TOILET, PANTRY, CLASS, ARCHIVE
-  workDays      Int          @default(6) // 5 = Senin-Jumat, 6 = Senin-Sabtu, 7 = Tiap hari
-  active        Boolean      @default(true)
-  sortOrder     Int          @default(0)
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  templateSheet String             // GENERAL, TOILET, PANTRY, CLASS, ARCHIVE
+  workDays      Int                @default(6)
+  active        Boolean            @default(true)
+  sortOrder     Int                @default(0)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
   rooms         Room[]
   activities    Activity[]
   slots         Slot[]
@@ -59,7 +59,7 @@ model Activity {
   roomType           RoomType           @relation(fields: [roomTypeId], references: [id])
   name               String
   standardCategory   String?
-  standardText       String?
+  standardText       String?            @db.Text
   qualityApplicable  Boolean            @default(true)
   qualityPositive    String             @default("Bersih")
   qualityNegative    String             @default("Kotor")
@@ -78,7 +78,7 @@ model Slot {
   id          String       @id @default(cuid())
   roomTypeId  String
   roomType    RoomType     @relation(fields: [roomTypeId], references: [id])
-  code        String       // PAGI, SIANG, SORE, INSP_1, INSP_2, INSP_3
+  code        String
   name        String
   role        String       // PETUGAS, SUPERVISOR
   sortOrder   Int          @default(0)
@@ -95,35 +95,35 @@ model ScanEvent {
   userId    String
   user      User     @relation(fields: [userId], references: [id])
   scannedAt DateTime @default(now())
-  userAgent String?
-  qrPayload String?
+  userAgent String?  @db.Text
+  qrPayload String?  @db.Text
 }
 
 model Inspection {
-  id              String             @id @default(cuid())
-  dateKey         String             // YYYY-MM-DD
-  weekStart       String             // YYYY-MM-DD
-  dayNumber       Int                // 1-7
-  roomId          String
-  room            Room               @relation(fields: [roomId], references: [id])
-  roomTypeId      String
-  slotId          String
-  slot            Slot               @relation(fields: [slotId], references: [id])
-  slotCode        String
-  userId          String
-  user            User               @relation(fields: [userId], references: [id])
-  scanId          String?
-  scannedAt       DateTime           @default(now())
-  submittedAt     DateTime           @default(now())
-  overallStatus   String             // BERSIH, ADA_TEMUAN
-  dirtyCount      Int                @default(0)
-  evidenceName    String?
-  state           String             @default("SUBMITTED") // SUBMITTED, REOPENED
-  backupStatus    String             @default("SYNCED")    // SYNCED, PENDING
-  reopenedAt      DateTime?
-  reopenedBy      String?
-  details         InspectionDetail[]
-  photos          InspectionPhoto[]
+  id            String             @id @default(cuid())
+  dateKey       String             // YYYY-MM-DD
+  weekStart     String             // YYYY-MM-DD
+  dayNumber     Int                // 1-7
+  roomId        String
+  room          Room               @relation(fields: [roomId], references: [id])
+  roomTypeId    String
+  slotId        String
+  slot          Slot               @relation(fields: [slotId], references: [id])
+  slotCode      String
+  userId        String
+  user          User               @relation(fields: [userId], references: [id])
+  scanId        String?
+  scannedAt     DateTime           @default(now())
+  submittedAt   DateTime           @default(now())
+  overallStatus String             // BERSIH, ADA_TEMUAN
+  dirtyCount    Int                @default(0)
+  evidenceName  String?
+  state         String             @default("SUBMITTED")
+  backupStatus  String             @default("SYNCED")
+  reopenedAt    DateTime?
+  reopenedBy    String?
+  details       InspectionDetail[]
+  photos        InspectionPhoto[]
 
   @@unique([roomId, slotId, dateKey])
   @@index([dateKey])
@@ -140,7 +140,7 @@ model InspectionDetail {
   qualityLabel   String?
   functionResult String     // POSITIVE, NEGATIVE, NA
   functionLabel  String?
-  note           String?
+  note           String?    @db.Text
   correctedAt    DateTime?
   correctedBy    String?
 }
@@ -150,7 +150,7 @@ model InspectionPhoto {
   inspectionId String
   inspection   Inspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
   fileName     String
-  fileUrl      String     // Data URL / NAS URL / Public URL
+  fileUrl      String     @db.Text
   sortOrder    Int        @default(1)
   capturedAt   DateTime   @default(now())
 }
@@ -174,12 +174,14 @@ model Evaluation {
   roomTypeId  String
   rating      Int      // 1, 2, 3, 4
   ratingLabel String
-  aspectCodes String   // JSON array string
-  comment     String?
+  aspectCodes String   @db.Text // JSON array string
+  comment     String?  @db.Text
   dateKey     String   // YYYY-MM-DD
+  weekStart   String?  // YYYY-MM-DD
   monthKey    String   // YYYY-MM
   submittedAt DateTime @default(now())
-  userAgent   String?
+  source      String   @default("QR_ANONYMOUS")
+  userAgent   String?  @db.Text
 
   @@index([dateKey])
   @@index([roomId])
@@ -187,7 +189,7 @@ model Evaluation {
 
 model Setting {
   key       String   @id
-  value     String
+  value     String   @db.Text
   updatedAt DateTime @updatedAt
 }
 
@@ -198,7 +200,7 @@ model AuditLog {
   action     String
   entityType String
   entityId   String
-  detail     String?
+  detail     String?  @db.Text
   createdAt  DateTime @default(now())
 
   @@index([createdAt])

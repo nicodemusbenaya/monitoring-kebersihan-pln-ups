@@ -9584,6 +9584,48 @@
       "backupStatus": "SYNCED",
       "reopenedAt": null,
       "reopenedBy": null
+    },
+    {
+      "id": "INSP-8ae2390f-f71f-41e6-adec-01b23ea9a2ec",
+      "dateKey": "2026-08-28",
+      "weekStart": "2026-08-24",
+      "dayNumber": 5,
+      "roomId": "ROOM-d22d0b08-8855-424b-a5eb-313469c84707",
+      "roomTypeId": "GENERAL",
+      "slotId": "GENERAL-SORE",
+      "slotCode": "SORE",
+      "userId": "USR-admin",
+      "scanId": null,
+      "scannedAt": "2026-08-28T12:23:59.663Z",
+      "submittedAt": "2026-08-28T12:25:31.074Z",
+      "overallStatus": "BERSIH",
+      "dirtyCount": 0,
+      "evidenceName": "ADMIN-2026-08-28-SORE-INSP-8ae2390f-f71f-41e6-adec-01b23ea9a2ec",
+      "state": "SUBMITTED",
+      "backupStatus": "SYNCED",
+      "createdAt": "2026-08-28T12:25:31.074Z",
+      "updatedAt": "2026-08-28T12:25:31.074Z"
+    },
+    {
+      "id": "INSP-00f0ea6d-c517-43d2-8537-9167b6ef60ec",
+      "dateKey": "2026-09-01",
+      "weekStart": "2026-08-31",
+      "dayNumber": 2,
+      "roomId": "ROOM-5bbdbedb-5581-4ed5-9691-14ab0c596386",
+      "roomTypeId": "ARCHIVE",
+      "slotId": "ARCHIVE-PAGI",
+      "slotCode": "PAGI",
+      "userId": "USR-admin",
+      "scanId": null,
+      "scannedAt": "2026-09-01T01:31:47.093Z",
+      "submittedAt": "2026-09-01T01:32:25.149Z",
+      "overallStatus": "BERSIH",
+      "dirtyCount": 0,
+      "evidenceName": "ARSIP_UTAMA_INAKTIF-2026-09-01-PAGI-INSP-00f0ea6d-c517-43d2-8537-9167b6ef60ec",
+      "state": "SUBMITTED",
+      "backupStatus": "SYNCED",
+      "createdAt": "2026-09-01T01:32:25.149Z",
+      "updatedAt": "2026-09-01T01:32:25.149Z"
     }
   ],
   "inspectionDetails": [
@@ -53398,6 +53440,286 @@
       "note": null,
       "correctedAt": null,
       "correctedBy": null
+    },
+    {
+      "id": "DET-b1ccb9b1-fe8f-47db-a7d1-fb88e0e753ec",
+      "inspectionId": "INSP-8ae2390f-f71f-41e6-adec-01b23ea9a2ec",
+      "activityId": "ACT-d2efd028-9904-44cb-9b6b-b6c1295a620f",
+      "qualityResult": "POSITIVE",
+      "qualityLabel": "Bersih",
+      "functionResult": "POSITIVE",
+      "functionLabel": "Normal",
+      "note": null
+    },
+    {
+      "id": "DET-9d5e56ca-8ebe-43af-b783-b621a8333b90",
+      "inspectionId": "INSP-8ae2390f-f71f-41e6-adec-01b23ea9a2ec",
+      "activityId": "ACT-77e22f8f-4e63-4807-aca1-b103aa7de12a",
+      "qualityResult": "POSITIVE",
+      "qualityLabel": "Bersih",
+      "functionResult": "POSITIVE",
+      "functionLabel": "Normal",
+      "note": null
+    },
+    {
+      "id": "DET-dc6d0860-5659-474d-9363-f753bc9f0b01",
+      "inspectionId": "INSP-8ae2390f-f71f-41e6-adec-01b23ea9a2ec",
+      "activityId": "ACT-c217fabd-130b-433c-924f-934b643d5712",
+      "qualityResult": "POSITIVE",
+      "qualityLabel": "Bersih",
+      "functionResult": "POSITIVE",
+      "functionLabel": "Normal",
+      "note": null
+    },
+    {
+      "id": "DET-2465f86a-a0c9-4adb-afa0-57ade3a81d33",
+      "inspectionId": "INSP-8ae2390f-f71f-41e6-adec-01b23ea9a2ec",
+      "activityId": "ACT-1b4f5d23-c012-4d04-949c-41fe9737b131",
+      "qualityResult": "POSITIVE",
+      "qualityLabel": "Sampah sudah diangkut",
+      "functionResult": "POSITIVE",
+      "functionLabel": "Normal",
+      "note": null
+    },
+    {
+      "id": "DET-64c604aa-565f-452c-9051-607d21d39e9b",
+      "inspectionId": "INSP-8ae2390f-f71f-41e6-adec-01b23ea9a2ec",
+      "activityId": "ACT-29b51a17-9b9e-4859-a079-33dbb8eb88e8",
+      "qualityResult": "POSITIVE",
+      "qualityLabel": "Tidak bau",
+      "functionResult": "POSITIVE",
+      "functionLabel": "Normal",
+      "note": null
+    },
+    {
+      "id": "DET-04a7de18-f644-486b-9d2e-ece3b6a563bd",
+      "inspectionId": "INSP-8ae2390f-f71f-41e6-adec-01b23ea9a2ec",
+      "activityId": "ACT-9406296a-c5ce-4051-a56f-218733d414fe",
+      "qualityResult": "POSITIVE",
+      "qualityLabel": "Bersih",
+      "functionResult": "POSITIVE",
+      "functionLabel": "Normal",
+      "note": null
+    },
+    {
+      "id": "DET-56fdadef-fa7b-4e11-a7e5-b3826c577aa2",
+      "inspectionId": "INSP-8ae2390f-f71f-41e6-adec-01b23ea9a2ec",
+      "activityId": "ACT-1d444f01-6f76-41d4-a6a9-07b8c7c13680",
+      "qualityResult": "POSITIVE",
+      "qualityLabel": "Bersih",
+      "functionResult": "POSITIVE",
+      "functionLabel": "Normal",
+      "note": null
+    },
+    {
+      "id": "DET-c82d53a4-92ca-47e2-81ce-e52ea0ae1283",
+      "inspectionId": "INSP-8ae2390f-f71f-41e6-adec-01b23ea9a2ec",
+      "activityId": "ACT-833842b9-2948-48df-91de-5ec6e1d73d0c",
+      "qualityResult": "POSITIVE",
+      "qualityLabel": "Bersih",
+      "functionResult": "POSITIVE",
+      "functionLabel": "Normal",
+      "note": null
+    },
+    {
+      "id": "DET-7d3deddd-0c7e-4c73-9ab4-3895df936949",
+      "inspectionId": "INSP-8ae2390f-f71f-41e6-adec-01b23ea9a2ec",
+      "activityId": "ACT-737f50bd-3c7d-481d-acc0-e7270be445c5",
+      "qualityResult": "POSITIVE",
+      "qualityLabel": "Sudah diperiksa",
+      "functionResult": "POSITIVE",
+      "functionLabel": "Normal",
+      "note": null
+    },
+    {
+      "id": "DET-e8d5a8c3-b942-4deb-a74e-385b09dfb594",
+      "inspectionId": "INSP-8ae2390f-f71f-41e6-adec-01b23ea9a2ec",
+      "activityId": "ACT-3555074b-fb89-405c-9fe8-b0880b332c3e",
+      "qualityResult": "POSITIVE",
+      "qualityLabel": "Sudah diperiksa",
+      "functionResult": "POSITIVE",
+      "functionLabel": "Normal",
+      "note": null
+    },
+    {
+      "id": "DET-1972f0f2-89a8-4d28-b871-1d6c420b38c1",
+      "inspectionId": "INSP-8ae2390f-f71f-41e6-adec-01b23ea9a2ec",
+      "activityId": "ACT-66c6c398-013f-489e-88db-7f86aad4e93b",
+      "qualityResult": "POSITIVE",
+      "qualityLabel": "Bersih",
+      "functionResult": "POSITIVE",
+      "functionLabel": "Normal",
+      "note": null
+    },
+    {
+      "id": "DET-e7a4bb4a-4477-4191-80b9-3ec8e50fe015",
+      "inspectionId": "INSP-8ae2390f-f71f-41e6-adec-01b23ea9a2ec",
+      "activityId": "ACT-9f5e6af1-9594-460d-93c9-a592a68661b9",
+      "qualityResult": "POSITIVE",
+      "qualityLabel": "Bersih",
+      "functionResult": "POSITIVE",
+      "functionLabel": "Normal",
+      "note": null
+    },
+    {
+      "id": "DET-db0efee8-a51e-4efe-b114-2d9de44557ec",
+      "inspectionId": "INSP-8ae2390f-f71f-41e6-adec-01b23ea9a2ec",
+      "activityId": "ACT-9120b141-2d15-475e-960d-c4d83fb1b8c2",
+      "qualityResult": "POSITIVE",
+      "qualityLabel": "Bersih",
+      "functionResult": "POSITIVE",
+      "functionLabel": "Normal",
+      "note": null
+    },
+    {
+      "id": "DET-ca66c863-2635-4e38-96bf-c32d9830a061",
+      "inspectionId": "INSP-8ae2390f-f71f-41e6-adec-01b23ea9a2ec",
+      "activityId": "ACT-d748d52a-cc0c-4593-be55-fea4b4571105",
+      "qualityResult": "POSITIVE",
+      "qualityLabel": "Bersih",
+      "functionResult": "POSITIVE",
+      "functionLabel": "Normal",
+      "note": null
+    },
+    {
+      "id": "DET-3c71a714-bba4-4b9b-860e-3b16e7af2255",
+      "inspectionId": "INSP-8ae2390f-f71f-41e6-adec-01b23ea9a2ec",
+      "activityId": "ACT-1e4bbdf1-991c-4aa5-937a-0a2436639261",
+      "qualityResult": "POSITIVE",
+      "qualityLabel": "Bersih",
+      "functionResult": "POSITIVE",
+      "functionLabel": "Galon terisi",
+      "note": null
+    },
+    {
+      "id": "DET-4fae0938-e335-40d5-b4bb-9f2a0096b229",
+      "inspectionId": "INSP-8ae2390f-f71f-41e6-adec-01b23ea9a2ec",
+      "activityId": "ACT-34705c7b-b16a-4058-b465-e453fb5531e3",
+      "qualityResult": "POSITIVE",
+      "qualityLabel": "Sudah diperiksa",
+      "functionResult": "POSITIVE",
+      "functionLabel": "Normal",
+      "note": null
+    },
+    {
+      "id": "DET-9c26e305-87d8-4136-8126-c64864040034",
+      "inspectionId": "INSP-8ae2390f-f71f-41e6-adec-01b23ea9a2ec",
+      "activityId": "ACT-a4e30e7c-4cee-44d3-9a72-3b64451441f0",
+      "qualityResult": "POSITIVE",
+      "qualityLabel": "Sudah diperiksa",
+      "functionResult": "POSITIVE",
+      "functionLabel": "Lengkap",
+      "note": null
+    },
+    {
+      "id": "DET-7ff2f30f-10e9-45e9-9839-34eaafb0040c",
+      "inspectionId": "INSP-8ae2390f-f71f-41e6-adec-01b23ea9a2ec",
+      "activityId": "ACT-c0c82bcb-75fe-4010-b3fd-b889a558c4cb",
+      "qualityResult": "POSITIVE",
+      "qualityLabel": "Bersih",
+      "functionResult": "POSITIVE",
+      "functionLabel": "Normal",
+      "note": null
+    },
+    {
+      "id": "DET-f529d983-1f49-4f01-a464-8b480d16e910",
+      "inspectionId": "INSP-00f0ea6d-c517-43d2-8537-9167b6ef60ec",
+      "activityId": "ACT-2250a404-d997-48da-9fb5-41d4af1f5e31",
+      "qualityResult": "POSITIVE",
+      "qualityLabel": "Bersih",
+      "functionResult": "POSITIVE",
+      "functionLabel": "Normal",
+      "note": null
+    },
+    {
+      "id": "DET-d065c5e1-4eff-45d4-999d-901c0193918f",
+      "inspectionId": "INSP-00f0ea6d-c517-43d2-8537-9167b6ef60ec",
+      "activityId": "ACT-e8fb9620-ebe7-43b9-851a-8c6765e38dd0",
+      "qualityResult": "POSITIVE",
+      "qualityLabel": "Bersih",
+      "functionResult": "POSITIVE",
+      "functionLabel": "Normal",
+      "note": null
+    },
+    {
+      "id": "DET-70e45f0c-f380-4190-8ec1-58fd879888a5",
+      "inspectionId": "INSP-00f0ea6d-c517-43d2-8537-9167b6ef60ec",
+      "activityId": "ACT-931bf75a-980d-4465-a893-32844056ce85",
+      "qualityResult": "POSITIVE",
+      "qualityLabel": "Bersih",
+      "functionResult": "POSITIVE",
+      "functionLabel": "Normal",
+      "note": null
+    },
+    {
+      "id": "DET-9b4e00d5-74e9-43a6-9c19-f37289ce2f56",
+      "inspectionId": "INSP-00f0ea6d-c517-43d2-8537-9167b6ef60ec",
+      "activityId": "ACT-4e76a8ee-c721-42ae-a527-7546994c2b04",
+      "qualityResult": "POSITIVE",
+      "qualityLabel": "Sampah sudah diangkut",
+      "functionResult": "POSITIVE",
+      "functionLabel": "Normal",
+      "note": null
+    },
+    {
+      "id": "DET-800dd08d-4544-4291-9c24-b6982ca71b95",
+      "inspectionId": "INSP-00f0ea6d-c517-43d2-8537-9167b6ef60ec",
+      "activityId": "ACT-45e26d9e-65aa-4de4-8056-a2d4aa715e63",
+      "qualityResult": "POSITIVE",
+      "qualityLabel": "Tidak bau",
+      "functionResult": "NA",
+      "functionLabel": "N/A",
+      "note": null
+    },
+    {
+      "id": "DET-5402a1bf-1aac-4443-bf78-e09b673515ce",
+      "inspectionId": "INSP-00f0ea6d-c517-43d2-8537-9167b6ef60ec",
+      "activityId": "ACT-b5fc1ce1-7863-4be9-9102-d95b87241020",
+      "qualityResult": "POSITIVE",
+      "qualityLabel": "Bersih",
+      "functionResult": "POSITIVE",
+      "functionLabel": "Normal",
+      "note": null
+    },
+    {
+      "id": "DET-c6a04c25-876d-47cb-8855-d87e3459ca79",
+      "inspectionId": "INSP-00f0ea6d-c517-43d2-8537-9167b6ef60ec",
+      "activityId": "ACT-ac0d0112-d80b-42fe-8a77-3f953c42a7db",
+      "qualityResult": "POSITIVE",
+      "qualityLabel": "Bersih",
+      "functionResult": "POSITIVE",
+      "functionLabel": "Normal",
+      "note": null
+    },
+    {
+      "id": "DET-2dc99033-3bc3-444c-86f7-63a3bb8ee87a",
+      "inspectionId": "INSP-00f0ea6d-c517-43d2-8537-9167b6ef60ec",
+      "activityId": "ACT-aaf66c14-cebb-4a54-b5eb-7c89e4d8cf5f",
+      "qualityResult": "POSITIVE",
+      "qualityLabel": "Bersih",
+      "functionResult": "POSITIVE",
+      "functionLabel": "Normal",
+      "note": null
+    },
+    {
+      "id": "DET-65dd7c51-53b9-416f-b9a5-76a181a2ae1a",
+      "inspectionId": "INSP-00f0ea6d-c517-43d2-8537-9167b6ef60ec",
+      "activityId": "ACT-19022dde-2a47-4c56-8f85-74400df586b1",
+      "qualityResult": "NA",
+      "qualityLabel": "N/A",
+      "functionResult": "POSITIVE",
+      "functionLabel": "Normal",
+      "note": null
+    },
+    {
+      "id": "DET-f9e69f16-3895-4581-9379-82fe2220d408",
+      "inspectionId": "INSP-00f0ea6d-c517-43d2-8537-9167b6ef60ec",
+      "activityId": "ACT-f5627762-7d26-40d8-9252-263ed19d3ecf",
+      "qualityResult": "POSITIVE",
+      "qualityLabel": "Rapi",
+      "functionResult": "POSITIVE",
+      "functionLabel": "Normal",
+      "note": null
     }
   ],
   "inspectionPhotos": [
@@ -56264,6 +56586,22 @@
       "fileUrl": "http://nasups01.myqnapcloud.com:18080/files/EVIDENCE/2026/09/01/RAPAT_KECIL_TUK-2026-09-01-PAGI-INSP-a9a696e8-9b2b-4669-8467-f90f14129a9a-1.jpg",
       "sortOrder": 1,
       "capturedAt": "2026-09-01T00:20:00.168Z"
+    },
+    {
+      "id": "PHOTO-1020f729-4d36-433c-ada8-9d8f4b3066ec",
+      "inspectionId": "INSP-8ae2390f-f71f-41e6-adec-01b23ea9a2ec",
+      "fileName": "ADMIN-2026-08-28-SORE-INSP-8ae2390f-f71f-41e6-adec-01b23ea9a2ec-1",
+      "fileUrl": "EVIDENCE/2026/08/28/ADMIN-2026-08-28-SORE-INSP-8ae2390f-f71f-41e6-adec-01b23ea9a2ec-1.jpg",
+      "sortOrder": 1,
+      "capturedAt": "2026-08-28T12:25:31.074Z"
+    },
+    {
+      "id": "PHOTO-d4d67ad1-6b17-40fe-b21e-3358f94e3c8d",
+      "inspectionId": "INSP-00f0ea6d-c517-43d2-8537-9167b6ef60ec",
+      "fileName": "ARSIP_UTAMA_INAKTIF-2026-09-01-PAGI-INSP-00f0ea6d-c517-43d2-8537-9167b6ef60ec-1",
+      "fileUrl": "EVIDENCE/2026/09/01/ARSIP_UTAMA_INAKTIF-2026-09-01-PAGI-INSP-00f0ea6d-c517-43d2-8537-9167b6ef60ec-1.jpg",
+      "sortOrder": 1,
+      "capturedAt": "2026-09-01T01:32:25.149Z"
     }
   ],
   "evaluations": [
