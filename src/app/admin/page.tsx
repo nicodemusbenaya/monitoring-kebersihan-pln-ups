@@ -8,11 +8,11 @@ import {
   AlertTriangle,
   Calendar,
   User,
-  Image as ImageIcon,
   X,
   ExternalLink,
   ChevronRight,
   Sparkles,
+  RotateCcw,
 } from "lucide-react";
 
 export default function DashboardSummaryPage() {
@@ -26,7 +26,7 @@ export default function DashboardSummaryPage() {
   const [statusRoomFilter, setStatusRoomFilter] = useState<"ALL" | "FINDINGS" | "PARTIAL" | "COMPLETE">("ALL");
   const [roomSearchQuery, setRoomSearchQuery] = useState("");
   const [actionItemFilter, setActionItemFilter] = useState<"ALL" | "FINDINGS" | "PENDING">("ALL");
-  const [selectedPhotoPreview, setSelectedPhotoPreview] = useState<string | null>(null);
+  const [reopenId, setReopenId] = useState<string | null>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -48,6 +48,26 @@ export default function DashboardSummaryPage() {
   useEffect(() => {
     loadData();
   }, [selectedPeriod, selectedRoomFilter]);
+
+  const handleReopen = async (inspectionId: string) => {
+    if (!confirm("Buka kembali laporan ini? Laporan akan dihapus dan petugas dapat mengisi ulang untuk slot/hari tersebut.")) return;
+    setReopenId(inspectionId);
+    try {
+      const res = await fetch("/api/admin/inspections/reopen", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ inspectionId }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.message || "Gagal membuka kembali laporan.");
+      alert(data.message);
+      await loadData();
+    } catch (err: any) {
+      alert(err.message || "Gagal membuka kembali laporan.");
+    } finally {
+      setReopenId(null);
+    }
+  };
 
   // Formatted date
   const todayFormatted = useMemo(() => {
@@ -768,31 +788,17 @@ export default function DashboardSummaryPage() {
                     </div>
                   </div>
 
-                  {/* Photo Evidence Preview */}
-                  {act.photos && act.photos.length > 0 && (
-                    <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
-                      {act.photos.slice(0, 2).map((photoUrl: string, pIdx: number) => (
-                        <button
-                          key={pIdx}
-                          type="button"
-                          onClick={() => setSelectedPhotoPreview(photoUrl)}
-                          className="w-11 h-11 rounded-xl overflow-hidden border-2 border-white shadow-sm hover:scale-105 transition-transform bg-[#f1f5f9] relative group"
-                        >
-                          <img
-                            src={photoUrl}
-                            alt="Bukti"
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              (e.target as HTMLElement).style.display = "none";
-                            }}
-                          />
-                          <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity">
-                            <ImageIcon className="w-3.5 h-3.5" />
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                  {/* Buka Kembali Laporan */}
+                  <button
+                    type="button"
+                    onClick={() => handleReopen(act.id)}
+                    disabled={reopenId === act.id}
+                    className="self-end sm:self-auto shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-[#d8e3ea] hover:border-[#0076a8] hover:text-[#0076a8] text-[#17313d] rounded-xl text-xs font-bold shadow-sm transition-all disabled:opacity-60"
+                    title="Hapus laporan ini agar petugas bisa isi ulang"
+                  >
+                    <RotateCcw className={`w-3.5 h-3.5 ${reopenId === act.id ? "animate-spin" : ""}`} />
+                    {reopenId === act.id ? "Membuka..." : "Buka Kembali"}
+                  </button>
                 </div>
               );
             })
@@ -800,30 +806,7 @@ export default function DashboardSummaryPage() {
         </div>
       </section>
 
-      {/* Modal Photo Lightbox Preview */}
-      {selectedPhotoPreview && (
-        <div
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
-          onClick={() => setSelectedPhotoPreview(null)}
-        >
-          <div className="relative max-w-2xl w-full bg-white rounded-3xl overflow-hidden shadow-2xl p-2 animate-in zoom-in-95 duration-150">
-            <button
-              onClick={() => setSelectedPhotoPreview(null)}
-              className="absolute top-4 right-4 z-10 w-9 h-9 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-            <img
-              src={selectedPhotoPreview}
-              alt="Foto Evidence"
-              className="w-full max-h-[80vh] object-contain rounded-2xl bg-black"
-            />
-            <div className="p-3 text-center text-xs font-bold text-[#647783]">
-              Foto Bukti Pemeriksaan Kebersihan (QNAP NAS)
-            </div>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 }
