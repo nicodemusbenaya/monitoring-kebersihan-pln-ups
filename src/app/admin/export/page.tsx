@@ -84,6 +84,17 @@ export default function ExportPage() {
         >
           Rekap bulanan semua ruangan
         </button>
+        <button
+          type="button"
+          onClick={() => setExportActiveTab("database")}
+          className={`px-5 py-2 rounded-xl text-xs font-bold transition-all ${
+            exportActiveTab === "database"
+              ? "bg-white text-[#0076a8] shadow-md"
+              : "text-[#647783] hover:text-[#17313d]"
+          }`}
+        >
+          🗄️ Ekspor seluruh database (Admin)
+        </button>
       </div>
 
       {/* ──────────────────────── TAB 1: LAPORAN PER RUANGAN ──────────────────────── */}
@@ -439,6 +450,96 @@ export default function ExportPage() {
           </div>
         </div>
       )}
+
+      {/* ──────────────────────── TAB 3: EKSPOR SELURUH DATABASE (KHUSUS ADMIN) ──────────────────────── */}
+      {exportActiveTab === "database" && (
+        <div className="space-y-6 max-w-4xl">
+          <div className="bg-white border border-[#d8e3ea] rounded-2xl p-8 shadow-sm space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-[#f1f5f9]">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-[#0076a8] block mb-1">
+                  PENGELOLAAN DATABASE & ARSIP
+                </span>
+                <h3 className="text-xl font-black text-[#17313d]">Ekspor Seluruh Database (Admin Only)</h3>
+                <p className="text-xs text-[#647783] mt-1">
+                  Unduh seluruh koleksi data operasional kebersihan dari database cloud Neon dalam bentuk file spreadsheet multi-sheet atau arsip cadangan JSON.
+                </p>
+              </div>
+              <span className="px-3.5 py-1.5 bg-[#f0fdf4] text-[#15803d] border border-[#bbf7d0] rounded-xl text-xs font-black shrink-0 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-[#16a34a] animate-pulse"></span>
+                <span>Database Terhubung</span>
+              </span>
+            </div>
+
+            {/* Two Export Options */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {/* Option 1: Multi-sheet Excel */}
+              <div className="border border-[#cbd5e1] rounded-2xl p-6 bg-[#f8fafc] flex flex-col justify-between space-y-4 hover:shadow-md transition-all">
+                <div className="space-y-2">
+                  <div className="w-10 h-10 rounded-xl bg-[#0076a8]/10 text-[#0076a8] flex items-center justify-center font-black">
+                    <FileSpreadsheet className="w-5 h-5" />
+                  </div>
+                  <h4 className="text-base font-black text-[#17313d]">Full Database Excel (.xlsx)</h4>
+                  <p className="text-xs text-[#647783] leading-relaxed">
+                    Satu berkas Excel berisi lembar kerja (*sheets*) terpisah untuk setiap tabel:
+                  </p>
+                  <ul className="text-[11px] text-[#475569] space-y-1 pt-1 font-mono">
+                    <li>• <strong>INSPECTIONS</strong>: 357+ sesi pemeriksaan</li>
+                    <li>• <strong>INSPECTION_DETAILS</strong>: 3.661+ detail butir 5S</li>
+                    <li>• <strong>PHOTOS</strong>: 359+ log foto bukti</li>
+                    <li>• <strong>EVALUATIONS</strong>: Hasil survei kepuasan</li>
+                    <li>• <strong>ROOMS & USERS</strong>: Master data ruangan & user</li>
+                  </ul>
+                </div>
+
+                <a
+                  href="/api/admin/export/database?format=xlsx"
+                  download
+                  className="w-full py-3 bg-[#0076a8] hover:bg-[#00577d] text-white font-bold rounded-xl shadow-md text-xs flex items-center justify-center gap-2 transition-all mt-4"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Unduh Database Excel (.xlsx)</span>
+                </a>
+              </div>
+
+              {/* Option 2: JSON Backup */}
+              <div className="border border-[#cbd5e1] rounded-2xl p-6 bg-[#f8fafc] flex flex-col justify-between space-y-4 hover:shadow-md transition-all">
+                <div className="space-y-2">
+                  <div className="w-10 h-10 rounded-xl bg-[#7e22ce]/10 text-[#7e22ce] flex items-center justify-center font-black">
+                    <Database className="w-5 h-5" />
+                  </div>
+                  <h4 className="text-base font-black text-[#17313d]">Arsip Cadangan JSON (.json)</h4>
+                  <p className="text-xs text-[#647783] leading-relaxed">
+                    File cadangan mentah berformat JSON standar lengkap dengan metadata dan timestamp. Sangat cocok untuk:
+                  </p>
+                  <ul className="text-[11px] text-[#475569] space-y-1 pt-1">
+                    <li>• Cadangan rutin berkala (*backup point*)</li>
+                    <li>• Migrasi data ke sistem / server baru</li>
+                    <li>• Integrasi dengan analitik pihak ketiga / data lake</li>
+                  </ul>
+                </div>
+
+                <a
+                  href="/api/admin/export/database?format=json"
+                  download
+                  className="w-full py-3 bg-[#072d3f] hover:bg-[#0b415a] text-white font-bold rounded-xl shadow-md text-xs flex items-center justify-center gap-2 transition-all mt-4"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Unduh Arsip Cadangan (.json)</span>
+                </a>
+              </div>
+            </div>
+
+            <div className="p-4 bg-[#fffbeb] border border-[#fef3c7] rounded-xl text-xs text-[#92400e] flex items-start gap-2.5">
+              <span className="text-base leading-none">🔒</span>
+              <div>
+                <strong>Akses Terbatas:</strong> Fitur ekspor basis data mentah ini diproteksi oleh sistem autentikasi sesi dan hanya dapat diunduh oleh akun dengan hak akses <strong>ADMIN</strong>.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
