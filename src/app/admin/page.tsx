@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, Fragment } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import QRCode from "qrcode";
@@ -2148,7 +2148,7 @@ export default function AdminDashboardPage() {
                               {/* Row 2: Shift Headers */}
                               <tr>
                                 {(exportPreviewData?.days || [1, 2, 3]).map((_, dIdx: number) => (
-                                  <div key={dIdx} className="contents">
+                                  <Fragment key={dIdx}>
                                     <th colSpan={2} className="border border-[#94a3b8] p-1 bg-[#e2e8f0] text-[#17313d] font-bold">
                                       Pagi
                                     </th>
@@ -2158,21 +2158,21 @@ export default function AdminDashboardPage() {
                                     <th colSpan={2} className="border border-[#94a3b8] p-1 bg-[#eab308] text-white font-bold">
                                       Inspeksi
                                     </th>
-                                  </div>
+                                  </Fragment>
                                 ))}
                               </tr>
 
                               {/* Row 3: Subheaders (Aktv / Fung) */}
                               <tr className="bg-[#f8fafc] text-[9px]">
                                 {(exportPreviewData?.days || [1, 2, 3]).map((_, dIdx: number) => (
-                                  <div key={dIdx} className="contents">
+                                  <Fragment key={dIdx}>
                                     <th className="border border-[#94a3b8] p-0.5">Pos</th>
                                     <th className="border border-[#94a3b8] p-0.5">Neg</th>
                                     <th className="border border-[#94a3b8] p-0.5">Pos</th>
                                     <th className="border border-[#94a3b8] p-0.5">Neg</th>
                                     <th className="border border-[#94a3b8] p-0.5">Pos</th>
                                     <th className="border border-[#94a3b8] p-0.5">Neg</th>
-                                  </div>
+                                  </Fragment>
                                 ))}
                               </tr>
                             </thead>
@@ -2197,7 +2197,7 @@ export default function AdminDashboardPage() {
                                     const isDay1 = dIdx === 0;
 
                                     return (
-                                      <div key={dIdx} className="contents">
+                                      <Fragment key={dIdx}>
                                         {/* Pagi Pos */}
                                         <td className="border border-[#94a3b8] p-1 text-[#dc2626] font-black">
                                           {isDay1 ? "✓" : ""}
@@ -2212,7 +2212,7 @@ export default function AdminDashboardPage() {
                                         <td className="border border-[#94a3b8] p-1"></td>
                                         {/* Inspeksi Neg */}
                                         <td className="border border-[#94a3b8] p-1"></td>
-                                      </div>
+                                      </Fragment>
                                     );
                                   })}
                                 </tr>
