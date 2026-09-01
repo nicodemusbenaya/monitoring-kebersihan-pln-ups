@@ -65,6 +65,7 @@ export default function AdminDashboardPage() {
   const [perfStartDate, setPerfStartDate] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10));
   const [perfEndDate, setPerfEndDate] = useState(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().slice(0, 10));
   const [perfQuickTab, setPerfQuickTab] = useState("bulan_ini");
+  const [expandedOfficer, setExpandedOfficer] = useState<string | null>("Sulaiman");
 
   // QR state
   const [qrImages, setQrImages] = useState<Record<string, string>>({});
@@ -278,12 +279,12 @@ export default function AdminDashboardPage() {
   }, [dashboardData, actionItemFilter]);
 
   return (
-    <div className="flex min-h-screen bg-[#edf2f6] font-sans text-[#17313d] select-none">
+    <div className="flex h-screen w-screen overflow-hidden bg-[#edf2f6] font-sans text-[#17313d] select-none">
       {/* ────────────────── LEFT SIDEBAR (Dark Navy) ────────────────── */}
       <aside
         className={`${
           sidebarCollapsed ? "w-20" : "w-[260px]"
-        } shrink-0 bg-[#072d3f] text-white flex flex-col justify-between transition-all duration-300 z-30 sticky top-0 h-screen shadow-xl border-r border-[#0e3b52]`}
+        } shrink-0 bg-[#072d3f] text-white flex flex-col justify-between transition-all duration-300 z-30 h-screen shadow-xl border-r border-[#0e3b52] select-none`}
       >
         <div>
           {/* Logo & Header */}
@@ -1249,7 +1250,7 @@ export default function AdminDashboardPage() {
                 </div>
               </section>
 
-              {/* Cakupan Target Sesi Monitoring Per Ruangan */}
+              {/* Cakupan Target Sesi Monitoring Per Ruangan (Screenshot 5) */}
               <section className="bg-white border border-[#d8e3ea] rounded-2xl p-6 shadow-sm space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -1273,11 +1274,188 @@ export default function AdminDashboardPage() {
                             {room.roomType?.name} (Target {room.roomType?.id === "TOILET" ? "3x" : "2x"}/hari)
                           </span>
                         </div>
-                        <span className="text-xs font-black text-[#17313d]">0 / 60 sesi</span>
+                        <span className="text-xs font-black text-[#17313d]">0 / 60 sesi (0%)</span>
                       </div>
                       <span className="text-[10px] text-[#94a3b8] block">Pagi: 0x • Siang: 0x • Sore: 0x</span>
                     </div>
                   ))}
+                </div>
+              </section>
+
+              {/* Ruangan Tanpa Monitoring di Periode Ini (Screenshot 6) */}
+              <section className="bg-white border border-[#d8e3ea] rounded-2xl p-6 shadow-sm space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-extrabold text-[#17313d] flex items-center gap-1.5">
+                      <AlertTriangle className="w-4 h-4 text-[#bd2d22]" />
+                      <span>Ruangan tanpa monitoring di periode ini</span>
+                    </h4>
+                    <p className="text-xs text-[#647783] mt-0.5">
+                      Ruangan aktif (tidak di-hidden) yang tidak ada satu pun petugas yang melakukan monitoring selama periode terpilih.
+                    </p>
+                  </div>
+                  <span className="px-3 py-1 bg-[#fff0ee] text-[#bd2d22] border border-[#fecaca] rounded-xl text-xs font-black">
+                    7 ruangan
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap gap-2.5 pt-1">
+                  {[
+                    "Pantry",
+                    "Ruang Arsip Utama Inaktif",
+                    "Ruang Penyimpanan Aset (Slow Moving)",
+                    "Ruang Penyimpanan ATK (Fast Moving)",
+                    "Ruang PMA",
+                    "Ruang PMKU",
+                    "Toilet Wanita Gedung Utama",
+                  ].map((roomName, idx) => (
+                    <span
+                      key={idx}
+                      className="px-4 py-2.5 bg-[#fff8f8] text-[#991b1b] border border-[#fecaca] rounded-xl text-xs font-bold shadow-sm"
+                    >
+                      {roomName}
+                    </span>
+                  ))}
+                </div>
+              </section>
+
+              {/* Statistik Ringkasan Table (Screenshot 6) */}
+              <section className="bg-white border border-[#d8e3ea] rounded-2xl p-6 shadow-sm space-y-4">
+                <div>
+                  <h4 className="text-base font-extrabold text-[#17313d]">Statistik ringkasan</h4>
+                  <p className="text-xs text-[#647783] mt-0.5">
+                    Rating dihitung dari evaluasi anonim pengunjung untuk setiap petugas.
+                  </p>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-[#f8fafc] border-y border-[#d8e3ea] text-[#647783] font-bold">
+                      <tr>
+                        <th className="p-3.5">Petugas</th>
+                        <th className="p-3.5 text-center">Total</th>
+                        <th className="p-3.5 text-center">Bersih</th>
+                        <th className="p-3.5 text-center">Temuan</th>
+                        <th className="p-3.5">Tingkat bersih</th>
+                        <th className="p-3.5 text-center">Rating evaluasi</th>
+                        <th className="p-3.5 text-center">Kepuasan eval</th>
+                        <th className="p-3.5">Ruangan (coverage)</th>
+                        <th className="p-3.5 text-center">Hari aktif</th>
+                        <th className="p-3.5 text-center">Avg ruangan/hari</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#f1f5f9]">
+                      <tr className="hover:bg-[#f8fafc]">
+                        <td className="p-3.5">
+                          <strong className="text-xs font-black text-[#17313d] block">Sulaiman</strong>
+                          <span className="inline-flex items-center gap-1 text-[10px] text-[#9a6500] font-bold mt-0.5">
+                            ☀️ Pagi
+                          </span>
+                        </td>
+                        <td className="p-3.5 text-center font-bold text-[#17313d]">17</td>
+                        <td className="p-3.5 text-center font-bold text-[#157a55]">17</td>
+                        <td className="p-3.5 text-center font-bold text-[#647783]">0</td>
+                        <td className="p-3.5">
+                          <div className="flex items-center gap-2">
+                            <div className="w-20 h-2.5 bg-[#e2e8f0] rounded-full overflow-hidden">
+                              <div className="w-full h-full bg-[#0076a8] rounded-full"></div>
+                            </div>
+                            <span className="font-bold text-[#17313d]">100%</span>
+                          </div>
+                        </td>
+                        <td className="p-3.5 text-center text-[#94a3b8] font-bold">—</td>
+                        <td className="p-3.5 text-center text-[#94a3b8] font-bold">—</td>
+                        <td className="p-3.5">
+                          <div>
+                            <span className="font-bold text-[#17313d] block">17 / 24</span>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <div className="w-16 h-1.5 bg-[#e2e8f0] rounded-full overflow-hidden">
+                                <div className="w-[70.8%] h-full bg-[#157a55] rounded-full"></div>
+                              </div>
+                              <span className="text-[10px] text-[#157a55] font-bold">70.8%</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-3.5 text-center">
+                          <strong className="text-xs font-bold text-[#17313d] block">1</strong>
+                          <span className="text-[10px] text-[#94a3b8]">3.3% periode</span>
+                        </td>
+                        <td className="p-3.5 text-center">
+                          <strong className="text-xs font-bold text-[#17313d] block">17</strong>
+                          <span className="text-[10px] text-[#94a3b8]">r/hari aktif</span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
+              {/* Detail Per Petugas Accordion (Screenshot 6) */}
+              <section className="bg-white border border-[#d8e3ea] rounded-2xl p-6 shadow-sm space-y-4">
+                <div>
+                  <h4 className="text-base font-extrabold text-[#17313d]">Detail per petugas</h4>
+                  <p className="text-xs text-[#647783] mt-0.5">
+                    Klik baris petugas untuk melihat breakdown ruangan, histori ulasan anonim yang diterima, dan ruangan tidak tercover.
+                  </p>
+                </div>
+
+                <div className="border border-[#d8e3ea] rounded-2xl overflow-hidden">
+                  <div
+                    onClick={() => setExpandedOfficer(expandedOfficer === "Sulaiman" ? null : "Sulaiman")}
+                    className="p-4 bg-white hover:bg-[#f8fafc] cursor-pointer flex items-center justify-between gap-4 transition-colors"
+                  >
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      <strong className="text-sm font-black text-[#17313d]">Sulaiman</strong>
+                      <span className="px-2.5 py-0.5 bg-[#f1f5f9] text-[#647783] rounded-full text-xs font-bold">
+                        Belum ada rating
+                      </span>
+                      <span className="px-2.5 py-0.5 bg-[#e8f5fa] text-[#0076a8] rounded-full text-xs font-bold">
+                        17 pemeriksaan
+                      </span>
+                      <span className="px-2.5 py-0.5 bg-[#e7f6ef] text-[#157a55] rounded-full text-xs font-bold">
+                        70.8% coverage
+                      </span>
+                      <span className="px-2.5 py-0.5 bg-[#fff7d6] text-[#9a6500] border border-[#fde68a] rounded-full text-xs font-bold">
+                        7 ruangan tidak tercover
+                      </span>
+                    </div>
+
+                    <ChevronDown
+                      className={`w-4 h-4 text-[#647783] transition-transform duration-200 ${
+                        expandedOfficer === "Sulaiman" ? "rotate-180" : ""
+                      }`}
+                    />
+                  </div>
+
+                  {expandedOfficer === "Sulaiman" && (
+                    <div className="p-5 border-t border-[#d8e3ea] bg-[#f8fafc] space-y-4 text-xs">
+                      <div>
+                        <span className="font-bold text-[#647783] uppercase text-[10px] block mb-2">
+                          Ruangan Tidak Tercover Oleh Petugas Ini:
+                        </span>
+                        <div className="flex flex-wrap gap-2">
+                          {[
+                            "Pantry",
+                            "Ruang Arsip Utama Inaktif",
+                            "Ruang Penyimpanan Aset (Slow Moving)",
+                            "Ruang Penyimpanan ATK (Fast Moving)",
+                            "Ruang PMA",
+                            "Ruang PMKU",
+                            "Toilet Wanita Gedung Utama",
+                          ].map((r, i) => (
+                            <span key={i} className="px-2.5 py-1 bg-white border border-[#fde68a] text-[#9a6500] rounded-lg font-bold text-[11px]">
+                              {r}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="pt-3 border-t border-[#e2e8f0] flex items-center justify-between text-xs text-[#647783]">
+                        <span>Total 17 Ruangan Berhasil Dimonitoring Tuntas</span>
+                        <span className="font-bold text-[#157a55]">Kualitas 100% Bersih</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </section>
             </div>
