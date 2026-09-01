@@ -164,8 +164,17 @@ export default function DashboardSummaryPage() {
           </div>
 
           <div className="flex items-center gap-2 mt-4 text-[11px] text-white/80 font-medium">
-            <span className="w-2 h-2 rounded-full bg-[#10b981]"></span>
-            <span>Data terbaru • {todayTimeFormatted}</span>
+            {loading && !dashboardData ? (
+              <>
+                <span className="w-2 h-2 rounded-full bg-[#ffd100] animate-ping"></span>
+                <span className="text-[#ffd100] font-bold">Menghubungkan ke database & memuat data...</span>
+              </>
+            ) : (
+              <>
+                <span className="w-2 h-2 rounded-full bg-[#10b981]"></span>
+                <span>Data terbaru • {todayTimeFormatted}</span>
+              </>
+            )}
           </div>
         </div>
       </section>
@@ -224,59 +233,91 @@ export default function DashboardSummaryPage() {
         <div className="relative overflow-hidden bg-white border border-[#d8e3ea] rounded-2xl p-5 shadow-sm flex flex-col justify-between min-h-[140px]">
           <span className="text-xs font-bold text-[#647783]">Penyelesaian jadwal hari ini</span>
           <div className="my-2">
-            <strong className="text-3xl font-black text-[#17313d]">
-              {dashboardData?.summary?.completionRate ?? 0}%
-            </strong>
+            {loading && !dashboardData ? (
+              <div className="h-9 w-24 bg-gradient-to-r from-[#f1f5f9] via-[#e2e8f0] to-[#f1f5f9] animate-pulse rounded-xl"></div>
+            ) : (
+              <strong className="text-3xl font-black text-[#17313d]">
+                {dashboardData?.summary?.completionRate ?? 0}%
+              </strong>
+            )}
           </div>
-          <div className="flex items-center gap-1.5 text-[11px] text-[#647783]">
-            <span className="w-2 h-2 rounded-full bg-[#ffd100]"></span>
-            <span>
-              {dashboardData?.summary?.completedSessions ?? 0} dari {dashboardData?.summary?.totalExpectedSessions ?? 87} jadwal harian
-            </span>
-          </div>
+          {loading && !dashboardData ? (
+            <div className="h-3.5 w-36 bg-[#f1f5f9] animate-pulse rounded-md"></div>
+          ) : (
+            <div className="flex items-center gap-1.5 text-[11px] text-[#647783]">
+              <span className="w-2 h-2 rounded-full bg-[#ffd100]"></span>
+              <span>
+                {dashboardData?.summary?.completedSessions ?? 0} dari {dashboardData?.summary?.totalExpectedSessions ?? 87} jadwal harian
+              </span>
+            </div>
+          )}
           <div className="absolute -bottom-6 -right-6 w-20 h-20 rounded-full bg-[#ffd100]/30 pointer-events-none"></div>
         </div>
 
         <div className="relative overflow-hidden bg-white border border-[#d8e3ea] rounded-2xl p-5 shadow-sm flex flex-col justify-between min-h-[140px]">
           <span className="text-xs font-bold text-[#647783]">Ruangan lengkap</span>
           <div className="my-2">
-            <strong className="text-3xl font-black text-[#0076a8]">
-              {dashboardData?.summary?.greenCount ?? 0}
-              <span className="text-xl font-bold text-[#647783]">/{roomsData.length || 24}</span>
-            </strong>
+            {loading && !dashboardData ? (
+              <div className="h-9 w-24 bg-gradient-to-r from-[#f1f5f9] via-[#e2e8f0] to-[#f1f5f9] animate-pulse rounded-xl"></div>
+            ) : (
+              <strong className="text-3xl font-black text-[#0076a8]">
+                {dashboardData?.summary?.greenCount ?? 0}
+                <span className="text-xl font-bold text-[#647783]">/{roomsData.length || 24}</span>
+              </strong>
+            )}
           </div>
-          <div className="flex items-center gap-1.5 text-[11px] text-[#647783]">
-            <span className="w-2 h-2 rounded-full bg-[#0076a8]"></span>
-            <span>Seluruh jadwal ruangan selesai</span>
-          </div>
+          {loading && !dashboardData ? (
+            <div className="h-3.5 w-36 bg-[#f1f5f9] animate-pulse rounded-md"></div>
+          ) : (
+            <div className="flex items-center gap-1.5 text-[11px] text-[#647783]">
+              <span className="w-2 h-2 rounded-full bg-[#0076a8]"></span>
+              <span>Seluruh jadwal ruangan selesai</span>
+            </div>
+          )}
           <div className="absolute -bottom-6 -right-6 w-20 h-20 rounded-full bg-[#0076a8]/15 pointer-events-none"></div>
         </div>
 
         <div className="relative overflow-hidden bg-white border border-[#d8e3ea] rounded-2xl p-5 shadow-sm flex flex-col justify-between min-h-[140px]">
           <span className="text-xs font-bold text-[#647783]">Pemeriksaan dengan temuan</span>
           <div className="my-2">
-            <strong className="text-3xl font-black text-[#bd2d22]">
-              {dashboardData?.summary?.findingCount ?? 0}
-            </strong>
+            {loading && !dashboardData ? (
+              <div className="h-9 w-24 bg-gradient-to-r from-[#f1f5f9] via-[#e2e8f0] to-[#f1f5f9] animate-pulse rounded-xl"></div>
+            ) : (
+              <strong className="text-3xl font-black text-[#bd2d22]">
+                {dashboardData?.summary?.findingCount ?? 0}
+              </strong>
+            )}
           </div>
-          <div className="flex items-center gap-1.5 text-[11px] text-[#647783]">
-            <span className="w-2 h-2 rounded-full bg-[#10b981]"></span>
-            <span>{dashboardData?.summary?.findingCount ?? 0} indikator perlu ditinjau</span>
-          </div>
+          {loading && !dashboardData ? (
+            <div className="h-3.5 w-36 bg-[#f1f5f9] animate-pulse rounded-md"></div>
+          ) : (
+            <div className="flex items-center gap-1.5 text-[11px] text-[#647783]">
+              <span className="w-2 h-2 rounded-full bg-[#10b981]"></span>
+              <span>{dashboardData?.summary?.findingCount ?? 0} indikator perlu ditinjau</span>
+            </div>
+          )}
           <div className="absolute -bottom-6 -right-6 w-20 h-20 rounded-full bg-[#bd2d22]/15 pointer-events-none"></div>
         </div>
 
         <div className="relative overflow-hidden bg-white border border-[#d8e3ea] rounded-2xl p-5 shadow-sm flex flex-col justify-between min-h-[140px]">
           <span className="text-xs font-bold text-[#647783]">Kepuasan pengguna</span>
           <div className="my-2">
-            <strong className="text-3xl font-black text-[#157a55]">
-              {dashboardData?.metrics?.satisfactionRate ?? 100}%
-            </strong>
+            {loading && !dashboardData ? (
+              <div className="h-9 w-24 bg-gradient-to-r from-[#f1f5f9] via-[#e2e8f0] to-[#f1f5f9] animate-pulse rounded-xl"></div>
+            ) : (
+              <strong className="text-3xl font-black text-[#157a55]">
+                {dashboardData?.metrics?.satisfactionRate ?? 100}%
+              </strong>
+            )}
           </div>
-          <div className="flex items-center gap-1.5 text-[11px] text-[#647783]">
-            <span className="w-2 h-2 rounded-full bg-[#157a55]"></span>
-            <span>Rata-rata {dashboardData?.metrics?.averageRating ?? "3.8"} dari 4</span>
-          </div>
+          {loading && !dashboardData ? (
+            <div className="h-3.5 w-36 bg-[#f1f5f9] animate-pulse rounded-md"></div>
+          ) : (
+            <div className="flex items-center gap-1.5 text-[11px] text-[#647783]">
+              <span className="w-2 h-2 rounded-full bg-[#157a55]"></span>
+              <span>Rata-rata {dashboardData?.metrics?.averageRating ?? "3.8"} dari 4</span>
+            </div>
+          )}
           <div className="absolute -bottom-6 -right-6 w-20 h-20 rounded-full bg-[#157a55]/15 pointer-events-none"></div>
         </div>
       </section>
@@ -331,59 +372,71 @@ export default function DashboardSummaryPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-2 max-h-[520px] overflow-y-auto pr-1">
-            {filteredRoomSummaries.map((room: any) => {
-              const isGreen = room.status === "COMPLETE";
-              const isPurple = room.status === "WAITING_SPV";
-              const isYellow = room.status === "PARTIAL";
-
-              let borderColor = "border-[#cbd5e1]";
-              let badgeColor = "bg-[#f1f5f9] text-[#647783]";
-              let statusText = "Belum Ada Data";
-
-              if (isGreen) {
-                borderColor = "border-[#10b981]/40 bg-[#f0fdf4]";
-                badgeColor = "bg-[#dcfce7] text-[#15803d]";
-                statusText = "Lengkap";
-              } else if (isPurple) {
-                borderColor = "border-[#8b5cf6]/40 bg-[#faf5ff]";
-                badgeColor = "bg-[#f3e8ff] text-[#7e22ce]";
-                statusText = "Menunggu SPV";
-              } else if (isYellow) {
-                borderColor = "border-[#f59e0b]/40 bg-[#fffbeb]";
-                badgeColor = "bg-[#fef3c7] text-[#b45309]";
-                statusText = "Sebagian";
-              }
-
-              return (
-                <div
-                  key={room.id}
-                  className={`p-4 rounded-2xl border ${borderColor} flex flex-col justify-between transition-all hover:shadow-md`}
-                >
-                  <div>
-                    <div className="flex items-center justify-between gap-1 mb-1.5">
-                      <span className="text-[10px] font-black uppercase text-[#647783] truncate">
-                        {room.roomTypeName}
-                      </span>
-                      <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase ${badgeColor}`}>
-                        {statusText}
-                      </span>
-                    </div>
-                    <h5 className="text-xs font-black text-[#17313d] line-clamp-1">{room.name}</h5>
+            {loading && !dashboardData ? (
+              Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="p-4 rounded-2xl border border-[#cbd5e1]/40 bg-[#f8fafc] flex flex-col justify-between h-28 animate-pulse">
+                  <div className="space-y-2">
+                    <div className="h-3 w-16 bg-[#e2e8f0] rounded"></div>
+                    <div className="h-4 w-32 bg-[#e2e8f0] rounded"></div>
                   </div>
-
-                  <div className="mt-4 pt-3 border-t border-black/5 flex items-center justify-between text-[11px]">
-                    <span className="text-[#647783] font-bold">
-                      {room.completedSlots}/{room.totalSlots} Sesi
-                    </span>
-                    {room.dirtyCount > 0 && (
-                      <span className="text-[#b91c1c] font-black flex items-center gap-1">
-                        <AlertTriangle className="w-3 h-3" /> {room.dirtyCount} Temuan
-                      </span>
-                    )}
-                  </div>
+                  <div className="h-3 w-20 bg-[#e2e8f0] rounded pt-2 border-t border-black/5"></div>
                 </div>
-              );
-            })}
+              ))
+            ) : (
+              filteredRoomSummaries.map((room: any) => {
+                const isGreen = room.status === "COMPLETE";
+                const isPurple = room.status === "WAITING_SPV";
+                const isYellow = room.status === "PARTIAL";
+
+                let borderColor = "border-[#cbd5e1]";
+                let badgeColor = "bg-[#f1f5f9] text-[#647783]";
+                let statusText = "Belum Ada Data";
+
+                if (isGreen) {
+                  borderColor = "border-[#10b981]/40 bg-[#f0fdf4]";
+                  badgeColor = "bg-[#dcfce7] text-[#15803d]";
+                  statusText = "Lengkap";
+                } else if (isPurple) {
+                  borderColor = "border-[#8b5cf6]/40 bg-[#faf5ff]";
+                  badgeColor = "bg-[#f3e8ff] text-[#7e22ce]";
+                  statusText = "Menunggu SPV";
+                } else if (isYellow) {
+                  borderColor = "border-[#f59e0b]/40 bg-[#fffbeb]";
+                  badgeColor = "bg-[#fef3c7] text-[#b45309]";
+                  statusText = "Sebagian";
+                }
+
+                return (
+                  <div
+                    key={room.id}
+                    className={`p-4 rounded-2xl border ${borderColor} flex flex-col justify-between transition-all hover:shadow-md`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between gap-1 mb-1.5">
+                        <span className="text-[10px] font-black uppercase text-[#647783] truncate">
+                          {room.roomTypeName}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase ${badgeColor}`}>
+                          {statusText}
+                        </span>
+                      </div>
+                      <h5 className="text-xs font-black text-[#17313d] line-clamp-1">{room.name}</h5>
+                    </div>
+
+                    <div className="mt-4 pt-3 border-t border-black/5 flex items-center justify-between text-[11px]">
+                      <span className="text-[#647783] font-bold">
+                        {room.completedSlots}/{room.totalSlots} Sesi
+                      </span>
+                      {room.dirtyCount > 0 && (
+                        <span className="text-[#b91c1c] font-black flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3" /> {room.dirtyCount} Temuan
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
 
@@ -430,25 +483,37 @@ export default function DashboardSummaryPage() {
           </div>
 
           <div className="space-y-3 max-h-[440px] overflow-y-auto pr-1">
-            {actionItems.slice(0, 10).map((item, idx) => (
-              <div
-                key={item.id || idx}
-                className="p-3.5 rounded-xl border border-[#ffd100]/60 bg-[#fffdf5] flex items-start gap-3"
-              >
-                <div className="w-7 h-7 rounded-lg bg-[#ffd100]/30 text-[#9a6500] flex items-center justify-center shrink-0 mt-0.5">
-                  <Clock className="w-3.5 h-3.5" />
+            {loading && !dashboardData ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="p-3.5 rounded-xl border border-gray-100 bg-gray-50 flex items-start gap-3 animate-pulse">
+                  <div className="w-7 h-7 rounded-lg bg-gray-200 shrink-0"></div>
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3.5 w-32 bg-gray-200 rounded"></div>
+                    <div className="h-2.5 w-44 bg-gray-200 rounded"></div>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h5 className="text-xs font-bold text-[#17313d] truncate">
-                    {item.roomName} - {item.slotName}
-                  </h5>
-                  <p className="text-[11px] text-[#647783] mt-0.5">{item.desc}</p>
-                  <span className="text-[10px] font-bold text-[#d97706] mt-1 block">
-                    {item.status}
-                  </span>
+              ))
+            ) : (
+              actionItems.slice(0, 10).map((item, idx) => (
+                <div
+                  key={item.id || idx}
+                  className="p-3.5 rounded-xl border border-[#ffd100]/60 bg-[#fffdf5] flex items-start gap-3"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-[#ffd100]/30 text-[#9a6500] flex items-center justify-center shrink-0 mt-0.5">
+                    <Clock className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h5 className="text-xs font-bold text-[#17313d] truncate">
+                      {item.roomName} - {item.slotName}
+                    </h5>
+                    <p className="text-[11px] text-[#647783] mt-0.5">{item.desc}</p>
+                    <span className="text-[10px] font-bold text-[#d97706] mt-1 block">
+                      {item.status}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </section>
