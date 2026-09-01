@@ -63,16 +63,32 @@ export async function GET(request: Request) {
         photos: i.photos.map((p) => p.fileUrl),
       }));
 
-    // 5. Room completion matrix for today
+    // 5. Room completion matrix for today with 4 status levels:
+    // - EMPTY (Merah): Tidak ada sesi sama sekali
+    // - PARTIAL (Kuning): Ada sesi tapi sesi petugas belum lengkap
+    // - WAITING_SPV (Ungu): Sesi petugas lengkap, belum inspeksi SPV
+    // - COMPLETE (Hijau): Semua sesi selesai (Petugas & SPV)
     const roomSummaries = rooms.map((room) => {
       const roomInsps = todayInspections.filter((i) => i.roomId === room.id);
+      const petugasSlots = room.roomType.slots.filter((s) => s.role === "PETUGAS");
+      const spvSlots = room.roomType.slots.filter((s) => s.role === "SUPERVISOR");
+
+      const petugasFinished = roomInsps.filter((i) => i.slot.role === "PETUGAS").length;
+      const spvFinished = roomInsps.filter((i) => i.slot.role === "SUPERVISOR").length;
+      const totalFinished = roomInsps.length;
       const totalSlots = room.roomType.slots.length;
-      const completedSlots = roomInsps.length;
       const hasFindings = roomInsps.some((i) => i.overallStatus === "ADA_TEMUAN");
 
-      let status = "EMPTY";
-      if (completedSlots > 0 && completedSlots >= totalSlots) status = "COMPLETE";
-      else if (completedSlots > 0) status = "PARTIAL";
+      let status = "EMPTY"; // Merah
+      if (totalFinished === 0) {
+        status = "EMPTY";
+      } else if (petugasSlots.length > 0 && petugasFinished < petugasSlots.length) {
+        status = "PARTIAL"; // Kuning
+      } else if (spvSlots.length > 0 && spvFinished < spvSlots.length) {
+        status = "WAITING_SPV"; // Ungu
+      } else {
+        status = "COMPLETE"; // Hijau
+      }
 
       return {
         id: room.id,
@@ -80,7 +96,11 @@ export async function GET(request: Request) {
         name: room.name,
         roomTypeName: room.roomType.name,
         totalSlots,
-        completedSlots,
+        completedSlots: totalFinished,
+        petugasFinished,
+        petugasTotal: petugasSlots.length,
+        spvFinished,
+        spvTotal: spvSlots.length,
         hasFindings,
         status,
       };

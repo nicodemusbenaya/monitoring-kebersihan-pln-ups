@@ -123,17 +123,24 @@ export default function PresentationPage() {
 
         {/* Right 8 Cols: Live Room Status Grid */}
         <div className="col-span-8 bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl flex flex-col">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-3">
             <h2 className="text-base font-bold text-white uppercase tracking-wider flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-pln-yellow" />
               <span>Matriks Pemenuhan Ruangan</span>
             </h2>
-            <span className="text-xs text-slate-400 font-mono">Total {data.roomSummaries?.length} Ruangan</span>
+            {/* 4 Status Legend */}
+            <div className="flex items-center gap-3 text-[10px] text-slate-400">
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500" /> Belum</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400" /> Petugas Sebagian</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-400" /> Tunggu SPV</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-400" /> Lengkap</span>
+            </div>
           </div>
 
           <div className="grid grid-cols-3 gap-3 overflow-hidden flex-1 content-start">
             {data.roomSummaries?.slice(0, 18).map((room: any) => {
               const isComplete = room.status === "COMPLETE";
+              const isWaitingSpv = room.status === "WAITING_SPV";
               const isPartial = room.status === "PARTIAL";
 
               return (
@@ -142,6 +149,8 @@ export default function PresentationPage() {
                   className={`p-3 rounded-2xl border transition-all ${
                     isComplete
                       ? "bg-emerald-950/20 border-emerald-500/40"
+                      : isWaitingSpv
+                      ? "bg-purple-950/20 border-purple-500/40"
                       : isPartial
                       ? "bg-amber-950/20 border-amber-500/40"
                       : "bg-slate-950 border-slate-800"
@@ -151,7 +160,13 @@ export default function PresentationPage() {
                     <h3 className="text-xs font-bold text-white truncate max-w-[150px]">{room.name}</h3>
                     <span
                       className={`w-2.5 h-2.5 rounded-full shrink-0 ${
-                        isComplete ? "bg-emerald-400 animate-pulse" : isPartial ? "bg-amber-400" : "bg-red-500"
+                        isComplete
+                          ? "bg-emerald-400 animate-pulse"
+                          : isWaitingSpv
+                          ? "bg-purple-400 animate-pulse"
+                          : isPartial
+                          ? "bg-amber-400"
+                          : "bg-red-500"
                       }`}
                     />
                   </div>

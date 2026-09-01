@@ -45,7 +45,7 @@ export default function AdminPage() {
   // Room modal
   const [showRoomModal, setShowRoomModal] = useState(false);
   const [editingRoom, setEditingRoom] = useState<any>(null);
-  const [roomForm, setRoomForm] = useState({ code: "", name: "", roomTypeId: "" });
+  const [roomForm, setRoomForm] = useState({ code: "", name: "", roomTypeId: "", qrToken: "" });
 
   // User modal
   const [showUserModal, setShowUserModal] = useState(false);
@@ -326,33 +326,70 @@ export default function AdminPage() {
                     </button>
                   </div>
 
+                  {/* 4 Status Legend */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4 p-3 rounded-2xl bg-slate-950/60 border border-slate-800 text-[11px]">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0" />
+                      <span className="text-slate-400">Merah: Belum ada sesi</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-amber-400 shrink-0" />
+                      <span className="text-slate-400">Kuning: Sesi petugas sebagian</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-purple-400 shrink-0" />
+                      <span className="text-slate-400">Ungu: Petugas selesai, tunggu SPV</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shrink-0" />
+                      <span className="text-slate-400">Hijau: Selesai lengkap (Petugas & SPV)</span>
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {dashboardData.roomSummaries.map((r: any) => {
                       const isComplete = r.status === "COMPLETE";
+                      const isWaitingSpv = r.status === "WAITING_SPV";
                       const isPartial = r.status === "PARTIAL";
 
                       return (
                         <div
                           key={r.id}
-                          className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between"
+                          className={`p-3.5 rounded-2xl bg-slate-950 border flex items-center justify-between transition-all ${
+                            isComplete
+                              ? "border-emerald-500/30 bg-emerald-950/10"
+                              : isWaitingSpv
+                              ? "border-purple-500/40 bg-purple-950/20"
+                              : isPartial
+                              ? "border-amber-500/30 bg-amber-950/10"
+                              : "border-slate-800"
+                          }`}
                         >
                           <div>
                             <span className="text-[10px] text-slate-500 uppercase font-bold">{r.roomTypeName}</span>
                             <h4 className="text-xs font-bold text-white leading-tight">{r.name}</h4>
                             <span className="text-[11px] text-slate-400 mt-0.5 block font-mono">
-                              Slot: {r.completedSlots}/{r.totalSlots}
+                              Slot: {r.completedSlots}/{r.totalSlots} (Petugas: {r.petugasFinished}/{r.petugasTotal}, SPV: {r.spvFinished}/{r.spvTotal})
                             </span>
                           </div>
                           <span
-                            className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${
+                            className={`px-2.5 py-1 rounded-full text-[10px] font-bold shrink-0 ${
                               isComplete
-                                ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                                ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                                : isWaitingSpv
+                                ? "bg-purple-500/20 text-purple-300 border border-purple-500/40"
                                 : isPartial
-                                ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
-                                : "bg-red-500/10 text-red-400 border border-red-500/20"
+                                ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                                : "bg-red-500/20 text-red-400 border border-red-500/30"
                             }`}
                           >
-                            {isComplete ? "Selesai" : isPartial ? "Sebagian" : "Belum"}
+                            {isComplete
+                              ? "Lengkap"
+                              : isWaitingSpv
+                              ? "Tunggu SPV"
+                              : isPartial
+                              ? "Sebagian"
+                              : "Belum Ada"}
                           </span>
                         </div>
                       );
@@ -505,7 +542,7 @@ export default function AdminPage() {
                     <button
                       onClick={() => {
                         setEditingRoom(null);
-                        setRoomForm({ code: "", name: "", roomTypeId: roomTypes[0]?.id || "" });
+                        setRoomForm({ code: "", name: "", roomTypeId: roomTypes[0]?.id || "", qrToken: "" });
                         setShowRoomModal(true);
                       }}
                       className="py-2.5 px-4 bg-pln-blue hover:bg-pln-blue-dark text-white rounded-xl text-xs font-bold flex items-center gap-1.5"

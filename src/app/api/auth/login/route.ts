@@ -49,6 +49,10 @@ export async function POST(request: Request) {
       message: "Login berhasil.",
     });
 
+    // 10 tahun (Sesi Permanen di HP & Browser)
+    const tenYearsInSeconds = 3650 * 24 * 60 * 60;
+    const expiresDate = new Date(Date.now() + tenYearsInSeconds * 1000);
+
     response.cookies.set({
       name: "pln_ups_token",
       value: token,
@@ -56,7 +60,8 @@ export async function POST(request: Request) {
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      maxAge: 30 * 24 * 60 * 60, // 30 days
+      maxAge: tenYearsInSeconds,
+      expires: expiresDate,
     });
 
     // Log audit
@@ -66,7 +71,7 @@ export async function POST(request: Request) {
         action: "LOGIN",
         entityType: "USER",
         entityId: user.id,
-        detail: JSON.stringify({ username: user.username, role: user.role }),
+        detail: JSON.stringify({ role: user.role, permanentSession: true }),
       },
     });
 
@@ -74,7 +79,7 @@ export async function POST(request: Request) {
   } catch (error: any) {
     console.error("Login error:", error);
     return NextResponse.json(
-      { ok: false, message: "Terjadi kesalahan server saat login." },
+      { ok: false, message: error.message || "Terjadi kesalahan pada server saat login." },
       { status: 500 }
     );
   }

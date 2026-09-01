@@ -1,7 +1,6 @@
 import bcrypt from "bcryptjs";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
-import { prisma } from "./prisma";
 
 const JWT_SECRET_STRING =
   process.env.JWT_SECRET || "pln-ups-monitoring-super-secret-key-2026-min-32-chars-key";
@@ -21,11 +20,9 @@ export async function hashPassword(password: string): Promise<string> {
 }
 
 export async function verifyPassword(password: string, hash: string): Promise<boolean> {
-  // Support legacy plain SHA hashes or bcrypt
   if (hash.startsWith("$2a$") || hash.startsWith("$2b$") || hash.startsWith("$2y$")) {
     return bcrypt.compare(password, hash);
   }
-  // Fallback for simple initial match if needed
   return password === hash;
 }
 
@@ -39,7 +36,7 @@ export async function signToken(user: SessionUser): Promise<string> {
   })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("30d")
+    .setExpirationTime("3650d") // 10 tahun (Sesi Permanen)
     .sign(JWT_SECRET);
 }
 
