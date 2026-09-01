@@ -32,7 +32,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, message: "Kode, nama, dan tipe ruangan wajib diisi." }, { status: 400 });
     }
 
-    const token = qrToken || `ROOM-${code.toUpperCase().replace(/\s+/g, "_")}-${Date.now().toString(36).toUpperCase()}`;
+    const token = qrToken ? qrToken.trim() : `ROOM-${code.toUpperCase().replace(/\s+/g, "_")}-${Date.now().toString(36).toUpperCase()}`;
 
     const count = await prisma.room.count();
 
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
         action: "CREATE_ROOM",
         entityType: "ROOM",
         entityId: newRoom.id,
-        detail: JSON.stringify({ code: newRoom.code, name: newRoom.name }),
+        detail: JSON.stringify({ code: newRoom.code, name: newRoom.name, qrToken: token }),
       },
     });
 
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const user = await requireAuth(["ADMIN"]);
-    const { id, name, roomTypeId, active, sortOrder } = await request.json();
+    const { id, name, roomTypeId, active, sortOrder, qrToken } = await request.json();
 
     if (!id) {
       return NextResponse.json({ ok: false, message: "ID ruangan diperlukan." }, { status: 400 });
@@ -79,6 +79,7 @@ export async function PUT(request: Request) {
         roomTypeId: roomTypeId || undefined,
         active: typeof active === "boolean" ? active : undefined,
         sortOrder: typeof sortOrder === "number" ? sortOrder : undefined,
+        qrToken: qrToken ? String(qrToken).trim() : undefined,
       },
     });
 

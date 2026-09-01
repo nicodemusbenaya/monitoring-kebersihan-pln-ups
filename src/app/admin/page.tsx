@@ -541,7 +541,7 @@ export default function AdminPage() {
                               <button
                                 onClick={() => {
                                   setEditingRoom(room);
-                                  setRoomForm({ code: room.code, name: room.name, roomTypeId: room.roomTypeId });
+                                  setRoomForm({ code: room.code, name: room.name, roomTypeId: room.roomTypeId, qrToken: room.qrToken || "" });
                                   setShowRoomModal(true);
                                 }}
                                 className="p-1.5 hover:bg-slate-700 text-slate-300 rounded-lg"
@@ -715,6 +715,17 @@ export default function AdminPage() {
                     </option>
                   ))}
                 </select>
+              </div>
+              <div>
+                <label className="block text-slate-400 mb-1 font-semibold">Token QR Code (Opsional)</label>
+                <input
+                  type="text"
+                  value={roomForm.qrToken || ""}
+                  onChange={(e) => setRoomForm({ ...roomForm, qrToken: e.target.value })}
+                  placeholder="Bisa gunakan token QR lama dari Spreadsheet (cth: ROOM-UPS-01)"
+                  className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white font-mono"
+                />
+                <p className="text-[10px] text-slate-500 mt-1">Jika ingin memakai stiker QR yang sudah tercetak di dinding, samakan token ini.</p>
               </div>
               <div className="flex gap-2 pt-2">
                 <button
