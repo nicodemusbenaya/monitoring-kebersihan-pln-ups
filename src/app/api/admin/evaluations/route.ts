@@ -25,7 +25,7 @@ export async function GET(request: Request) {
       include: {
         room: true,
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: { submittedAt: "desc" },
     });
 
     const totalEvaluations = evaluations.length;
@@ -73,8 +73,8 @@ export async function GET(request: Request) {
     evaluations.forEach((ev) => {
       let aspectList: string[] = [];
       try {
-        if (ev.aspectsJson) {
-          const parsed = JSON.parse(ev.aspectsJson);
+        if (ev.aspectCodes) {
+          const parsed = JSON.parse(ev.aspectCodes);
           if (Array.isArray(parsed)) aspectList = parsed;
         }
       } catch (e) {}
@@ -98,8 +98,8 @@ export async function GET(request: Request) {
       evaluations.map(async (ev) => {
         let aspectList: string[] = [];
         try {
-          if (ev.aspectsJson) {
-            const parsed = JSON.parse(ev.aspectsJson);
+          if (ev.aspectCodes) {
+            const parsed = JSON.parse(ev.aspectCodes);
             if (Array.isArray(parsed)) aspectList = parsed;
           }
         } catch (e) {}
@@ -107,11 +107,11 @@ export async function GET(request: Request) {
         const lastInsp = await prisma.inspection.findFirst({
           where: {
             roomId: ev.roomId,
-            createdAt: { lte: ev.createdAt },
+            submittedAt: { lte: ev.submittedAt },
             state: "SUBMITTED",
           },
           include: { user: true },
-          orderBy: { createdAt: "desc" },
+          orderBy: { submittedAt: "desc" },
         });
 
         const formattedTime = new Intl.DateTimeFormat("id-ID", {
@@ -120,17 +120,17 @@ export async function GET(request: Request) {
           year: "numeric",
           hour: "2-digit",
           minute: "2-digit",
-        }).format(new Date(ev.createdAt)) + " WIB";
+        }).format(new Date(ev.submittedAt)) + " WIB";
 
         return {
           id: ev.id,
-          createdAt: ev.createdAt,
+          createdAt: ev.submittedAt,
           timeFormatted: formattedTime,
-          roomName: ev.room.name,
+          roomName: ev.room?.name || "Ruangan",
           rating: ev.rating,
           aspects: aspectList,
           comment: ev.comment || "—",
-          lastOfficer: lastInsp?.user?.fullName || "Sulaiman",
+          lastOfficer: lastInsp?.user?.fullName || "Petugas Kebersihan",
         };
       })
     );
