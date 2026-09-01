@@ -1,19 +1,22 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { todayKey, monthKey } from "@/lib/utils";
+import { todayKey, monthKey, formatDisplayDate } from "@/lib/utils";
 
 export async function GET(request: Request) {
   try {
     await requireAuth(["ADMIN"]);
     const { searchParams } = new URL(request.url);
     const selectedMonth = searchParams.get("month") || monthKey();
+    const selectedRoomId = searchParams.get("roomId");
     const today = todayKey();
+
+    const roomWhere = selectedRoomId && selectedRoomId !== "ALL" ? { id: selectedRoomId, active: true } : { active: true };
 
     // 1. Total rooms and active rooms
     const totalRooms = await prisma.room.count({ where: { active: true } });
     const rooms = await prisma.room.findMany({
-      where: { active: true },
+      where: roomWhere,
       include: {
         roomType: {
           include: {
@@ -26,8 +29,13 @@ export async function GET(request: Request) {
 
     // 2. Today's submitted inspections
     const todayInspections = await prisma.inspection.findMany({
-      where: { dateKey: today, state: "SUBMITTED" },
+      where: {
+        dateKey: today,
+        state: "SUBMITTED",
+        ...(selectedRoomId && selectedRoomId !== "ALL" ? { roomId: selectedRoomId } : {}),
+      },
       include: { room: true, slot: true, user: true, photos: true },
+      orderBy: { submittedAt: "desc" },
     });
 
     const todayCleanCount = todayInspections.filter((i) => i.overallStatus === "BERSIH").length;
@@ -35,7 +43,10 @@ export async function GET(request: Request) {
 
     // 3. Monthly evaluations
     const monthlyEvaluations = await prisma.evaluation.findMany({
-      where: { monthKey: selectedMonth },
+      where: {
+        monthKey: selectedMonth,
+        ...(selectedRoomId && selectedRoomId !== "ALL" ? { roomId: selectedRoomId } : {}),
+      },
     });
 
     const totalEvals = monthlyEvaluations.length;
@@ -50,7 +61,60 @@ export async function GET(request: Request) {
           )
         : 0;
 
-    // 4. Attention items (inspections with findings today)
+    // Rating distribution
+    const ratingDist: Record<number, number> = { 4: 0, 3: 0, 2: 0, 1: 0 };
+    monthlyEvaluations.forEach((ev) => {
+      if (ratingDist[ev.rating] !== undefined) {
+        ratingDist[ev.rating]++;
+      }
+    });
+
+    // 4. Monthly Inspections & Daily Trend
+    const monthlyInspections = await prisma.inspection.findMany({
+      where: {
+        dateKey: { startsWith: selectedMonth },
+        state: "SUBMITTED",
+        ...(selectedRoomId && selectedRoomId !== "ALL" ? { roomId: selectedRoomId } : {}),
+      },
+      select: {
+        dateKey: true,
+        overallStatus: true,
+        dirtyCount: true,
+      },
+    });
+
+    // Days in selected month (e.g. 30 or 31)
+    const [yearStr, monthStr] = selectedMonth.split("-");
+    const yearNum = parseInt(yearStr, 10) || new Date().getFullYear();
+    const monthNum = parseInt(monthStr, 10) || new Date().getMonth() + 1;
+    const daysInMonth = new Date(yearNum, monthNum, 0).getDate();
+
+    const dayMap: Record<number, { total: number; clean: number; finding: number }> = {};
+    for (let d = 1; d <= daysInMonth; d++) {
+      dayMap[d] = { total: 0, clean: 0, finding: 0 };
+    }
+
+    monthlyInspections.forEach((insp) => {
+      const dayPart = parseInt(insp.dateKey.slice(8, 10), 10);
+      if (dayMap[dayPart]) {
+        dayMap[dayPart].total++;
+        if (insp.overallStatus === "ADA_TEMUAN") {
+          dayMap[dayPart].finding++;
+        } else {
+          dayMap[dayPart].clean++;
+        }
+      }
+    });
+
+    const dailyTrend = Object.entries(dayMap).map(([day, val]) => ({
+      day: parseInt(day, 10),
+      dateKey: `${selectedMonth}-${String(day).padStart(2, "0")}`,
+      total: val.total,
+      clean: val.clean,
+      finding: val.finding,
+    }));
+
+    // 5. Attention items (inspections with findings today)
     const attentionItems = todayInspections
       .filter((i) => i.overallStatus === "ADA_TEMUAN")
       .map((i) => ({
@@ -67,13 +131,43 @@ export async function GET(request: Request) {
         photos: i.photos.map((p) => p.fileUrl),
       }));
 
-    // 5. Total expected sessions across all rooms
+    // 6. Recent Activity Feed (Latest 20 inspections in system)
+    const recentInspections = await prisma.inspection.findMany({
+      take: 20,
+      orderBy: { submittedAt: "desc" },
+      include: {
+        room: { select: { name: true, code: true } },
+        slot: { select: { name: true, code: true, role: true } },
+        user: { select: { fullName: true, username: true, role: true } },
+        photos: { select: { fileName: true, fileUrl: true } },
+      },
+    });
+
+    const recentActivities = recentInspections.map((i) => ({
+      id: i.id,
+      roomName: i.room.name,
+      roomCode: i.room.code,
+      slotName: i.slot.name,
+      slotCode: i.slot.code,
+      slotRole: i.slot.role,
+      officerName: i.user.fullName,
+      officerRole: i.user.role,
+      submittedAt: i.submittedAt,
+      displayTime: formatDisplayDate(i.submittedAt),
+      dateKey: i.dateKey,
+      overallStatus: i.overallStatus,
+      dirtyCount: i.dirtyCount,
+      evidenceName: i.evidenceName,
+      photos: i.photos.map((p) => p.fileUrl),
+    }));
+
+    // 7. Total expected sessions across all active rooms
     let totalExpectedSessions = 0;
     rooms.forEach((r) => {
       totalExpectedSessions += r.roomType.slots.length;
     });
 
-    // 6. Room completion matrix for today with 4 status levels
+    // 8. Room completion matrix for today
     let greenCount = 0;
     let purpleCount = 0;
     let yellowCount = 0;
@@ -91,18 +185,18 @@ export async function GET(request: Request) {
       const dirtyCount = roomInsps.reduce((acc, curr) => acc + curr.dirtyCount, 0);
       const hasFindings = roomInsps.some((i) => i.overallStatus === "ADA_TEMUAN");
 
-      let status = "EMPTY"; // Merah
+      let status = "EMPTY";
       if (totalFinished === 0) {
         status = "EMPTY";
         redCount++;
       } else if (petugasSlots.length > 0 && petugasFinished < petugasSlots.length) {
-        status = "PARTIAL"; // Kuning
+        status = "PARTIAL";
         yellowCount++;
       } else if (spvSlots.length > 0 && spvFinished < spvSlots.length) {
-        status = "WAITING_SPV"; // Ungu
+        status = "WAITING_SPV";
         purpleCount++;
       } else {
-        status = "COMPLETE"; // Hijau
+        status = "COMPLETE";
         greenCount++;
       }
 
@@ -157,16 +251,23 @@ export async function GET(request: Request) {
           inspectionsTodayCount: todayInspections.length,
           cleanCount: todayCleanCount,
           findingCount: todayFindingCount,
+          monthlyInspectionsCount: monthlyInspections.length,
+          monthlyCleanCount: monthlyInspections.filter((i) => i.overallStatus === "BERSIH").length,
+          monthlyFindingCount: monthlyInspections.filter((i) => i.overallStatus === "ADA_TEMUAN").length,
           totalEvaluations: totalEvals,
           averageRating: avgRating,
           satisfactionRate,
         },
+        dailyTrend,
+        ratingDist,
+        recentActivities,
         findings: attentionItems,
         attentionItems,
         roomSummaries,
       },
     });
   } catch (error: any) {
+    console.error("Dashboard API error:", error);
     return NextResponse.json({ ok: false, message: error.message || "Gagal memuat dashboard." }, { status: 500 });
   }
 }

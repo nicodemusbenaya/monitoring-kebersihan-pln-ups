@@ -6,6 +6,13 @@ import {
   Clock,
   CheckCircle2,
   AlertTriangle,
+  Calendar,
+  User,
+  Image as ImageIcon,
+  X,
+  ExternalLink,
+  ChevronRight,
+  Sparkles,
 } from "lucide-react";
 
 export default function DashboardSummaryPage() {
@@ -19,17 +26,18 @@ export default function DashboardSummaryPage() {
   const [statusRoomFilter, setStatusRoomFilter] = useState<"ALL" | "FINDINGS" | "PARTIAL" | "COMPLETE">("ALL");
   const [roomSearchQuery, setRoomSearchQuery] = useState("");
   const [actionItemFilter, setActionItemFilter] = useState<"ALL" | "FINDINGS" | "PENDING">("ALL");
+  const [selectedPhotoPreview, setSelectedPhotoPreview] = useState<string | null>(null);
 
   const loadData = async () => {
     setLoading(true);
     try {
       const [dashRes, roomsRes] = await Promise.all([
-        fetch(`/api/admin/dashboard?month=${selectedPeriod}`).then((r) => r.json()),
+        fetch(`/api/admin/dashboard?month=${selectedPeriod}${selectedRoomFilter !== "ALL" ? `&roomId=${selectedRoomFilter}` : ""}`).then((r) => r.json()),
         fetch("/api/admin/rooms").then((r) => r.json()),
       ]);
 
       if (dashRes.ok) setDashboardData(dashRes.data);
-      if (roomsRes.ok) setRoomsData(roomsRes.data.rooms);
+      if (roomsRes.ok) setRoomsData(roomsRes.data.rooms || []);
     } catch (err) {
       console.error("Gagal memuat ringkasan:", err);
     } finally {
@@ -39,7 +47,7 @@ export default function DashboardSummaryPage() {
 
   useEffect(() => {
     loadData();
-  }, [selectedPeriod]);
+  }, [selectedPeriod, selectedRoomFilter]);
 
   // Formatted date
   const todayFormatted = useMemo(() => {
@@ -126,8 +134,15 @@ export default function DashboardSummaryPage() {
     return list;
   }, [dashboardData, actionItemFilter]);
 
+  // Max daily trend value for chart scaling
+  const maxTrendValue = useMemo(() => {
+    if (!dashboardData?.dailyTrend || dashboardData.dailyTrend.length === 0) return 20;
+    const maxVal = Math.max(...dashboardData.dailyTrend.map((d: any) => d.total));
+    return maxVal > 0 ? Math.ceil(maxVal * 1.15) : 20;
+  }, [dashboardData]);
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-12">
       {/* 1. Large Hero Banner */}
       <section className="relative overflow-hidden bg-gradient-to-r from-[#062c3e] via-[#09415b] to-[#0d5678] text-white rounded-3xl p-8 shadow-xl">
         <div className="absolute right-0 top-0 bottom-0 w-1/2 opacity-20 pointer-events-none bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-[#ffd100] via-transparent to-transparent"></div>
@@ -252,232 +267,144 @@ export default function DashboardSummaryPage() {
         </div>
 
         <div className="relative overflow-hidden bg-white border border-[#d8e3ea] rounded-2xl p-5 shadow-sm flex flex-col justify-between min-h-[140px]">
-          <span className="text-xs font-bold text-[#647783]">Jadwal belum selesai</span>
+          <span className="text-xs font-bold text-[#647783]">Kepuasan pengguna</span>
           <div className="my-2">
-            <strong className="text-3xl font-black text-[#d97706]">
-              {(dashboardData?.summary?.totalExpectedSessions ?? 87) - (dashboardData?.summary?.completedSessions ?? 0)}
+            <strong className="text-3xl font-black text-[#157a55]">
+              {dashboardData?.metrics?.satisfactionRate ?? 100}%
             </strong>
           </div>
           <div className="flex items-center gap-1.5 text-[11px] text-[#647783]">
-            <span className="w-2 h-2 rounded-full bg-[#d97706]"></span>
-            <span>
-              {(roomsData.length || 24) - (dashboardData?.summary?.greenCount ?? 0)} ruangan belum lengkap
-            </span>
+            <span className="w-2 h-2 rounded-full bg-[#157a55]"></span>
+            <span>Rata-rata {dashboardData?.metrics?.averageRating ?? "3.8"} dari 4</span>
           </div>
-          <div className="absolute -bottom-6 -right-6 w-20 h-20 rounded-full bg-[#d97706]/15 pointer-events-none"></div>
+          <div className="absolute -bottom-6 -right-6 w-20 h-20 rounded-full bg-[#157a55]/15 pointer-events-none"></div>
         </div>
       </section>
 
-      {/* 4. Two Column Operational Status & Action Items */}
-      <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left Column: Status Ruangan (70%) */}
-        <div className="lg:col-span-8 bg-white border border-[#d8e3ea] rounded-2xl p-6 shadow-sm space-y-5">
-          <div className="flex items-center justify-between">
+      {/* 4. Ruangan Hari Ini & Item Perhatian Grid */}
+      <section className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left: Matriks Ruangan */}
+        <div className="lg:col-span-8 bg-white border border-[#d8e3ea] rounded-2xl p-6 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#f1f5f9]">
             <div>
               <span className="text-[10px] font-black uppercase tracking-widest text-[#718c99] block">
-                CAKUPAN HARI INI
+                STATUS HARIAN
               </span>
-              <h3 className="text-xl font-black text-[#17313d]">Status ruangan</h3>
+              <h4 className="text-lg font-black text-[#17313d]">Ruangan hari ini</h4>
               <p className="text-xs text-[#647783] mt-0.5">
-                Diurutkan dari ruangan yang paling membutuhkan perhatian.
+                Kondisi tiap ruangan berdasarkan seluruh slot yang dijadwalkan hari ini.
               </p>
             </div>
-            <span className="w-8 h-8 rounded-full bg-[#f1f5f9] text-[#17313d] font-bold text-xs flex items-center justify-center">
-              {filteredRoomSummaries.length}
-            </span>
-          </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
-            <div className="flex flex-wrap gap-1.5">
-              <button
-                type="button"
-                onClick={() => setStatusRoomFilter("ALL")}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  statusRoomFilter === "ALL"
-                    ? "bg-[#0076a8] text-white shadow-sm"
-                    : "bg-[#f1f5f9] text-[#475569] hover:bg-[#e2e8f0]"
-                }`}
-              >
-                Semua
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatusRoomFilter("FINDINGS")}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  statusRoomFilter === "FINDINGS"
-                    ? "bg-[#0076a8] text-white shadow-sm"
-                    : "bg-[#f1f5f9] text-[#475569] hover:bg-[#e2e8f0]"
-                }`}
-              >
-                Ada temuan
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatusRoomFilter("PARTIAL")}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  statusRoomFilter === "PARTIAL"
-                    ? "bg-[#0076a8] text-white shadow-sm"
-                    : "bg-[#f1f5f9] text-[#475569] hover:bg-[#e2e8f0]"
-                }`}
-              >
-                Belum lengkap
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatusRoomFilter("COMPLETE")}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  statusRoomFilter === "COMPLETE"
-                    ? "bg-[#0076a8] text-white shadow-sm"
-                    : "bg-[#f1f5f9] text-[#475569] hover:bg-[#e2e8f0]"
-                }`}
-              >
-                Selesai
-              </button>
-            </div>
-
-            <div className="relative w-full sm:w-56">
-              <Search className="w-3.5 h-3.5 text-[#94a3b8] absolute left-3 top-1/2 -translate-y-1/2" />
+            <div className="relative w-full sm:w-64">
+              <Search className="w-4 h-4 text-[#94a3b8] absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
+                placeholder="Cari ruangan..."
                 value={roomSearchQuery}
                 onChange={(e) => setRoomSearchQuery(e.target.value)}
-                placeholder="Cari ruangan..."
-                className="w-full pl-8 pr-3 py-1.5 bg-[#f8fafc] border border-[#cbd5e1] rounded-xl text-xs focus:outline-none focus:border-[#0076a8]"
+                className="w-full pl-9 pr-3 py-2 bg-[#f8fafc] border border-[#d8e3ea] rounded-xl text-xs font-bold text-[#17313d] placeholder:text-[#94a3b8] focus:outline-none focus:border-[#0076a8]"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[640px] overflow-y-auto pr-1">
-            {filteredRoomSummaries.map((roomItem: any) => {
-              const isComplete = roomItem.status === "COMPLETE";
-              const isWaitingSpv = roomItem.status === "WAITING_SPV";
-              const isFindings = roomItem.hasFindings || roomItem.dirtyCount > 0;
-              const completedCount = roomItem.completedSlots || 0;
-              const totalSlots = roomItem.totalSlots || 3;
-              const progressPct = totalSlots > 0 ? (completedCount / totalSlots) * 100 : 0;
+          <div className="flex flex-wrap items-center gap-2">
+            {[
+              { id: "ALL", label: `Semua (${dashboardData?.roomSummaries?.length || 0})` },
+              { id: "FINDINGS", label: `Temuan (${dashboardData?.summary?.findingCount || 0})` },
+              { id: "PARTIAL", label: `Belum lengkap (${(dashboardData?.summary?.yellowCount || 0) + (dashboardData?.summary?.redCount || 0)})` },
+              { id: "COMPLETE", label: `Lengkap (${dashboardData?.summary?.greenCount || 0})` },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setStatusRoomFilter(tab.id as any)}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  statusRoomFilter === tab.id
+                    ? "bg-[#072d3f] text-white shadow-sm"
+                    : "bg-[#f8fafc] text-[#647783] hover:bg-[#f1f5f9]"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-2 max-h-[520px] overflow-y-auto pr-1">
+            {filteredRoomSummaries.map((room: any) => {
+              const isGreen = room.status === "COMPLETE";
+              const isPurple = room.status === "WAITING_SPV";
+              const isYellow = room.status === "PARTIAL";
+
+              let borderColor = "border-[#cbd5e1]";
+              let badgeColor = "bg-[#f1f5f9] text-[#647783]";
+              let statusText = "Belum Ada Data";
+
+              if (isGreen) {
+                borderColor = "border-[#10b981]/40 bg-[#f0fdf4]";
+                badgeColor = "bg-[#dcfce7] text-[#15803d]";
+                statusText = "Lengkap";
+              } else if (isPurple) {
+                borderColor = "border-[#8b5cf6]/40 bg-[#faf5ff]";
+                badgeColor = "bg-[#f3e8ff] text-[#7e22ce]";
+                statusText = "Menunggu SPV";
+              } else if (isYellow) {
+                borderColor = "border-[#f59e0b]/40 bg-[#fffbeb]";
+                badgeColor = "bg-[#fef3c7] text-[#b45309]";
+                statusText = "Sebagian";
+              }
 
               return (
                 <div
-                  key={roomItem.id}
-                  className="border border-[#d8e3ea] rounded-2xl p-4 bg-white hover:shadow-md transition-all space-y-3"
+                  key={room.id}
+                  className={`p-4 rounded-2xl border ${borderColor} flex flex-col justify-between transition-all hover:shadow-md`}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <h4 className="text-sm font-bold text-[#17313d]">{roomItem.name}</h4>
-                      <span className="text-[10px] font-bold text-[#718c99] uppercase block">
-                        {roomItem.code}
+                  <div>
+                    <div className="flex items-center justify-between gap-1 mb-1.5">
+                      <span className="text-[10px] font-black uppercase text-[#647783] truncate">
+                        {room.roomTypeName}
+                      </span>
+                      <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase ${badgeColor}`}>
+                        {statusText}
                       </span>
                     </div>
+                    <h5 className="text-xs font-black text-[#17313d] line-clamp-1">{room.name}</h5>
+                  </div>
 
-                    {isComplete ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#e7f6ef] text-[#157a55]">
-                        <CheckCircle2 className="w-3 h-3" /> Selesai
-                      </span>
-                    ) : isWaitingSpv ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#f3e8ff] text-[#7e22ce]">
-                        ◈ Menunggu SPV
-                      </span>
-                    ) : isFindings ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#fff0ee] text-[#bd2d22]">
-                        <AlertTriangle className="w-3 h-3" /> Ada temuan
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#fff7d6] text-[#9a6500]">
-                        <Clock className="w-3 h-3" /> Belum lengkap
+                  <div className="mt-4 pt-3 border-t border-black/5 flex items-center justify-between text-[11px]">
+                    <span className="text-[#647783] font-bold">
+                      {room.completedSlots}/{room.totalSlots} Sesi
+                    </span>
+                    {room.dirtyCount > 0 && (
+                      <span className="text-[#b91c1c] font-black flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3" /> {room.dirtyCount} Temuan
                       </span>
                     )}
-                  </div>
-
-                  <div>
-                    <div className="flex justify-end text-[10px] font-bold text-[#647783] mb-1">
-                      <span>{completedCount}/{totalSlots}</span>
-                    </div>
-                    <div className="w-full h-1.5 bg-[#e2e8f0] rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all ${
-                          isComplete ? "bg-[#157a55]" : isWaitingSpv ? "bg-[#7e22ce]" : "bg-[#0076a8]"
-                        }`}
-                        style={{ width: `${progressPct}%` }}
-                      ></div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-[#f1f5f9] text-[10px]">
-                    <div>
-                      <span className="text-[#94a3b8] font-bold block">PAGI</span>
-                      <span className="font-semibold text-[#647783] flex items-center gap-1 mt-0.5">
-                        {roomItem.petugasFinished > 0 ? (
-                          <span className="text-[#157a55] font-bold">✓ Selesai</span>
-                        ) : (
-                          <span className="text-[#9a6500]">⏰ Menunggu</span>
-                        )}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-[#94a3b8] font-bold block">SORE</span>
-                      <span className="font-semibold text-[#647783] flex items-center gap-1 mt-0.5">
-                        {roomItem.petugasFinished >= 2 ? (
-                          <span className="text-[#157a55] font-bold">✓ Selesai</span>
-                        ) : (
-                          <span className="text-[#9a6500]">⏰ Menunggu</span>
-                        )}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-[#94a3b8] font-bold block">INSPEKSI</span>
-                      <span className="font-semibold text-[#647783] flex items-center gap-1 mt-0.5">
-                        {roomItem.spvFinished > 0 ? (
-                          <span className="text-[#157a55] font-bold">✓ Selesai</span>
-                        ) : (
-                          <span className="text-[#9a6500]">⏰ Menunggu</span>
-                        )}
-                      </span>
-                    </div>
                   </div>
                 </div>
               );
             })}
           </div>
-
-          <div className="pt-3 border-t border-[#f1f5f9] flex flex-wrap gap-4 text-[11px] font-bold text-[#647783]">
-            <span className="flex items-center gap-1 text-[#bd2d22]">
-              <AlertTriangle className="w-3.5 h-3.5" /> Ada temuan
-            </span>
-            <span className="flex items-center gap-1 text-[#9a6500]">
-              <Clock className="w-3.5 h-3.5" /> Belum lengkap
-            </span>
-            <span className="flex items-center gap-1 text-[#157a55]">
-              <CheckCircle2 className="w-3.5 h-3.5" /> Selesai
-            </span>
-            <span className="flex items-center gap-1 text-[#94a3b8]">
-              ⊘ Tidak dijadwalkan
-            </span>
-          </div>
         </div>
 
-        {/* Right Column: Tindak Lanjut / Perlu Perhatian (30%) */}
-        <div className="lg:col-span-4 bg-white border border-[#d8e3ea] rounded-2xl p-6 shadow-sm space-y-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="text-[10px] font-black uppercase tracking-widest text-[#bd2d22] block">
-                TINDAK LANJUT
-              </span>
-              <h3 className="text-xl font-black text-[#17313d]">Perlu perhatian</h3>
-              <p className="text-xs text-[#647783] mt-0.5">
-                Temuan dan jadwal yang belum selesai hari ini.
-              </p>
-            </div>
-            <span className="w-8 h-8 rounded-full bg-[#fff0ee] text-[#bd2d22] font-bold text-xs flex items-center justify-center">
-              {actionItems.length}
+        {/* Right: Item Perhatian */}
+        <div className="lg:col-span-4 bg-white border border-[#d8e3ea] rounded-2xl p-6 shadow-sm flex flex-col justify-between space-y-4">
+          <div>
+            <span className="text-[10px] font-black uppercase tracking-widest text-[#718c99] block">
+              TINDAK LANJUT
             </span>
+            <h4 className="text-lg font-black text-[#17313d]">Item perhatian</h4>
+            <p className="text-xs text-[#647783] mt-0.5">
+              Temuan dan jadwal yang perlu tindakan lebih lanjut.
+            </p>
           </div>
 
-          <div className="flex gap-1.5 p-1 bg-[#f1f5f9] rounded-xl text-xs font-bold">
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => setActionItemFilter("ALL")}
-              className={`flex-1 py-1.5 rounded-lg transition-all ${
-                actionItemFilter === "ALL" ? "bg-[#0076a8] text-white shadow-sm" : "text-[#647783]"
+              className={`px-3 py-1 rounded-lg text-xs font-bold ${
+                actionItemFilter === "ALL" ? "bg-[#072d3f] text-white" : "bg-[#f1f5f9] text-[#647783]"
               }`}
             >
               Semua {actionItems.length}
@@ -485,8 +412,8 @@ export default function DashboardSummaryPage() {
             <button
               type="button"
               onClick={() => setActionItemFilter("FINDINGS")}
-              className={`flex-1 py-1.5 rounded-lg transition-all ${
-                actionItemFilter === "FINDINGS" ? "bg-[#0076a8] text-white shadow-sm" : "text-[#647783]"
+              className={`px-3 py-1 rounded-lg text-xs font-bold ${
+                actionItemFilter === "FINDINGS" ? "bg-[#072d3f] text-white" : "bg-[#f1f5f9] text-[#647783]"
               }`}
             >
               Temuan {dashboardData?.summary?.findingCount ?? 0}
@@ -494,15 +421,15 @@ export default function DashboardSummaryPage() {
             <button
               type="button"
               onClick={() => setActionItemFilter("PENDING")}
-              className={`flex-1 py-1.5 rounded-lg transition-all ${
-                actionItemFilter === "PENDING" ? "bg-[#0076a8] text-white shadow-sm" : "text-[#647783]"
+              className={`px-3 py-1 rounded-lg text-xs font-bold ${
+                actionItemFilter === "PENDING" ? "bg-[#072d3f] text-white" : "bg-[#f1f5f9] text-[#647783]"
               }`}
             >
               Belum selesai {actionItems.length - (dashboardData?.summary?.findingCount ?? 0)}
             </button>
           </div>
 
-          <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
+          <div className="space-y-3 max-h-[440px] overflow-y-auto pr-1">
             {actionItems.slice(0, 10).map((item, idx) => (
               <div
                 key={item.id || idx}
@@ -523,47 +450,40 @@ export default function DashboardSummaryPage() {
               </div>
             ))}
           </div>
-
-          <button
-            type="button"
-            className="w-full py-2.5 bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#d8e3ea] rounded-xl text-xs font-bold text-[#0076a8] transition-all"
-          >
-            Buka daftar lengkap • {actionItems.length} Item
-          </button>
         </div>
       </section>
 
-      {/* 5. Analisis Periode */}
+      {/* 5. Analisis Periode & Chart Tren Operasional */}
       <section className="space-y-4 pt-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
             <span className="text-[10px] font-black uppercase tracking-widest text-[#718c99] block">
               ANALISIS PERIODE
             </span>
             <h3 className="text-xl font-black text-[#17313d] capitalize">
-              {selectedPeriod}
+              Bulan {selectedPeriod}
             </h3>
             <p className="text-xs text-[#647783] mt-0.5">
-              Tren operasional dan suara pengguna mengikuti periode serta ruangan yang dipilih.
+              Tren operasional dan kepuasan pengguna mengikuti periode yang dipilih.
             </p>
           </div>
 
           <div className="flex items-center gap-6 text-right">
             <div>
               <strong className="text-xl font-black text-[#17313d] block">
-                {dashboardData?.metrics?.inspectionsTodayCount ?? 17}
+                {dashboardData?.metrics?.monthlyInspectionsCount ?? 0}
               </strong>
               <span className="text-[11px] text-[#718c99]">Pemeriksaan</span>
             </div>
             <div>
               <strong className="text-xl font-black text-[#157a55] block">
-                {dashboardData?.metrics?.cleanCount ?? 17}
+                {dashboardData?.metrics?.monthlyCleanCount ?? 0}
               </strong>
               <span className="text-[11px] text-[#718c99]">Bersih</span>
             </div>
             <div>
               <strong className="text-xl font-black text-[#bd2d22] block">
-                {dashboardData?.metrics?.findingCount ?? 0}
+                {dashboardData?.metrics?.monthlyFindingCount ?? 0}
               </strong>
               <span className="text-[11px] text-[#718c99]">Dengan temuan</span>
             </div>
@@ -571,6 +491,7 @@ export default function DashboardSummaryPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Suara Pengguna */}
           <div className="lg:col-span-5 bg-white border border-[#d8e3ea] rounded-2xl p-6 shadow-sm space-y-5">
             <div>
               <span className="text-[10px] font-black uppercase tracking-widest text-[#718c99] block">
@@ -591,13 +512,13 @@ export default function DashboardSummaryPage() {
               </div>
               <div>
                 <strong className="text-2xl font-black text-[#17313d] block">
-                  {dashboardData?.metrics?.averageRating ?? "3.8"}
+                  {dashboardData?.metrics?.averageRating ?? "0.0"}
                 </strong>
                 <span className="text-[10px] text-[#647783]">rata-rata dari 4</span>
               </div>
               <div>
                 <strong className="text-2xl font-black text-[#17313d] block">
-                  {dashboardData?.metrics?.totalEvaluations ?? 6}
+                  {dashboardData?.metrics?.totalEvaluations ?? 0}
                 </strong>
                 <span className="text-[10px] text-[#647783]">tanggapan</span>
               </div>
@@ -607,23 +528,30 @@ export default function DashboardSummaryPage() {
               <span className="text-[11px] font-bold text-[#647783] block mb-2 uppercase">
                 Distribusi Rating
               </span>
-              <div className="space-y-1.5 text-xs text-[#647783]">
-                {[4, 3, 2, 1].map((star) => (
-                  <div key={star} className="flex items-center gap-2">
-                    <span className="w-3 text-[11px] font-bold">{star}</span>
-                    <div className="flex-1 h-2 bg-[#e2e8f0] rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-[#0076a8] rounded-full"
-                        style={{ width: star === 4 ? "80%" : star === 3 ? "20%" : "0%" }}
-                      ></div>
+              <div className="space-y-2 text-xs text-[#647783]">
+                {[4, 3, 2, 1].map((star) => {
+                  const totalEv = dashboardData?.metrics?.totalEvaluations || 1;
+                  const count = dashboardData?.ratingDist?.[star] || 0;
+                  const pct = Math.round((count / totalEv) * 100);
+
+                  return (
+                    <div key={star} className="flex items-center gap-2">
+                      <span className="w-3 text-[11px] font-bold">{star}</span>
+                      <div className="flex-1 h-2 bg-[#e2e8f0] rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-[#0076a8] rounded-full transition-all duration-500"
+                          style={{ width: `${pct}%` }}
+                        ></div>
+                      </div>
+                      <span className="w-6 text-right text-[11px] font-bold">{count}</span>
                     </div>
-                    <span className="w-4 text-right text-[11px]">{star === 4 ? "5" : star === 3 ? "1" : "0"}</span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>
 
+          {/* Dynamic Live Bar Chart Tren Operasional */}
           <div className="lg:col-span-7 bg-white border border-[#d8e3ea] rounded-2xl p-6 shadow-sm space-y-5">
             <div className="flex items-center justify-between">
               <div>
@@ -639,26 +567,43 @@ export default function DashboardSummaryPage() {
                 <span className="flex items-center gap-1 text-[#0076a8]">
                   <span className="w-2.5 h-2.5 rounded-sm bg-[#0076a8]"></span> Pemeriksaan
                 </span>
-                <span className="flex items-center gap-1 text-[#ffd100]">
-                  <span className="w-2.5 h-2.5 rounded-sm bg-[#ffd100]"></span> Temuan
+                <span className="flex items-center gap-1 text-[#eab308]">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-[#eab308]"></span> Temuan
                 </span>
               </div>
             </div>
 
-            <div className="h-44 flex items-end gap-1.5 pt-6 pb-2 border-b border-[#e2e8f0]">
-              {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => {
-                const count = day === 1 ? 17 : 0;
-                const heightPct = count > 0 ? (count / 20) * 100 : 4;
+            {/* Bars container */}
+            <div className="h-48 flex items-end gap-1 sm:gap-1.5 pt-6 pb-2 border-b border-[#e2e8f0] overflow-x-auto">
+              {(dashboardData?.dailyTrend || []).map((item: any) => {
+                const count = item.total || 0;
+                const findings = item.finding || 0;
+                const heightPct = count > 0 ? Math.min(100, Math.max(8, (count / maxTrendValue) * 100)) : 3;
 
                 return (
-                  <div key={day} className="flex-1 flex flex-col items-center gap-1 group relative">
+                  <div
+                    key={item.day}
+                    className="flex-1 min-w-[8px] flex flex-col items-center gap-1 group relative h-full justify-end"
+                  >
+                    {/* Tooltip on hover */}
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute bottom-full mb-2 bg-[#072d3f] text-white text-[10px] font-bold py-1.5 px-2.5 rounded-lg shadow-xl pointer-events-none whitespace-nowrap z-20">
+                      <div>Tgl {item.day}: {count} Sesi</div>
+                      {findings > 0 && <div className="text-[#ffd100] font-black">{findings} Temuan</div>}
+                    </div>
+
                     <div
-                      className={`w-full rounded-t-sm transition-all ${
-                        count > 0 ? "bg-[#0076a8] group-hover:bg-[#00577d]" : "bg-[#f1f5f9]"
+                      className={`w-full rounded-t-sm transition-all duration-300 ${
+                        findings > 0
+                          ? "bg-[#eab308] group-hover:bg-[#ca8a04]"
+                          : count > 0
+                          ? "bg-[#0076a8] group-hover:bg-[#00577d]"
+                          : "bg-[#f1f5f9]"
                       }`}
                       style={{ height: `${heightPct}%` }}
                     ></div>
-                    <span className="text-[8px] text-[#94a3b8]">{day % 4 === 1 ? day : ""}</span>
+                    <span className="text-[8px] text-[#94a3b8] font-bold">
+                      {item.day % 4 === 1 ? item.day : ""}
+                    </span>
                   </div>
                 );
               })}
@@ -666,6 +611,154 @@ export default function DashboardSummaryPage() {
           </div>
         </div>
       </section>
+
+      {/* 6. AKTIVITAS TERBARU (RECENT ACTIVITY FEED) */}
+      <section className="bg-white border border-[#d8e3ea] rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-[#f1f5f9]">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-[#0076a8]/10 text-[#0076a8] flex items-center justify-center shadow-inner">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-widest text-[#718c99] block">
+                LOG AKTIFITAS LIVE
+              </span>
+              <h3 className="text-xl font-black text-[#17313d]">Aktivitas Terbaru</h3>
+              <p className="text-xs text-[#647783] mt-0.5">
+                Daftar kiriman checklist ruangan dan log pemeriksaan terkini oleh petugas & pengawas.
+              </p>
+            </div>
+          </div>
+
+          <span className="px-3 py-1 bg-[#f8fafc] border border-[#d8e3ea] rounded-xl text-xs font-bold text-[#647783] self-start sm:self-auto">
+            {dashboardData?.recentActivities?.length || 0} Aktivitas Terkini
+          </span>
+        </div>
+
+        {/* Activity Feed Cards List */}
+        <div className="divide-y divide-[#f1f5f9] max-h-[600px] overflow-y-auto pr-2 space-y-3">
+          {(!dashboardData?.recentActivities || dashboardData.recentActivities.length === 0) ? (
+            <div className="text-center py-12 text-xs text-[#647783]">
+              Belum ada data riwayat aktivitas yang tercatat.
+            </div>
+          ) : (
+            dashboardData.recentActivities.map((act: any) => {
+              const isClean = act.overallStatus === "BERSIH";
+              const isSpv = act.slotRole === "SUPERVISOR";
+
+              return (
+                <div
+                  key={act.id}
+                  className="pt-3 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-[#f8fafc] p-3 rounded-2xl transition-colors"
+                >
+                  <div className="flex items-start gap-3.5">
+                    {/* Icon / Role Badge */}
+                    <div
+                      className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 mt-0.5 font-black text-xs ${
+                        isClean
+                          ? "bg-[#dcfce7] text-[#15803d]"
+                          : "bg-[#fee2e2] text-[#b91c1c]"
+                      }`}
+                    >
+                      {isClean ? <CheckCircle2 className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <strong className="text-sm font-black text-[#17313d]">{act.roomName}</strong>
+                        <span
+                          className={`px-2 py-0.5 rounded-lg text-[10px] font-black uppercase ${
+                            act.slotCode === "PAGI"
+                              ? "bg-[#e0f2fe] text-[#0369a1]"
+                              : act.slotCode === "SORE"
+                              ? "bg-[#fef3c7] text-[#b45309]"
+                              : "bg-[#f3e8ff] text-[#7e22ce]"
+                          }`}
+                        >
+                          {act.slotName}
+                        </span>
+                        <span
+                          className={`px-2 py-0.5 rounded-lg text-[10px] font-black uppercase ${
+                            isClean
+                              ? "bg-[#dcfce7] text-[#15803d]"
+                              : "bg-[#fee2e2] text-[#b91c1c]"
+                          }`}
+                        >
+                          {isClean ? "Bersih" : `${act.dirtyCount} Temuan`}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#647783]">
+                        <span className="flex items-center gap-1 font-bold text-[#17313d]">
+                          <User className="w-3.5 h-3.5 text-[#0076a8]" />
+                          {act.officerName}
+                          <span className="text-[10px] font-normal text-[#94a3b8]">({act.officerRole})</span>
+                        </span>
+                        <span>•</span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3.5 h-3.5 text-[#94a3b8]" />
+                          {act.displayTime}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Photo Evidence Preview */}
+                  {act.photos && act.photos.length > 0 && (
+                    <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                      {act.photos.slice(0, 2).map((photoUrl: string, pIdx: number) => (
+                        <button
+                          key={pIdx}
+                          type="button"
+                          onClick={() => setSelectedPhotoPreview(photoUrl)}
+                          className="w-11 h-11 rounded-xl overflow-hidden border-2 border-white shadow-sm hover:scale-105 transition-transform bg-[#f1f5f9] relative group"
+                        >
+                          <img
+                            src={photoUrl}
+                            alt="Bukti"
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = "none";
+                            }}
+                          />
+                          <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity">
+                            <ImageIcon className="w-3.5 h-3.5" />
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      </section>
+
+      {/* Modal Photo Lightbox Preview */}
+      {selectedPhotoPreview && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setSelectedPhotoPreview(null)}
+        >
+          <div className="relative max-w-2xl w-full bg-white rounded-3xl overflow-hidden shadow-2xl p-2 animate-in zoom-in-95 duration-150">
+            <button
+              onClick={() => setSelectedPhotoPreview(null)}
+              className="absolute top-4 right-4 z-10 w-9 h-9 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <img
+              src={selectedPhotoPreview}
+              alt="Foto Evidence"
+              className="w-full max-h-[80vh] object-contain rounded-2xl bg-black"
+            />
+            <div className="p-3 text-center text-xs font-bold text-[#647783]">
+              Foto Bukti Pemeriksaan Kebersihan (QNAP NAS)
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
