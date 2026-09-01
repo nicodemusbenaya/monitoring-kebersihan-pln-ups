@@ -74,13 +74,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             {/* Logo & Header */}
             <div className="p-4 flex items-center justify-between border-b border-[#0f3d54]">
               <div className="flex items-center gap-3 overflow-hidden">
-                {/* Full-size PLN Logo directly without outer border/wrapper */}
+                {/* Official PLN Emblem Square without text */}
                 <Image
-                  src="https://upload.wikimedia.org/wikipedia/commons/2/20/Logo_PLN.svg"
+                  src="/pln-emblem.svg"
                   alt="PLN"
-                  width={48}
-                  height={48}
-                  className="h-11 w-auto object-contain shrink-0 drop-shadow-sm"
+                  width={34}
+                  height={34}
+                  className="w-8 h-8 object-contain shrink-0 rounded-lg shadow-sm"
                   priority
                 />
                 {!sidebarCollapsed && (
