@@ -3,6 +3,8 @@ import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { todayKey } from "@/lib/utils";
 import ExcelJS from "exceljs";
+import path from "path";
+import fs from "fs";
 
 export async function GET(request: Request) {
   try {
@@ -10,7 +12,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const exportType = searchParams.get("type") || "monthly"; // "room" or "monthly"
 
-    // ──────────────────────────── 1. SINGLE ROOM WORKBOOK EXPORT ────────────────────────────
+    // ──────────────────────────── 1. SINGLE ROOM TEMPLATE-BASED WORKBOOK EXPORT ────────────────────────────
     if (exportType === "room") {
       const roomId = searchParams.get("roomId");
       const startDate = searchParams.get("startDate") || todayKey();
@@ -49,7 +51,7 @@ export async function GET(request: Request) {
         return NextResponse.json({ ok: false, message: "Ruangan tidak ditemukan." }, { status: 404 });
       }
 
-      // 6 Days
+      // Generate 6 Days
       const days: { dayIndex: number; dateKey: string; dateFormatted: string }[] = [];
       const baseDate = new Date(startDate);
       for (let i = 0; i < 6; i++) {
@@ -58,7 +60,7 @@ export async function GET(request: Request) {
         days.push({
           dayIndex: i + 1,
           dateKey: d.toISOString().slice(0, 10),
-          dateFormatted: new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric" }).format(d),
+          dateFormatted: new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "long", year: "numeric" }).format(d),
         });
       }
 
@@ -77,89 +79,155 @@ export async function GET(request: Request) {
         },
       });
 
+      // Load official PLN template "Ceklis Ruangan UPS (3).xlsx"
+      const templatePath = path.join(process.cwd(), "Ceklis Ruangan UPS (3).xlsx");
       const workbook = new ExcelJS.Workbook();
-      workbook.creator = "PLN Unit Pelaksana Transmisi (UPS)";
-      workbook.created = new Date();
 
-      const safeSheetName = (room.code || "Ceklis").replace(/[:\\/?*\[\]]/g, "_").slice(0, 30);
-      const sheet = workbook.addWorksheet(safeSheetName);
+      if (fs.existsSync(templatePath)) {
+        await workbook.xlsx.readFile(templatePath);
+      } else {
+        // Fallback: create fresh workbook if template file is missing
+        workbook.addWorksheet("Ceklis Ruangan New");
+      }
 
+      // Determine the matching sheet name based on room type
+      let targetSheetName = "Ceklis Ruangan New";
+      const isToilet = room.roomType?.id === "TOILET" || room.roomType?.name.toLowerCase().includes("toilet");
+      const isPantry = room.roomType?.id === "PANTRY" || room.roomType?.name.toLowerCase().includes("pantry");
+      const isClass = room.roomType?.id === "CLASS" || room.roomType?.name.toLowerCase().includes("kelas") || room.roomType?.name.toLowerCase().includes("tuk");
+
+      if (isToilet) targetSheetName = "Ceklis Toilet New";
+      else if (isPantry) targetSheetName = "Ceklis Pantry";
+      else if (isClass) targetSheetName = "Ceklis Ruang Kelas";
+
+      let sheet = workbook.getWorksheet(targetSheetName);
+      if (!sheet) {
+        sheet = workbook.worksheets[0] || workbook.addWorksheet("Ceklis");
+      }
+
+      // Safe sheet name (e.g. "R_01" or room code)
+      sheet.name = (room.code || "Ceklis").replace(/[:\\/?*\[\]]/g, "_").slice(0, 30);
+
+      // ── Populate Header & Metadata ──
       // Title
-      sheet.mergeCells("A1:N1");
-      const titleCell = sheet.getCell("A1");
-      titleCell.value = `CEKLIS KEBERSIHAN RUANGAN & KESIAPAN RUANGAN - ${room.name.toUpperCase()}`;
-      titleCell.font = { name: "Arial", size: 12, bold: true, color: { argb: "FFFFFFFF" } };
-      titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0076A8" } };
-      titleCell.alignment = { horizontal: "center", vertical: "middle" };
-      sheet.getRow(1).height = 28;
-
-      // Metadata
+      sheet.getCell("A2").value = `CEKLIS KEBERSIHAN & KESIAPAN ${room.name.toUpperCase()}`;
       sheet.getCell("A3").value = "LOKASI";
-      sheet.getCell("B3").value = `: ${room.name}`;
+      sheet.getCell("B3").value = ":";
+      sheet.getCell("C3").value = room.name;
+
       sheet.getCell("A4").value = "PERIODE";
-      sheet.getCell("B4").value = `: ${days[0].dateKey} s.d. ${days[days.length - 1].dateKey}`;
-      sheet.getCell("A5").value = "Cleaning Service";
-      sheet.getCell("B5").value = ": Arif Budi Hartono  [ ] Pagi  [ ] Sore";
-      sheet.getCell("A6").value = "Cleaning Service";
-      sheet.getCell("B6").value = ": Sulaiman  [✓] Pagi  [ ] Sore";
-      sheet.getCell("A7").value = "Supervisor";
-      sheet.getCell("B7").value = ": Ipal Hapidz";
+      sheet.getCell("B4").value = ":";
+      sheet.getCell("C4").value = `${days[0].dateFormatted} s.d. ${days[5].dateFormatted}`;
 
-      // Table Header Row 9
-      sheet.getCell("A9").value = "NO";
-      sheet.getCell("B9").value = "BAGIAN YANG DIPERIKSA";
-      sheet.getCell("C9").value = `Hari ke-1 (${days[0]?.dateKey})`;
-      sheet.getCell("D9").value = `Hari ke-2 (${days[1]?.dateKey})`;
-      sheet.getCell("E9").value = `Hari ke-3 (${days[2]?.dateKey})`;
-      sheet.getCell("F9").value = `Hari ke-4 (${days[3]?.dateKey})`;
-      sheet.getCell("G9").value = `Hari ke-5 (${days[4]?.dateKey})`;
-      sheet.getCell("H9").value = `Hari ke-6 (${days[5]?.dateKey})`;
+      // Check which officers worked on Day 1
+      const day1Inspections = inspections.filter((i) => i.dateKey === startDate);
+      const arifPagi = day1Inspections.some((i) => (i.user?.username === "arif" || i.user?.fullName.toLowerCase().includes("arif")) && i.slot?.code?.includes("PAGI"));
+      const arifSore = day1Inspections.some((i) => (i.user?.username === "arif" || i.user?.fullName.toLowerCase().includes("arif")) && i.slot?.code?.includes("SORE"));
+      const sulaimanPagi = day1Inspections.some((i) => (i.user?.username === "sulaiman" || i.user?.fullName.toLowerCase().includes("sulaiman")) && i.slot?.code?.includes("PAGI"));
+      const sulaimanSore = day1Inspections.some((i) => (i.user?.username === "sulaiman" || i.user?.fullName.toLowerCase().includes("sulaiman")) && i.slot?.code?.includes("SORE"));
 
-      const hRow = sheet.getRow(9);
-      hRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
-      hRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF005A82" } };
-      hRow.alignment = { horizontal: "center", vertical: "middle" };
+      sheet.getCell("D5").value = arifPagi ? "[✓]" : "[   ]";
+      sheet.getCell("H5").value = arifSore ? "[✓]" : "[   ]";
+      sheet.getCell("D6").value = sulaimanPagi ? "[✓]" : "[   ]";
+      sheet.getCell("H6").value = sulaimanSore ? "[✓]" : "[   ]";
 
-      // Activities rows
-      room.roomType.activities.forEach((act, idx) => {
-        const rowNum = 10 + idx;
-        sheet.getCell(`A${rowNum}`).value = idx + 1;
-        sheet.getCell(`B${rowNum}`).value = act.name;
-
-        // Check if inspected
-        days.forEach((day, dIdx) => {
-          const dayInsp = inspections.find((i) => i.dateKey === day.dateKey);
-          const colLetter = String.fromCharCode(67 + dIdx); // C, D, E, F...
-          if (dayInsp) {
-            const dt = dayInsp.details.find((d) => d.activityId === act.id);
-            if (dt) {
-              const isClean = dt.qualityResult === "POSITIVE" || dt.qualityResult === "BERSIH";
-              sheet.getCell(`${colLetter}${rowNum}`).value = isClean ? "✓ Pos" : "✕ Neg";
-              sheet.getCell(`${colLetter}${rowNum}`).alignment = { horizontal: "center" };
-            }
-          }
-        });
+      // ── Update Day Headers with Dates (Row 8) ──
+      days.forEach((day, dIdx) => {
+        const colStart = isToilet ? 4 + dIdx * 24 : 4 + dIdx * 12;
+        sheet.getCell(8, colStart).value = `Hari ke ${day.dayIndex} (${day.dateKey})`;
       });
 
-      // Sheet 2: EVIDENCE
+      // ── Populate Grid Matrix Rows ──
+      // Find activity rows in the sheet starting from Row 12
+      const totalActivities = room.roomType.activities.length;
+      for (let aIdx = 0; aIdx < totalActivities; aIdx++) {
+        const act = room.roomType.activities[aIdx];
+        const rowNum = 12 + aIdx;
+
+        days.forEach((day, dIdx) => {
+          const dayInspections = inspections.filter((i) => i.dateKey === day.dateKey);
+
+          dayInspections.forEach((insp) => {
+            const detail = insp.details.find((d) => d.activityId === act.id);
+            if (!detail) return;
+
+            const isClean = detail.qualityResult === "POSITIVE" || detail.qualityResult === "BERSIH";
+            const sCode = insp.slot?.code || "PAGI";
+
+            let slotOffset = 0;
+            if (isToilet) {
+              if (sCode === "PAGI") slotOffset = 0;
+              else if (sCode === "INSP_1" || sCode === "INSPEKSI 1") slotOffset = 4;
+              else if (sCode === "SIANG") slotOffset = 8;
+              else if (sCode === "INSP_2" || sCode === "INSPEKSI 2") slotOffset = 12;
+              else if (sCode === "SORE") slotOffset = 16;
+              else if (sCode === "INSP_3" || sCode === "INSPEKSI 3") slotOffset = 20;
+            } else {
+              if (sCode.includes("PAGI")) slotOffset = 0;
+              else if (sCode.includes("SORE")) slotOffset = 4;
+              else if (sCode.includes("INSP")) slotOffset = 8;
+            }
+
+            const baseCol = isToilet ? 4 + dIdx * 24 + slotOffset : 4 + dIdx * 12 + slotOffset;
+
+            if (isClean) {
+              // Aktv Sudah (col + 0), Fung Normal/Ya (col + 2)
+              sheet.getCell(rowNum, baseCol + 0).value = "v";
+              sheet.getCell(rowNum, baseCol + 2).value = "v";
+            } else {
+              // Aktv Belum (col + 1), Fung Rusak/Tidak (col + 3)
+              sheet.getCell(rowNum, baseCol + 1).value = "v";
+              sheet.getCell(rowNum, baseCol + 3).value = "v";
+            }
+          });
+        });
+      }
+
+      // Remove other template sheets to leave only the active room sheet + standards
+      workbook.worksheets.forEach((ws) => {
+        if (ws.id !== sheet.id && !ws.name.startsWith("Standar")) {
+          workbook.removeWorksheet(ws.id);
+        }
+      });
+
+      // ── Sheet 2: EVIDENCE (Bukti Foto) ──
       const evidenceSheet = workbook.addWorksheet("EVIDENCE");
       evidenceSheet.getCell("A1").value = `EVIDENCE FOTO KEBERSIHAN - ${room.name}`;
-      evidenceSheet.getCell("A1").font = { bold: true, size: 12 };
-      evidenceSheet.getCell("A3").value = "Waktu";
-      evidenceSheet.getCell("B3").value = "Sesi / Shift";
-      evidenceSheet.getCell("C3").value = "Petugas";
-      evidenceSheet.getCell("D3").value = "Catatan";
-      evidenceSheet.getCell("E3").value = "URL Bukti Foto (NAS)";
+      evidenceSheet.getCell("A1").font = { bold: true, size: 12, color: { argb: "FFFFFFFF" } };
+      evidenceSheet.getCell("A1").fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0076A8" } };
+      evidenceSheet.getRow(1).height = 26;
+
+      const evHeaders = ["No", "Waktu", "Sesi / Shift", "Petugas", "Status", "Catatan", "URL Bukti Foto (NAS)"];
+      const hRow = evidenceSheet.addRow(evHeaders);
+      hRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
+      hRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF005A82" } };
+      hRow.height = 20;
 
       inspections.forEach((insp, iIdx) => {
-        const rNum = 4 + iIdx;
-        const timeStr = insp.submittedAt ? insp.submittedAt.toISOString() : insp.dateKey;
-        evidenceSheet.getCell(`A${rNum}`).value = timeStr;
-        evidenceSheet.getCell(`B${rNum}`).value = insp.slot?.name || insp.slotCode;
-        evidenceSheet.getCell(`C${rNum}`).value = insp.user?.fullName || "Sulaiman";
-        evidenceSheet.getCell(`D${rNum}`).value = insp.overallStatus === "BERSIH" ? "Kondisi baik & bersih" : "Ada temuan";
-        evidenceSheet.getCell(`E${rNum}`).value = insp.photos?.[0]?.fileUrl || "http://nasups01.myqnapcloud.com:18080/Public/Checklist_Evidence";
+        const timeStr = insp.submittedAt ? insp.submittedAt.toLocaleString("id-ID") : insp.dateKey;
+        const photoUrl = insp.photos?.[0]?.fileUrl || "http://nasups01.myqnapcloud.com:18080/Public/Checklist_Evidence";
+        const statusStr = insp.overallStatus === "BERSIH" ? "Bersih" : "Ada Temuan";
+
+        evidenceSheet.addRow([
+          iIdx + 1,
+          timeStr,
+          insp.slot?.name || insp.slotCode,
+          insp.user?.fullName || "Petugas",
+          statusStr,
+          insp.overallStatus === "BERSIH" ? "Kondisi baik & bersih" : "Perlu perbaikan",
+          photoUrl,
+        ]);
       });
+
+      evidenceSheet.columns = [
+        { width: 6 },
+        { width: 22 },
+        { width: 16 },
+        { width: 24 },
+        { width: 14 },
+        { width: 30 },
+        { width: 50 },
+      ];
 
       const buffer = await workbook.xlsx.writeBuffer();
       const safeFileName = (room.code || "Ruangan").replace(/[^a-zA-Z0-9_-]/g, "_");
