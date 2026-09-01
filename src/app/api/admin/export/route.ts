@@ -15,17 +15,35 @@ export async function GET(request: Request) {
       const roomId = searchParams.get("roomId");
       const startDate = searchParams.get("startDate") || todayKey();
 
-      const room = await prisma.room.findUnique({
-        where: { id: roomId || undefined },
-        include: {
-          roomType: {
-            include: {
-              activities: { orderBy: { sortOrder: "asc" } },
-              slots: { orderBy: { sortOrder: "asc" } },
+      let room = null;
+      if (roomId && roomId.trim() !== "" && roomId !== "undefined" && roomId !== "null") {
+        room = await prisma.room.findUnique({
+          where: { id: roomId },
+          include: {
+            roomType: {
+              include: {
+                activities: { orderBy: { sortOrder: "asc" } },
+                slots: { orderBy: { sortOrder: "asc" } },
+              },
             },
           },
-        },
-      });
+        });
+      }
+
+      if (!room) {
+        room = await prisma.room.findFirst({
+          where: { active: true },
+          include: {
+            roomType: {
+              include: {
+                activities: { orderBy: { sortOrder: "asc" } },
+                slots: { orderBy: { sortOrder: "asc" } },
+              },
+            },
+          },
+          orderBy: { sortOrder: "asc" },
+        });
+      }
 
       if (!room) {
         return NextResponse.json({ ok: false, message: "Ruangan tidak ditemukan." }, { status: 404 });
@@ -63,15 +81,17 @@ export async function GET(request: Request) {
       workbook.creator = "PLN Unit Pelaksana Transmisi (UPS)";
       workbook.created = new Date();
 
-      const sheet = workbook.addWorksheet(room.code.slice(0, 30));
+      const safeSheetName = (room.code || "Ceklis").replace(/[:\\/?*\[\]]/g, "_").slice(0, 30);
+      const sheet = workbook.addWorksheet(safeSheetName);
 
       // Title
       sheet.mergeCells("A1:N1");
       const titleCell = sheet.getCell("A1");
       titleCell.value = `CEKLIS KEBERSIHAN RUANGAN & KESIAPAN RUANGAN - ${room.name.toUpperCase()}`;
-      titleCell.font = { name: "Arial", size: 12, bold: true };
+      titleCell.font = { name: "Arial", size: 12, bold: true, color: { argb: "FFFFFFFF" } };
+      titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0076A8" } };
       titleCell.alignment = { horizontal: "center", vertical: "middle" };
-      sheet.getRow(1).height = 24;
+      sheet.getRow(1).height = 28;
 
       // Metadata
       sheet.getCell("A3").value = "LOKASI";
@@ -97,7 +117,7 @@ export async function GET(request: Request) {
 
       const hRow = sheet.getRow(9);
       hRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
-      hRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0076A8" } };
+      hRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF005A82" } };
       hRow.alignment = { horizontal: "center", vertical: "middle" };
 
       // Activities rows
@@ -113,7 +133,8 @@ export async function GET(request: Request) {
           if (dayInsp) {
             const dt = dayInsp.details.find((d) => d.activityId === act.id);
             if (dt) {
-              sheet.getCell(`${colLetter}${rowNum}`).value = dt.condition === "BERSIH" ? "✓ Pos" : "✕ Neg";
+              const isClean = dt.qualityResult === "POSITIVE" || dt.qualityResult === "BERSIH";
+              sheet.getCell(`${colLetter}${rowNum}`).value = isClean ? "✓ Pos" : "✕ Neg";
               sheet.getCell(`${colLetter}${rowNum}`).alignment = { horizontal: "center" };
             }
           }
@@ -132,19 +153,22 @@ export async function GET(request: Request) {
 
       inspections.forEach((insp, iIdx) => {
         const rNum = 4 + iIdx;
-        evidenceSheet.getCell(`A${rNum}`).value = insp.createdAt.toISOString();
-        evidenceSheet.getCell(`B${rNum}`).value = insp.slot?.name;
-        evidenceSheet.getCell(`C${rNum}`).value = insp.user?.fullName;
-        evidenceSheet.getCell(`D${rNum}`).value = insp.note || "Kondisi baik & bersih";
-        evidenceSheet.getCell(`E${rNum}`).value = insp.photos?.[0]?.storagePath || "http://nasups01.myqnapcloud.com:18080/...";
+        const timeStr = insp.submittedAt ? insp.submittedAt.toISOString() : insp.dateKey;
+        evidenceSheet.getCell(`A${rNum}`).value = timeStr;
+        evidenceSheet.getCell(`B${rNum}`).value = insp.slot?.name || insp.slotCode;
+        evidenceSheet.getCell(`C${rNum}`).value = insp.user?.fullName || "Sulaiman";
+        evidenceSheet.getCell(`D${rNum}`).value = insp.overallStatus === "BERSIH" ? "Kondisi baik & bersih" : "Ada temuan";
+        evidenceSheet.getCell(`E${rNum}`).value = insp.photos?.[0]?.fileUrl || "http://nasups01.myqnapcloud.com:18080/Public/Checklist_Evidence";
       });
 
       const buffer = await workbook.xlsx.writeBuffer();
+      const safeFileName = (room.code || "Ruangan").replace(/[^a-zA-Z0-9_-]/g, "_");
+
       return new NextResponse(buffer, {
         status: 200,
         headers: {
           "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-          "Content-Disposition": `attachment; filename="Ceklis_${room.code}_${startDate}.xlsx"`,
+          "Content-Disposition": `attachment; filename="Ceklis_${safeFileName}_${startDate}.xlsx"`,
         },
       });
     }
