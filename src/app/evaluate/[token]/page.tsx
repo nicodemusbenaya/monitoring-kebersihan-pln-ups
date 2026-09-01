@@ -33,7 +33,7 @@ export default function GuestEvaluationPage({
         if (!res.ok || !json.ok) {
           throw new Error(json.message || "Gagal memuat ruangan.");
         }
-        setRoomData(json);
+        setRoomData(json.data || json);
       })
       .catch((err: any) => {
         setError(err.message || "Ruangan tidak ditemukan.");

@@ -65,7 +65,8 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { token, rating, aspectCodes, comment } = body;
+    const token = body.token || body.roomId || body.roomToken;
+    const { rating, aspectCodes, comment } = body;
 
     const numRating = Number(rating);
     if (!token || isNaN(numRating) || numRating < 1 || numRating > 4) {
@@ -74,7 +75,7 @@ export async function POST(request: Request) {
 
     const room = await prisma.room.findFirst({
       where: {
-        OR: [{ qrToken: token }, { code: token }],
+        OR: [{ id: token }, { qrToken: token }, { code: token }],
         active: true,
       },
     });
