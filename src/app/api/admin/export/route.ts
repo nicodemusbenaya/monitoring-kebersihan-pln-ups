@@ -1,18 +1,159 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { todayKey } from "@/lib/utils";
 import ExcelJS from "exceljs";
 
 export async function GET(request: Request) {
   try {
     await requireAuth(["ADMIN"]);
     const { searchParams } = new URL(request.url);
-    const month = searchParams.get("month") || new Date().toISOString().slice(0, 7); // YYYY-MM
+    const exportType = searchParams.get("type") || "monthly"; // "room" or "monthly"
 
+    // ──────────────────────────── 1. SINGLE ROOM WORKBOOK EXPORT ────────────────────────────
+    if (exportType === "room") {
+      const roomId = searchParams.get("roomId");
+      const startDate = searchParams.get("startDate") || todayKey();
+
+      const room = await prisma.room.findUnique({
+        where: { id: roomId || undefined },
+        include: {
+          roomType: {
+            include: {
+              activities: { orderBy: { sortOrder: "asc" } },
+              slots: { orderBy: { sortOrder: "asc" } },
+            },
+          },
+        },
+      });
+
+      if (!room) {
+        return NextResponse.json({ ok: false, message: "Ruangan tidak ditemukan." }, { status: 404 });
+      }
+
+      // 6 Days
+      const days: { dayIndex: number; dateKey: string; dateFormatted: string }[] = [];
+      const baseDate = new Date(startDate);
+      for (let i = 0; i < 6; i++) {
+        const d = new Date(baseDate);
+        d.setDate(d.getDate() + i);
+        days.push({
+          dayIndex: i + 1,
+          dateKey: d.toISOString().slice(0, 10),
+          dateFormatted: new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric" }).format(d),
+        });
+      }
+
+      const dateKeys = days.map((d) => d.dateKey);
+      const inspections = await prisma.inspection.findMany({
+        where: {
+          roomId: room.id,
+          dateKey: { in: dateKeys },
+          state: "SUBMITTED",
+        },
+        include: {
+          slot: true,
+          user: true,
+          details: { include: { activity: true } },
+          photos: true,
+        },
+      });
+
+      const workbook = new ExcelJS.Workbook();
+      workbook.creator = "PLN Unit Pelaksana Transmisi (UPS)";
+      workbook.created = new Date();
+
+      const sheet = workbook.addWorksheet(room.code.slice(0, 30));
+
+      // Title
+      sheet.mergeCells("A1:N1");
+      const titleCell = sheet.getCell("A1");
+      titleCell.value = `CEKLIS KEBERSIHAN RUANGAN & KESIAPAN RUANGAN - ${room.name.toUpperCase()}`;
+      titleCell.font = { name: "Arial", size: 12, bold: true };
+      titleCell.alignment = { horizontal: "center", vertical: "middle" };
+      sheet.getRow(1).height = 24;
+
+      // Metadata
+      sheet.getCell("A3").value = "LOKASI";
+      sheet.getCell("B3").value = `: ${room.name}`;
+      sheet.getCell("A4").value = "PERIODE";
+      sheet.getCell("B4").value = `: ${days[0].dateKey} s.d. ${days[days.length - 1].dateKey}`;
+      sheet.getCell("A5").value = "Cleaning Service";
+      sheet.getCell("B5").value = ": Arif Budi Hartono  [ ] Pagi  [ ] Sore";
+      sheet.getCell("A6").value = "Cleaning Service";
+      sheet.getCell("B6").value = ": Sulaiman  [✓] Pagi  [ ] Sore";
+      sheet.getCell("A7").value = "Supervisor";
+      sheet.getCell("B7").value = ": Ipal Hapidz";
+
+      // Table Header Row 9
+      sheet.getCell("A9").value = "NO";
+      sheet.getCell("B9").value = "BAGIAN YANG DIPERIKSA";
+      sheet.getCell("C9").value = `Hari ke-1 (${days[0]?.dateKey})`;
+      sheet.getCell("D9").value = `Hari ke-2 (${days[1]?.dateKey})`;
+      sheet.getCell("E9").value = `Hari ke-3 (${days[2]?.dateKey})`;
+      sheet.getCell("F9").value = `Hari ke-4 (${days[3]?.dateKey})`;
+      sheet.getCell("G9").value = `Hari ke-5 (${days[4]?.dateKey})`;
+      sheet.getCell("H9").value = `Hari ke-6 (${days[5]?.dateKey})`;
+
+      const hRow = sheet.getRow(9);
+      hRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
+      hRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0076A8" } };
+      hRow.alignment = { horizontal: "center", vertical: "middle" };
+
+      // Activities rows
+      room.roomType.activities.forEach((act, idx) => {
+        const rowNum = 10 + idx;
+        sheet.getCell(`A${rowNum}`).value = idx + 1;
+        sheet.getCell(`B${rowNum}`).value = act.name;
+
+        // Check if inspected
+        days.forEach((day, dIdx) => {
+          const dayInsp = inspections.find((i) => i.dateKey === day.dateKey);
+          const colLetter = String.fromCharCode(67 + dIdx); // C, D, E, F...
+          if (dayInsp) {
+            const dt = dayInsp.details.find((d) => d.activityId === act.id);
+            if (dt) {
+              sheet.getCell(`${colLetter}${rowNum}`).value = dt.condition === "BERSIH" ? "✓ Pos" : "✕ Neg";
+              sheet.getCell(`${colLetter}${rowNum}`).alignment = { horizontal: "center" };
+            }
+          }
+        });
+      });
+
+      // Sheet 2: EVIDENCE
+      const evidenceSheet = workbook.addWorksheet("EVIDENCE");
+      evidenceSheet.getCell("A1").value = `EVIDENCE FOTO KEBERSIHAN - ${room.name}`;
+      evidenceSheet.getCell("A1").font = { bold: true, size: 12 };
+      evidenceSheet.getCell("A3").value = "Waktu";
+      evidenceSheet.getCell("B3").value = "Sesi / Shift";
+      evidenceSheet.getCell("C3").value = "Petugas";
+      evidenceSheet.getCell("D3").value = "Catatan";
+      evidenceSheet.getCell("E3").value = "URL Bukti Foto (NAS)";
+
+      inspections.forEach((insp, iIdx) => {
+        const rNum = 4 + iIdx;
+        evidenceSheet.getCell(`A${rNum}`).value = insp.createdAt.toISOString();
+        evidenceSheet.getCell(`B${rNum}`).value = insp.slot?.name;
+        evidenceSheet.getCell(`C${rNum}`).value = insp.user?.fullName;
+        evidenceSheet.getCell(`D${rNum}`).value = insp.note || "Kondisi baik & bersih";
+        evidenceSheet.getCell(`E${rNum}`).value = insp.photos?.[0]?.storagePath || "http://nasups01.myqnapcloud.com:18080/...";
+      });
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      return new NextResponse(buffer, {
+        status: 200,
+        headers: {
+          "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "Content-Disposition": `attachment; filename="Ceklis_${room.code}_${startDate}.xlsx"`,
+        },
+      });
+    }
+
+    // ──────────────────────────── 2. MONTHLY ALL-ROOM MATRIX EXPORT ────────────────────────────
+    const month = searchParams.get("month") || new Date().toISOString().slice(0, 7); // YYYY-MM
     const [yearStr, monthStr] = month.split("-");
     const year = parseInt(yearStr, 10);
     const monthNum = parseInt(monthStr, 10);
-
     const daysInMonth = new Date(year, monthNum, 0).getDate();
 
     const rooms = await prisma.room.findMany({
@@ -46,7 +187,7 @@ export async function GET(request: Request) {
     const sheet = workbook.addWorksheet(`Rekap ${month}`);
 
     // Header Title
-    const lastColIndex = 4 + daysInMonth + 2; // No, Code, Name, Type + days + Selesai + %
+    const lastColIndex = 4 + daysInMonth + 2;
     const lastColLetter = sheet.getColumn(lastColIndex).letter;
 
     sheet.mergeCells(`A1:${lastColLetter}1`);
@@ -98,77 +239,70 @@ export async function GET(request: Request) {
         if (totalFinished === 0) {
           rowValues.push("✕");
           cellStyles.push({ colIndex, fill: "FFFEE2E2", fontColor: "FFDC2626", symbol: "✕" }); // Merah
-        } else if (petugasSlots.length > 0 && petugasFinished < petugasSlots.length) {
+        } else if (petugasFinished < petugasSlots.length) {
           rowValues.push("◐");
           cellStyles.push({ colIndex, fill: "FFFEF3C7", fontColor: "FFD97706", symbol: "◐" }); // Kuning
-          fullDaysCompleted += 0.4;
-        } else if (spvSlots.length > 0 && spvFinished < spvSlots.length) {
+        } else if (spvFinished < spvSlots.length) {
           rowValues.push("◈");
           cellStyles.push({ colIndex, fill: "FFF3E8FF", fontColor: "FF7E22CE", symbol: "◈" }); // Ungu
-          fullDaysCompleted += 0.8;
         } else {
           rowValues.push("●");
           cellStyles.push({ colIndex, fill: "FFDCFCE7", fontColor: "FF15803D", symbol: "●" }); // Hijau
-          fullDaysCompleted += 1;
+          fullDaysCompleted++;
         }
       }
 
-      const percent = Math.min(100, Math.round((fullDaysCompleted / daysInMonth) * 100));
-      rowValues.push(fullDaysCompleted.toFixed(1), `${percent}%`);
+      const percentage = daysInMonth > 0 ? Math.round((fullDaysCompleted / daysInMonth) * 100) : 0;
+      rowValues.push(`${fullDaysCompleted} / ${daysInMonth}`);
+      rowValues.push(`${percentage}%`);
 
       const addedRow = sheet.addRow(rowValues);
       addedRow.height = 20;
-      addedRow.alignment = { vertical: "middle", horizontal: "center" };
-      addedRow.getCell(3).alignment = { vertical: "middle", horizontal: "left" };
 
-      // Apply specific color styling for day cells
+      // Apply borders & alignment
+      addedRow.eachCell((cell, colNum) => {
+        cell.border = {
+          top: { style: "thin", color: { argb: "FFE2E8F0" } },
+          left: { style: "thin", color: { argb: "FFE2E8F0" } },
+          bottom: { style: "thin", color: { argb: "FFE2E8F0" } },
+          right: { style: "thin", color: { argb: "FFE2E8F0" } },
+        };
+        if (colNum >= 5 && colNum <= 4 + daysInMonth) {
+          cell.alignment = { horizontal: "center", vertical: "middle" };
+        } else if (colNum === 1 || colNum > 4 + daysInMonth) {
+          cell.alignment = { horizontal: "center", vertical: "middle" };
+        } else {
+          cell.alignment = { horizontal: "left", vertical: "middle" };
+        }
+      });
+
+      // Apply specific cell fills based on 4-color status rules
       cellStyles.forEach(({ colIndex, fill, fontColor }) => {
-        const cell = addedRow.getCell(colIndex);
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: fill } };
-        cell.font = { name: "Arial", size: 10, bold: true, color: { argb: fontColor } };
-        cell.alignment = { vertical: "middle", horizontal: "center" };
+        const targetCell = addedRow.getCell(colIndex);
+        targetCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: fill } };
+        targetCell.font = { name: "Arial", size: 10, bold: true, color: { argb: fontColor } };
       });
     });
 
-    // Add 4-Color Legend Section below
-    sheet.addRow([]);
-    const legendHeader = sheet.addRow(["KETERANGAN WARNA STATUS MONITORING:"]);
-    legendHeader.getCell(1).font = { name: "Arial", size: 10, bold: true };
-
-    const legendItems = [
-      { symbol: "✕", label: "Merah", desc: "Tidak ada sesi yang disubmit", fill: "FFFEE2E2", fontColor: "FFDC2626" },
-      { symbol: "◐", label: "Kuning", desc: "Sesi disubmit tapi sesi Petugas Kebersihan belum lengkap", fill: "FFFEF3C7", fontColor: "FFD97706" },
-      { symbol: "◈", label: "Ungu", desc: "Sesi Petugas Kebersihan lengkap, belum inspeksi SPV", fill: "FFF3E8FF", fontColor: "FF7E22CE" },
-      { symbol: "●", label: "Hijau", desc: "Semua sesi lengkap (Petugas & SPV)", fill: "FFDCFCE7", fontColor: "FF15803D" },
-    ];
-
-    legendItems.forEach((item) => {
-      const row = sheet.addRow(["", item.symbol, `${item.label}: ${item.desc}`]);
-      const symCell = row.getCell(2);
-      symCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: item.fill } };
-      symCell.font = { name: "Arial", size: 11, bold: true, color: { argb: item.fontColor } };
-      symCell.alignment = { vertical: "middle", horizontal: "center" };
-      row.getCell(3).font = { name: "Arial", size: 9, italic: true };
-    });
-
-    // Column widths
+    // Auto-fit column widths
     sheet.columns.forEach((col, idx) => {
-      if (idx === 2) col.width = 32;
-      else if (idx === 1 || idx === 3) col.width = 16;
-      else if (idx >= 4 && idx < 4 + daysInMonth) col.width = 4.5;
+      if (idx === 0) col.width = 6;
+      else if (idx === 1) col.width = 16;
+      else if (idx === 2) col.width = 32;
+      else if (idx === 3) col.width = 16;
+      else if (idx <= 3 + daysInMonth) col.width = 4.5;
       else col.width = 14;
     });
 
     const buffer = await workbook.xlsx.writeBuffer();
-
     return new NextResponse(buffer, {
       status: 200,
       headers: {
-        "Content-Disposition": `attachment; filename="REKAP-MONITORING-PLN-UPS-${month}.xlsx"`,
         "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "Content-Disposition": `attachment; filename="Rekap_Kebersihan_PLN_UPS_${month}.xlsx"`,
       },
     });
   } catch (error: any) {
-    return NextResponse.json({ ok: false, message: error.message || "Gagal membuat berkas Excel." }, { status: 500 });
+    return NextResponse.json({ ok: false, message: error.message || "Gagal ekspor excel." }, { status: 500 });
   }
 }
