@@ -12,9 +12,12 @@ export default function UsersManagementPage() {
   const loadUsers = async () => {
     try {
       const res = await fetch("/api/admin/users").then((r) => r.json());
-      if (res.ok) setUsersData(res.data.users);
+      if (res.ok && res.data) {
+        const list = Array.isArray(res.data) ? res.data : res.data.users || [];
+        setUsersData(list);
+      }
     } catch (e) {
-      console.error(e);
+      console.error("Gagal memuat pengguna:", e);
     }
   };
 
@@ -41,7 +44,7 @@ export default function UsersManagementPage() {
       setShowUserModal(false);
       loadUsers();
     } catch (e) {
-      console.error(e);
+      console.error("Gagal menyimpan pengguna:", e);
     }
   };
 
@@ -51,7 +54,7 @@ export default function UsersManagementPage() {
       await fetch(`/api/admin/users/${id}`, { method: "DELETE" });
       loadUsers();
     } catch (e) {
-      console.error(e);
+      console.error("Gagal menghapus pengguna:", e);
     }
   };
 
@@ -96,7 +99,7 @@ export default function UsersManagementPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-[#f1f5f9]">
-            {usersData.map((u) => (
+            {(usersData || []).map((u) => (
               <tr key={u.id} className="hover:bg-[#f8fafc]">
                 <td className="p-4 font-bold text-[#17313d]">{u.fullName}</td>
                 <td className="p-4 font-mono text-[#647783]">{u.username}</td>
