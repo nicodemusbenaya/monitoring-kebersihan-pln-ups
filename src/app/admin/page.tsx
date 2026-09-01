@@ -270,17 +270,17 @@ export default function AdminPage() {
                       <div
                         className="completion-dial"
                         style={{
-                          ["--completion" as any]: `${dashboardData.summary.completionRate || 0}`,
+                          ["--completion" as any]: `${dashboardData?.summary?.completionRate ?? 0}`,
                         }}
                       >
-                        <span>{dashboardData.summary.completionRate || 0}%</span>
+                        <span>{dashboardData?.summary?.completionRate ?? 0}%</span>
                       </div>
                     </div>
                     <div>
                       <span>Penyelesaian hari ini</span>
-                      <strong>{dashboardData.summary.completedSessions}</strong>
+                      <strong>{dashboardData?.summary?.completedSessions ?? 0}</strong>
                       <small>
-                        dari {dashboardData.summary.totalExpectedSessions} sesi target
+                        dari {dashboardData?.summary?.totalExpectedSessions ?? 0} sesi target
                       </small>
                     </div>
                   </div>
@@ -291,7 +291,7 @@ export default function AdminPage() {
                     </div>
                     <div>
                       <span>Semua Lengkap (Petugas & SPV)</span>
-                      <strong>{dashboardData.summary.greenCount || 0}</strong>
+                      <strong>{dashboardData?.summary?.greenCount ?? 0}</strong>
                       <small>Pemeriksaan tuntas</small>
                     </div>
                   </div>
@@ -302,7 +302,7 @@ export default function AdminPage() {
                     </div>
                     <div>
                       <span>Menunggu Inspeksi SPV</span>
-                      <strong style={{ color: "#7e22ce" }}>{dashboardData.summary.purpleCount || 0}</strong>
+                      <strong style={{ color: "#7e22ce" }}>{dashboardData?.summary?.purpleCount ?? 0}</strong>
                       <small>Petugas sudah tuntas</small>
                     </div>
                   </div>
@@ -313,7 +313,7 @@ export default function AdminPage() {
                     </div>
                     <div>
                       <span>Sesi Belum Lengkap</span>
-                      <strong>{dashboardData.summary.yellowCount || 0}</strong>
+                      <strong>{dashboardData?.summary?.yellowCount ?? 0}</strong>
                       <small>Ada sesi belum diisi</small>
                     </div>
                   </div>

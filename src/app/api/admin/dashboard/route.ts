@@ -54,20 +54,31 @@ export async function GET(request: Request) {
     const attentionItems = todayInspections
       .filter((i) => i.overallStatus === "ADA_TEMUAN")
       .map((i) => ({
+        id: i.id,
         inspectionId: i.id,
         roomName: i.room.name,
         slotName: i.slot.name,
         officerName: i.user.fullName,
+        activityName: "Pemeriksaan Fisik",
         dirtyCount: i.dirtyCount,
+        note: i.evidenceName || `${i.dirtyCount} temuan kotor/rusak`,
+        time: new Date(i.submittedAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }),
         submittedAt: i.submittedAt,
         photos: i.photos.map((p) => p.fileUrl),
       }));
 
-    // 5. Room completion matrix for today with 4 status levels:
-    // - EMPTY (Merah): Tidak ada sesi sama sekali
-    // - PARTIAL (Kuning): Ada sesi tapi sesi petugas belum lengkap
-    // - WAITING_SPV (Ungu): Sesi petugas lengkap, belum inspeksi SPV
-    // - COMPLETE (Hijau): Semua sesi selesai (Petugas & SPV)
+    // 5. Total expected sessions across all rooms
+    let totalExpectedSessions = 0;
+    rooms.forEach((r) => {
+      totalExpectedSessions += r.roomType.slots.length;
+    });
+
+    // 6. Room completion matrix for today with 4 status levels
+    let greenCount = 0;
+    let purpleCount = 0;
+    let yellowCount = 0;
+    let redCount = 0;
+
     const roomSummaries = rooms.map((room) => {
       const roomInsps = todayInspections.filter((i) => i.roomId === room.id);
       const petugasSlots = room.roomType.slots.filter((s) => s.role === "PETUGAS");
@@ -77,40 +88,70 @@ export async function GET(request: Request) {
       const spvFinished = roomInsps.filter((i) => i.slot.role === "SUPERVISOR").length;
       const totalFinished = roomInsps.length;
       const totalSlots = room.roomType.slots.length;
+      const dirtyCount = roomInsps.reduce((acc, curr) => acc + curr.dirtyCount, 0);
       const hasFindings = roomInsps.some((i) => i.overallStatus === "ADA_TEMUAN");
 
       let status = "EMPTY"; // Merah
       if (totalFinished === 0) {
         status = "EMPTY";
+        redCount++;
       } else if (petugasSlots.length > 0 && petugasFinished < petugasSlots.length) {
         status = "PARTIAL"; // Kuning
+        yellowCount++;
       } else if (spvSlots.length > 0 && spvFinished < spvSlots.length) {
         status = "WAITING_SPV"; // Ungu
+        purpleCount++;
       } else {
         status = "COMPLETE"; // Hijau
+        greenCount++;
       }
 
       return {
         id: room.id,
         code: room.code,
         name: room.name,
+        room: {
+          id: room.id,
+          code: room.code,
+          name: room.name,
+          roomType: { name: room.roomType.name },
+        },
         roomTypeName: room.roomType.name,
         totalSlots,
+        completedCount: totalFinished,
         completedSlots: totalFinished,
         petugasFinished,
         petugasTotal: petugasSlots.length,
         spvFinished,
         spvTotal: spvSlots.length,
+        dirtyCount,
         hasFindings,
         status,
       };
     });
 
+    const completionRate =
+      totalExpectedSessions > 0
+        ? Math.round((todayInspections.length / totalExpectedSessions) * 100)
+        : 0;
+
     return NextResponse.json({
       ok: true,
       data: {
         today,
+        dateKey: today,
         selectedMonth,
+        summary: {
+          completionRate,
+          completedSessions: todayInspections.length,
+          totalExpectedSessions,
+          cleanCount: todayCleanCount,
+          findingCount: todayFindingCount,
+          greenCount,
+          purpleCount,
+          yellowCount,
+          redCount,
+        },
         metrics: {
           totalRooms,
           inspectionsTodayCount: todayInspections.length,
@@ -120,6 +161,7 @@ export async function GET(request: Request) {
           averageRating: avgRating,
           satisfactionRate,
         },
+        findings: attentionItems,
         attentionItems,
         roomSummaries,
       },
