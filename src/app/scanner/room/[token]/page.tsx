@@ -135,14 +135,80 @@ export default function RoomInspectionPage({
     }));
   };
 
-  const handlePhotoAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files) return;
-    const files = Array.from(e.target.files);
-    const newPhotos = files.map((file) => ({
-      file,
-      preview: URL.createObjectURL(file),
-    }));
-    setPhotos((prev) => [...prev, ...newPhotos]);
+async function compressImageFile(file: File, maxWidth = 1280, quality = 0.75): Promise<File> {
+  return new Promise((resolve) => {
+    if (!file.type.startsWith("image/")) {
+      return resolve(file);
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new window.Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth || height > maxWidth) {
+          if (width > height) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          } else {
+            width = Math.round((width * maxWidth) / height);
+            height = maxWidth;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, ".jpg"), {
+                  type: "image/jpeg",
+                  lastModified: Date.now(),
+                });
+                resolve(compressedFile);
+              } else {
+                resolve(file);
+              }
+            },
+            "image/jpeg",
+            quality
+          );
+        } else {
+          resolve(file);
+        }
+      };
+      img.onerror = () => resolve(file);
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => resolve(file);
+    reader.readAsDataURL(file);
+  });
+}
+
+  const handlePhotoAdd = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const rawFiles = Array.from(e.target.files);
+    try {
+      const compressedList = await Promise.all(rawFiles.map((f) => compressImageFile(f)));
+      const newPhotos = compressedList.map((file) => ({
+        file,
+        preview: URL.createObjectURL(file),
+      }));
+      setPhotos((prev) => [...prev, ...newPhotos]);
+    } catch (err) {
+      console.error("Compression error:", err);
+      const fallbackPhotos = rawFiles.map((file) => ({
+        file,
+        preview: URL.createObjectURL(file),
+      }));
+      setPhotos((prev) => [...prev, ...fallbackPhotos]);
+    }
   };
 
   const handleRemovePhoto = (index: number) => {
@@ -189,7 +255,16 @@ export default function RoomInspectionPage({
         body: formData,
       });
 
-      const resData = await res.json();
+      let resData: any = {};
+      try {
+        resData = await res.json();
+      } catch {
+        if (res.status === 413) {
+          throw new Error("Ukuran foto terlalu besar. Sistem telah mengompresi foto otomatis, silakan coba unggah kembali.");
+        }
+        throw new Error(`Server merespons status ${res.status}`);
+      }
+
       if (!res.ok || !resData.ok) {
         throw new Error(resData.message || "Gagal menyimpan checklist.");
       }
