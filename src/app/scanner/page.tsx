@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Html5Qrcode } from "html5-qrcode";
+import Image from "next/image";
+import { Camera, X, Upload, ArrowRight, ShieldCheck, RefreshCw } from "lucide-react";
 
 export default function ScannerPage() {
   const router = useRouter();
@@ -56,31 +58,38 @@ export default function ScannerPage() {
     setError("");
     setScanning(true);
 
-    try {
-      if (!html5QrCodeRef.current) {
-        html5QrCodeRef.current = new Html5Qrcode("qr-reader-container");
-      }
+    // Allow DOM to render #qr-reader-container first
+    setTimeout(async () => {
+      try {
+        if (!html5QrCodeRef.current) {
+          html5QrCodeRef.current = new Html5Qrcode("qr-reader-container");
+        }
 
-      await html5QrCodeRef.current.start(
-        { facingMode: "environment" },
-        {
-          fps: 15,
-          qrbox: { width: 250, height: 250 },
-          aspectRatio: 1.0,
-        },
-        handleScanSuccess,
-        () => {}
-      );
-    } catch (err: any) {
-      console.error("Camera error:", err);
-      setScanning(false);
-      setError("Tidak dapat mengakses kamera. Pastikan izin kamera telah diberikan atau gunakan pilihan foto/kode manual.");
-    }
+        await html5QrCodeRef.current.start(
+          { facingMode: "environment" },
+          {
+            fps: 15,
+            qrbox: { width: 260, height: 260 },
+            aspectRatio: 1.0,
+          },
+          handleScanSuccess,
+          () => {}
+        );
+      } catch (err: any) {
+        console.error("Camera error:", err);
+        setScanning(false);
+        setError("Tidak dapat mengakses kamera. Pastikan izin kamera telah diberikan atau gunakan pilihan foto/kode manual.");
+      }
+    }, 150);
   };
 
   const stopQrScanner = async () => {
     if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
-      await html5QrCodeRef.current.stop();
+      try {
+        await html5QrCodeRef.current.stop();
+      } catch (err) {
+        console.error(err);
+      }
     }
     setScanning(false);
   };
@@ -103,135 +112,162 @@ export default function ScannerPage() {
   };
 
   return (
-    <div className="app-shell">
-      {/* Topbar Header (GAS style) */}
-      <header className="topbar">
-        <div className="topbar-inner">
-          <div className="topbar-brand">
-            <img
-              src="https://upload.wikimedia.org/wikipedia/commons/2/20/Logo_PLN.svg"
-              alt="Logo PLN"
-            />
-            <span className="brand-divider"></span>
-            <div className="topbar-title">
-              <strong>Monitoring Kebersihan PLN UPS</strong>
-              <span>Pemindaian ruangan</span>
-            </div>
+    <div className="min-h-screen bg-[#edf2f6] text-[#17313d] font-sans flex flex-col">
+      {/* ────────────────── TOPBAR HEADER ────────────────── */}
+      <header className="bg-white border-b border-[#d8e3ea] px-6 py-3.5 flex items-center justify-between shadow-sm sticky top-0 z-30">
+        <div className="flex items-center gap-3">
+          <Image
+            src="/pln-emblem.svg"
+            alt="PLN"
+            width={32}
+            height={32}
+            className="w-8 h-8 object-contain rounded-lg shadow-sm"
+            priority
+          />
+          <div className="h-6 w-[1px] bg-[#cbd5e1]"></div>
+          <div>
+            <strong className="text-xs font-black text-[#17313d] block leading-tight">
+              Monitoring Kebersihan PLN UPS
+            </strong>
+            <span className="text-[11px] text-[#647783]">Pemindaian Ruangan</span>
           </div>
+        </div>
 
-          <div className="user-area">
-            {currentUser && (
-              <div className="user-copy">
-                <strong>{currentUser.fullName}</strong>
-                <span>{roleLabel(currentUser.role)}</span>
-              </div>
-            )}
-            <button className="btn btn-secondary btn-sm" onClick={handleLogout}>
-              Keluar
-            </button>
-          </div>
+        <div className="flex items-center gap-3">
+          {currentUser && (
+            <div className="text-right hidden sm:block">
+              <strong className="text-xs font-black text-[#17313d] block">{currentUser.fullName}</strong>
+              <span className="text-[10px] text-[#647783] font-bold">{roleLabel(currentUser.role)}</span>
+            </div>
+          )}
+          <button
+            onClick={handleLogout}
+            className="px-3.5 py-1.5 bg-white border border-[#cbd5e1] hover:border-[#dc2626] text-[#647783] hover:text-[#dc2626] rounded-xl text-xs font-bold transition-all shadow-sm"
+          >
+            Keluar
+          </button>
         </div>
       </header>
 
-      {/* Main Container */}
-      <main className="page">
-        {/* Room Banner */}
-        <section className="room-banner">
-          <div>
-            <div className="eyebrow" style={{ color: "#ffd100" }}>
-              CHECKLIST HARIAN
+      {/* ────────────────── MAIN CONTENT ────────────────── */}
+      <main className="flex-1 max-w-2xl w-full mx-auto p-4 sm:p-6 space-y-5">
+        {/* HERO CARD / CAMERA SCANNER CONTAINER */}
+        {!scanning ? (
+          /* Normal State: Hero Banner */
+          <section className="bg-gradient-to-br from-[#072d3f] to-[#0d4661] text-white rounded-3xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
+            <div className="space-y-2 max-w-md">
+              <span className="text-[10px] font-black uppercase tracking-widest text-[#ffd100] block">
+                CHECKLIST HARIAN
+              </span>
+              <h1 className="text-2xl sm:text-3xl font-black text-white leading-tight">
+                Buka checklist ruangan
+              </h1>
+              <p className="text-xs text-[#b8d1df] leading-relaxed">
+                Arahkan kamera langsung ke QR Code stiker fisik yang tertempel di ruangan untuk mengisi formulir checklist kebersihan.
+              </p>
             </div>
-            <h1>Buka checklist ruangan</h1>
-            <p>Arahkan kamera langsung ke QR yang ditempel di ruangan untuk membuka checklist.</p>
-          </div>
-          <div className="scan-box">
-            {!scanning ? (
+
+            <div className="mt-6 pt-4 border-t border-white/10 flex flex-col sm:flex-row items-center gap-3">
               <button
                 type="button"
-                className="btn btn-primary btn-block"
                 onClick={startQrScanner}
+                className="w-full sm:w-auto px-6 py-3.5 bg-[#ffd100] hover:bg-[#ffc400] text-[#072d3f] rounded-2xl font-black text-xs shadow-lg flex items-center justify-center gap-2 transition-all"
               >
-                Baca QR Ruangan
+                <Camera className="w-4 h-4" />
+                <span>Buka Kamera Pemindai</span>
               </button>
-            ) : (
+              <span className="text-[11px] text-[#93b7cb]">Kamera langsung dari browser perangkat</span>
+            </div>
+          </section>
+        ) : (
+          /* Active State: Camera Replaces Hero Card */
+          <section className="bg-[#072d3f] text-white rounded-3xl p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#10b981] animate-ping"></span>
+                <h3 className="text-sm font-black text-white">Kamera Pemindai Aktif</h3>
+              </div>
               <button
                 type="button"
-                className="btn btn-secondary btn-block"
                 onClick={stopQrScanner}
+                className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
               >
-                Tutup Kamera
+                <X className="w-4 h-4" />
+                <span>Tutup Kamera</span>
               </button>
-            )}
-            <span style={{ marginTop: "9px" }}>Kamera langsung dari perangkat</span>
-          </div>
-        </section>
-
-        {error && <div className="notice notice-danger">{error}</div>}
-
-        {/* Scanner Panel */}
-        <section className="panel">
-          <div className="panel-body">
-            <div
-              id="qr-reader-container"
-              style={{
-                display: scanning ? "block" : "none",
-                maxWidth: "480px",
-                margin: "0 auto 20px",
-                borderRadius: "12px",
-                overflow: "hidden",
-              }}
-            />
-
-            {!scanning && (
-              <div className="empty">
-                <strong>Belum ada ruangan terbuka.</strong>
-                <br />
-                Tekan <b>Baca QR Ruangan</b>, lalu izinkan kamera untuk memindai QR.
-                <div className="field-hint" style={{ marginTop: "12px" }}>
-                  Pemindaian QR hanya menggunakan kamera langsung.
-                </div>
-              </div>
-            )}
-
-            {/* Native Mobile Camera Upload Fallback */}
-            <div style={{ marginTop: "24px", paddingTop: "20px", borderTop: "1px solid var(--line)", display: "flex", flexWrap: "wrap", gap: "12px", alignItems: "center", justifyContent: "space-between" }}>
-              <div>
-                <label className="btn btn-secondary btn-sm" style={{ cursor: "pointer" }}>
-                  <span>📷 Foto QR dari Galeri / Kamera HP</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    style={{ display: "none" }}
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      try {
-                        const html5Qr = new Html5Qrcode("qr-reader-container");
-                        const result = await html5Qr.scanFile(file, true);
-                        handleScanSuccess(result);
-                      } catch {
-                        setError("Gagal mendeteksi QR Code dari foto. Pastikan foto fokus dan jelas.");
-                      }
-                    }}
-                  />
-                </label>
-              </div>
-
-              {/* Manual Input Fallback */}
-              <form onSubmit={handleManualSubmit} style={{ display: "flex", gap: "8px", flex: "1", maxWidth: "420px" }}>
-                <input
-                  type="text"
-                  value={manualToken}
-                  onChange={(e) => setManualToken(e.target.value)}
-                  placeholder="Kode ruangan manual (contoh: PANTRY)"
-                  style={{ flex: 1, minHeight: "36px", padding: "6px 12px", fontSize: "13px" }}
-                />
-                <button type="submit" className="btn btn-primary btn-sm">
-                  Buka
-                </button>
-              </form>
             </div>
+
+            {/* Live Camera Feed Container */}
+            <div className="relative rounded-2xl overflow-hidden bg-black border-2 border-[#ffd100]/40 shadow-inner max-w-sm mx-auto aspect-square flex items-center justify-center">
+              <div id="qr-reader-container" className="w-full h-full object-cover" />
+            </div>
+
+            <p className="text-center text-[11px] text-[#93b7cb]">
+              Posisikan QR Code di dalam kotak pemindaian kamera.
+            </p>
+          </section>
+        )}
+
+        {/* Error Alert */}
+        {error && (
+          <div className="p-4 bg-[#fee2e2] border border-[#fca5a5] text-[#b91c1c] rounded-2xl text-xs font-bold flex items-center gap-2 shadow-sm">
+            <span>⚠️</span>
+            <span>{error}</span>
+          </div>
+        )}
+
+        {/* Alternative Methods Panel (Upload Foto & Input Manual) */}
+        <section className="bg-white border border-[#d8e3ea] rounded-3xl p-6 shadow-sm space-y-5">
+          <div>
+            <h4 className="text-sm font-extrabold text-[#17313d]">Pilihan Pemindaian Alternatif</h4>
+            <p className="text-xs text-[#647783] mt-0.5">
+              Gunakan galeri foto jika kamera langsung tidak tersedia atau ketik kode ruangan secara manual.
+            </p>
+          </div>
+
+          <div className="space-y-4 pt-2">
+            {/* Native Photo File Upload */}
+            <div>
+              <label className="w-full py-3 px-4 bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#cbd5e1] rounded-2xl text-xs font-bold text-[#17313d] flex items-center justify-center gap-2 cursor-pointer transition-all shadow-sm">
+                <Upload className="w-4 h-4 text-[#0076a8]" />
+                <span>Pilih Foto QR dari Galeri / Kamera HP</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    try {
+                      const html5Qr = new Html5Qrcode("qr-reader-container");
+                      const result = await html5Qr.scanFile(file, true);
+                      handleScanSuccess(result);
+                    } catch {
+                      setError("Gagal mendeteksi QR Code dari foto. Pastikan gambar fokus, terang, dan tidak buram.");
+                    }
+                  }}
+                />
+              </label>
+            </div>
+
+            {/* Manual Code Input Form */}
+            <form onSubmit={handleManualSubmit} className="flex gap-2">
+              <input
+                type="text"
+                value={manualToken}
+                onChange={(e) => setManualToken(e.target.value)}
+                placeholder="Ketik kode ruangan (contoh: PANTRY / RAPAT)"
+                className="flex-1 px-4 py-2.5 bg-[#f8fafc] border border-[#cbd5e1] rounded-2xl text-xs font-bold text-[#17313d] placeholder:text-[#94a3b8] focus:outline-none focus:border-[#0076a8]"
+              />
+              <button
+                type="submit"
+                className="px-5 py-2.5 bg-[#0076a8] hover:bg-[#00577d] text-white text-xs font-bold rounded-2xl shadow-md flex items-center gap-1.5 transition-all"
+              >
+                <span>Buka</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </form>
           </div>
         </section>
       </main>
