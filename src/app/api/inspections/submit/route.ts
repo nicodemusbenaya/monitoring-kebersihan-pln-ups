@@ -11,17 +11,45 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, message: "Silakan login terlebih dahulu." }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { scanId, slotId, answers, photos, evidenceDataList } = body;
+    const contentType = request.headers.get("content-type") || "";
 
-    const photoList = Array.isArray(photos) ? photos : Array.isArray(evidenceDataList) ? evidenceDataList : [];
+    let roomId = "";
+    let slotId = "";
+    let scanId: string | null = null;
+    let answers: any[] = [];
+    let rawPhotos: (File | string)[] = [];
 
-    if (!slotId || !Array.isArray(answers) || answers.length === 0) {
-      return NextResponse.json({ ok: false, message: "Data pemeriksaan tidak lengkap." }, { status: 400 });
+    // 1. Handle Multipart FormData or JSON
+    if (contentType.includes("multipart/form-data") || contentType.includes("form-data")) {
+      const formData = await request.formData();
+      roomId = String(formData.get("roomId") || "").trim();
+      slotId = String(formData.get("slotId") || "").trim();
+      scanId = (formData.get("scanId") as string) || null;
+
+      const rawItems = formData.get("items") || formData.get("answers");
+      if (typeof rawItems === "string") {
+        try {
+          answers = JSON.parse(rawItems);
+        } catch {
+          answers = [];
+        }
+      }
+
+      const photoFiles = formData.getAll("photos");
+      if (photoFiles && photoFiles.length > 0) {
+        rawPhotos = photoFiles as (File | string)[];
+      }
+    } else {
+      const body = await request.json();
+      roomId = String(body.roomId || "").trim();
+      slotId = String(body.slotId || "").trim();
+      scanId = body.scanId || null;
+      answers = Array.isArray(body.answers) ? body.answers : Array.isArray(body.items) ? body.items : [];
+      rawPhotos = Array.isArray(body.photos) ? body.photos : Array.isArray(body.evidenceDataList) ? body.evidenceDataList : [];
     }
 
-    if (photoList.length === 0) {
-      return NextResponse.json({ ok: false, message: "Minimal 1 foto evidence wajib dilampirkan." }, { status: 400 });
+    if (!slotId || !Array.isArray(answers) || answers.length === 0) {
+      return NextResponse.json({ ok: false, message: "Data pemeriksaan / checklist tidak lengkap." }, { status: 400 });
     }
 
     const slot = await prisma.slot.findUnique({
@@ -33,9 +61,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, message: "Slot pemeriksaan tidak valid." }, { status: 400 });
     }
 
-    // Resolve room from scanId or slot
-    let scan = scanId ? await prisma.scanEvent.findUnique({ where: { id: scanId } }) : null;
-    let roomId = scan ? scan.roomId : body.roomId;
+    // Resolve room from scanId or slot if roomId is missing
+    if (!roomId && scanId) {
+      const scan = await prisma.scanEvent.findUnique({ where: { id: scanId } });
+      if (scan) roomId = scan.roomId;
+    }
 
     if (!roomId) {
       return NextResponse.json({ ok: false, message: "Ruangan tidak ditemukan." }, { status: 400 });
@@ -65,14 +95,14 @@ export async function POST(request: Request) {
       );
     }
 
-    // Count findings
+    // Count findings and validate notes
     let dirtyCount = 0;
     for (const a of answers) {
       if (a.qualityResult === "NEGATIVE" || a.functionResult === "NEGATIVE") {
         dirtyCount++;
         if (!a.note || !String(a.note).trim()) {
           return NextResponse.json(
-            { ok: false, message: "Catatan wajib diisi pada setiap indikator yang memiliki temuan." },
+            { ok: false, message: "Catatan wajib diisi pada setiap indikator yang memiliki temuan kotor/rusak." },
             { status: 400 }
           );
         }
@@ -87,39 +117,57 @@ export async function POST(request: Request) {
 
     const evidenceBaseName = `${room.code}-${today}-${slot.code}-${Date.now()}`;
 
-    // Process photo uploads
+    // Process photo uploads (converting File objects or base64 data to NAS evidence)
     const photoRecords: { fileName: string; fileUrl: string; sortOrder: number }[] = [];
 
-    for (let i = 0; i < photoList.length; i++) {
-      const dataUrl = photoList[i];
+    for (let i = 0; i < rawPhotos.length; i++) {
+      const item = rawPhotos[i];
       const photoName = `${evidenceBaseName}-${i + 1}.jpg`;
+      let base64 = "";
+      let photoContentType = "image/jpeg";
 
-      // Extract base64
-      let base64 = dataUrl;
-      let contentType = "image/jpeg";
-      if (dataUrl.startsWith("data:")) {
-        const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
-        if (match) {
-          contentType = match[1];
-          base64 = match[2];
+      if (typeof item === "object" && item !== null && "arrayBuffer" in item) {
+        // It's a File / Blob
+        const fileObj = item as File;
+        photoContentType = fileObj.type || "image/jpeg";
+        const buffer = Buffer.from(await fileObj.arrayBuffer());
+        base64 = buffer.toString("base64");
+      } else if (typeof item === "string") {
+        if (item.startsWith("data:")) {
+          const match = item.match(/^data:([^;]+);base64,(.+)$/);
+          if (match) {
+            photoContentType = match[1];
+            base64 = match[2];
+          } else {
+            base64 = item;
+          }
+        } else {
+          base64 = item;
         }
       }
 
-      // Upload to QNAP NAS
-      const nasRes = await uploadEvidenceToNas({
-        fileName: photoName,
-        contentType,
-        base64,
-      });
+      let storedPath = `EVIDENCE/${today.replace(/-/g, "/")}/${photoName}`;
+
+      if (base64) {
+        const nasRes = await uploadEvidenceToNas({
+          fileName: photoName,
+          contentType: photoContentType,
+          base64,
+        });
+
+        if (nasRes.ok && nasRes.path) {
+          storedPath = nasRes.path;
+        }
+      }
 
       photoRecords.push({
         fileName: photoName,
-        fileUrl: nasRes.ok && nasRes.path ? nasRes.path : dataUrl.slice(0, 500), // fallback reference
+        fileUrl: storedPath,
         sortOrder: i + 1,
       });
     }
 
-    // Execute atomic transaction in SQLite/Database
+    // Execute atomic transaction in Database
     const result = await prisma.$transaction(async (tx) => {
       const inspection = await tx.inspection.create({
         data: {
@@ -131,8 +179,8 @@ export async function POST(request: Request) {
           slotId: slot.id,
           slotCode: slot.code,
           userId: sessionUser.id,
-          scanId: scan?.id || null,
-          scannedAt: scan?.scannedAt || now,
+          scanId: scanId || null,
+          scannedAt: now,
           submittedAt: now,
           overallStatus: dirtyCount > 0 ? "ADA_TEMUAN" : "BERSIH",
           dirtyCount,
