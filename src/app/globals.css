@@ -3,54 +3,83 @@
 @tailwind utilities;
 
 :root {
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --pln-blue: #0076A8;
-  --pln-blue-dark: #005a82;
-  --pln-blue-light: #0099db;
-  --pln-yellow: #FFD100;
-  --pln-yellow-dark: #e6bc00;
-  --pln-red: #E42313;
+  --pln-blue: #0076a8;
+  --pln-blue-dark: #00577d;
+  --pln-blue-soft: #e8f5fa;
+  --pln-yellow: #ffd100;
+  --pln-red: #e42313;
+  --ink: #17313d;
+  --muted: #647783;
+  --line: #d9e4e9;
+  --surface: #ffffff;
+  --surface-soft: #f7fafb;
+  --canvas: #f3f7f9;
+  --blue: #0076a8;
+  --success: #157a55;
+  --success-soft: #e7f6ef;
+  --danger: #bd2d22;
+  --danger-soft: #fff0ee;
+  --warning: #9a6500;
+  --warning-soft: #fff7d6;
+  --purple: #7e22ce;
+  --purple-soft: #f3e8ff;
+  --radius-card: 16px;
+  --radius-control: 10px;
+  --shadow: 0 14px 36px rgba(0, 72, 101, .10);
+  --shadow-sm: 0 8px 20px rgba(0, 72, 101, .07);
 }
 
+* { box-sizing: border-box; }
+html {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-jakarta), "Segoe UI", Arial, sans-serif;
+}
 body {
-  font-family: var(--font-sans);
-  background-color: #f8fafc;
-  color: #0f172a;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  margin: 0;
+  min-width: 320px;
+  min-height: 100dvh;
+  background: var(--canvas);
+  color: var(--ink);
 }
 
-/* Custom scrollbars */
+/* Custom Scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
   background: #f1f5f9;
 }
 ::-webkit-scrollbar-thumb {
   background: #cbd5e1;
-  border-radius: 9999px;
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
 
-/* Micro-animations */
-@keyframes pulse-subtle {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.85; transform: scale(1.02); }
+/* Shimmer & Scanner Beam Animations */
+@keyframes shimmer {
+  to { background-position: -220% 0; }
+}
+@keyframes scanBeam {
+  from { transform: translateY(-31px); }
+  to { transform: translateY(31px); }
+}
+@keyframes scanSkeleton {
+  0%, 100% { opacity: .42; }
+  50% { opacity: 1; }
 }
 
-.animate-pulse-subtle {
-  animation: pulse-subtle 3s infinite ease-in-out;
-}
-
-@keyframes beam {
-  0% { transform: translateY(-100%); }
-  100% { transform: translateY(100%); }
-}
-
-.animate-scan-beam {
-  animation: beam 2s infinite linear;
+.animate-shimmer {
+  background: linear-gradient(90deg, #e1e9ed, #f7fafb, #e1e9ed);
+  background-size: 220% 100%;
+  animation: shimmer 1.2s linear infinite;
 }

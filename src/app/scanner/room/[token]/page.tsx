@@ -1,29 +1,30 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useEffect, useState, use, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import {
-  ArrowLeft,
   CheckCircle2,
-  AlertCircle,
+  AlertTriangle,
   Camera,
-  Trash2,
-  Send,
-  Loader2,
-  Clock,
-  Sparkles,
-  ShieldCheck,
-  Check,
   X,
+  Upload,
+  ArrowLeft,
+  Loader2,
+  Calendar,
+  Clock,
+  Send,
+  Sparkles,
+  ChevronDown,
+  Info,
+  ShieldCheck,
 } from "lucide-react";
-import confetti from "canvas-confetti";
 
 interface Activity {
-  activityId: string;
+  id: string;
   name: string;
-  standardCategory?: string;
-  standardText?: string;
+  standardCategory: string | null;
+  standardText: string | null;
   qualityApplicable: boolean;
   qualityPositive: string;
   qualityNegative: string;
@@ -33,551 +34,578 @@ interface Activity {
 }
 
 interface Slot {
-  slotId: string;
+  id: string;
   code: string;
   name: string;
   role: string;
-  completed: any;
+  available: boolean;
+  completed: boolean;
+  completedAt?: string;
 }
 
-export default function RoomChecklistPage({
+interface RoomData {
+  room: {
+    id: string;
+    code: string;
+    name: string;
+    roomType: { id: string; name: string };
+  };
+  currentUser: {
+    id: string;
+    username: string;
+    fullName: string;
+    role: string;
+  };
+  slots: Slot[];
+  activities: Activity[];
+  dateKey: string;
+  scanTime: string;
+  existingInspections: any[];
+}
+
+export default function RoomInspectionPage({
   params,
 }: {
   params: Promise<{ token: string }>;
 }) {
   const resolvedParams = use(params);
-  const token = resolvedParams.token;
   const router = useRouter();
+  const token = decodeURIComponent(resolvedParams.token);
 
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [successData, setSuccessData] = useState<any>(null);
+  const [data, setData] = useState<RoomData | null>(null);
 
-  const [roomData, setRoomData] = useState<any>(null);
-  const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
+  const [selectedSlotId, setSelectedSlotId] = useState<string>("");
+  const [checklist, setChecklist] = useState<
+    Record<
+      string,
+      {
+        quality: string;
+        function: string;
+        note: string;
+      }
+    >
+  >({});
+  const [photos, setPhotos] = useState<{ file: File; preview: string }[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [success, setSuccess] = useState(false);
 
-  // Form states
-  const [answers, setAnswers] = useState<Record<string, { quality: string; function: string; note: string }>>({});
-  const [photos, setPhotos] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    fetch("/api/scan", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ qrToken: token }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.ok && data.data) {
-          setRoomData(data.data);
-          // Pre-populate initial answers
-          const initialAnswers: any = {};
-          data.data.activities.forEach((act: Activity) => {
-            initialAnswers[act.activityId] = {
-              quality: act.qualityApplicable ? "POSITIVE" : "NA",
-              function: act.functionApplicable ? "POSITIVE" : "NA",
-              note: "",
-            };
-          });
-          setAnswers(initialAnswers);
-        } else {
-          setError(data.message || "Ruangan tidak valid.");
+    fetch(`/api/scan?token=${encodeURIComponent(token)}`)
+      .then(async (res) => {
+        const json = await res.json();
+        if (!res.ok || !json.ok) {
+          throw new Error(json.message || "Gagal memuat data ruangan.");
         }
+        setData(json);
+
+        // Default slot selection
+        const availableSlot =
+          json.slots.find((s: Slot) => s.available && !s.completed) ||
+          json.slots.find((s: Slot) => s.available) ||
+          json.slots[0];
+
+        if (availableSlot) {
+          setSelectedSlotId(availableSlot.id);
+        }
+
+        // Initialize checklist state
+        const initialChecklist: Record<string, any> = {};
+        json.activities.forEach((act: Activity) => {
+          initialChecklist[act.id] = {
+            quality: act.qualityApplicable ? "POSITIVE" : "NA",
+            function: act.functionApplicable ? "POSITIVE" : "NA",
+            note: "",
+          };
+        });
+        setChecklist(initialChecklist);
       })
-      .catch((err) => setError("Gagal memuat data ruangan."))
+      .catch((err: any) => {
+        setError(err.message || "Gagal memindai token ruangan.");
+      })
       .finally(() => setLoading(false));
   }, [token]);
 
-  const handleDimensionChange = (activityId: string, dimension: "quality" | "function", value: string) => {
-    setAnswers((prev) => ({
+  const handleQualityToggle = (actId: string, val: string) => {
+    setChecklist((prev) => ({
       ...prev,
-      [activityId]: {
-        ...prev[activityId],
-        [dimension]: value,
-      },
+      [actId]: { ...prev[actId], quality: val },
     }));
   };
 
-  const handleNoteChange = (activityId: string, note: string) => {
-    setAnswers((prev) => ({
+  const handleFunctionToggle = (actId: string, val: string) => {
+    setChecklist((prev) => ({
       ...prev,
-      [activityId]: {
-        ...prev[activityId],
-        note,
-      },
+      [actId]: { ...prev[actId], function: val },
     }));
   };
 
-  // Image compressor
-  const handlePhotoCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    if (photos.length >= 8) {
-      alert("Maksimal 8 foto per slot pemeriksaan.");
-      return;
-    }
-
-    const file = files[0];
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new window.Image();
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        const maxDimension = 800;
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > maxDimension) {
-            height = Math.round((height * maxDimension) / width);
-            width = maxDimension;
-          }
-        } else {
-          if (height > maxDimension) {
-            width = Math.round((width * maxDimension) / height);
-            height = maxDimension;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        ctx?.drawImage(img, 0, 0, width, height);
-
-        const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.6);
-        setPhotos((prev) => [...prev, compressedDataUrl]);
-      };
-      img.src = event.target?.result as string;
-    };
-    reader.readAsDataURL(file);
-    e.target.value = "";
+  const handleNoteChange = (actId: string, note: string) => {
+    setChecklist((prev) => ({
+      ...prev,
+      [actId]: { ...prev[actId], note },
+    }));
   };
 
-  const removePhoto = (index: number) => {
-    setPhotos((prev) => prev.filter((_, i) => i !== index));
+  const handlePhotoAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    const files = Array.from(e.target.files);
+    const newPhotos = files.map((file) => ({
+      file,
+      preview: URL.createObjectURL(file),
+    }));
+    setPhotos((prev) => [...prev, ...newPhotos]);
   };
+
+  const handleRemovePhoto = (index: number) => {
+    setPhotos((prev) => {
+      const updated = [...prev];
+      URL.revokeObjectURL(updated[index].preview);
+      updated.splice(index, 1);
+      return updated;
+    });
+  };
+
+  const dirtyCount = Object.values(checklist).filter(
+    (item) => item.quality === "NEGATIVE" || item.function === "NEGATIVE"
+  ).length;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedSlot) {
-      alert("Pilih slot waktu pemeriksaan terlebih dahulu.");
-      return;
-    }
-
-    if (photos.length === 0) {
-      alert("Minimal 1 foto bukti fisik wajib dilampirkan.");
-      return;
-    }
-
-    // Validate notes on findings
-    for (const act of roomData.activities) {
-      const ans = answers[act.activityId];
-      if (ans) {
-        const hasFinding = ans.quality === "NEGATIVE" || ans.function === "NEGATIVE";
-        if (hasFinding && !ans.note.trim()) {
-          alert(`Catatan temuan wajib diisi pada indikator: ${act.name}`);
-          return;
-        }
-      }
-    }
+    if (!data || !selectedSlotId) return;
 
     setSubmitting(true);
     setError("");
 
     try {
-      const payloadAnswers = roomData.activities.map((act: Activity) => ({
-        activityId: act.activityId,
-        qualityResult: answers[act.activityId]?.quality || "NA",
-        functionResult: answers[act.activityId]?.function || "NA",
-        note: answers[act.activityId]?.note || "",
-      }));
+      const formData = new FormData();
+      formData.append("roomId", data.room.id);
+      formData.append("slotId", selectedSlotId);
+      formData.append("dateKey", data.dateKey);
+
+      const items = data.activities.map((act) => {
+        const state = checklist[act.id] || { quality: "POSITIVE", function: "POSITIVE", note: "" };
+        return {
+          activityId: act.id,
+          qualityResult: state.quality,
+          qualityLabel: state.quality === "POSITIVE" ? act.qualityPositive : act.qualityNegative,
+          functionResult: state.function,
+          functionLabel: state.function === "POSITIVE" ? act.functionPositive : act.functionNegative,
+          note: state.note,
+        };
+      });
+
+      formData.append("items", JSON.stringify(items));
+      photos.forEach((p) => {
+        formData.append("photos", p.file);
+      });
 
       const res = await fetch("/api/inspections/submit", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          scanId: roomData.scan?.scanId,
-          roomId: roomData.room.id,
-          slotId: selectedSlot.slotId,
-          answers: payloadAnswers,
-          photos: photos,
-        }),
+        body: formData,
       });
 
-      const data = await res.json();
-      if (!res.ok || !data.ok) {
-        throw new Error(data.message || "Gagal menyimpan pemeriksaan.");
+      const resData = await res.json();
+      if (!res.ok || !resData.ok) {
+        throw new Error(resData.message || "Gagal menyimpan checklist.");
       }
 
-      setSuccessData(data.data);
-      confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
+      setSuccess(true);
+      setTimeout(() => {
+        router.push("/scanner");
+      }, 2000);
     } catch (err: any) {
-      setError(err.message || "Terjadi kesalahan saat menyimpan.");
-    } finally {
+      setError(err.message || "Terjadi kesalahan saat submit data.");
       setSubmitting(false);
     }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-white">
-        <Loader2 className="w-8 h-8 animate-spin text-pln-blue" />
+      <div className="min-h-screen bg-[#f3f7f9] flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-20 h-20 bg-white rounded-2xl border border-[#d9e4e9] p-3 shadow-md flex items-center justify-center mb-4 relative overflow-hidden">
+          <Image
+            src="https://upload.wikimedia.org/wikipedia/commons/2/20/Logo_PLN.svg"
+            alt="Logo PLN"
+            width={38}
+            height={48}
+            priority
+          />
+          <div className="absolute inset-x-2 top-0 h-1 bg-[#ffd100] rounded-full animate-bounce" />
+        </div>
+        <h2 className="text-lg font-bold text-[#17313d]">Memuat Form Checklist...</h2>
+        <p className="text-xs text-[#647783] mt-1">Mengidentifikasi ruangan dan indikator 5S</p>
       </div>
     );
   }
 
-  if (error && !roomData) {
+  if (error || !data) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-slate-950 text-white">
-        <AlertCircle className="w-12 h-12 text-red-400 mb-3" />
-        <h1 className="text-lg font-bold">Terjadi Kesalahan</h1>
-        <p className="text-sm text-slate-400 text-center mt-1 max-w-xs">{error}</p>
-        <button
-          onClick={() => router.push("/scanner")}
-          className="mt-6 px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-sm font-semibold rounded-xl"
-        >
-          Kembali ke Pemindai
-        </button>
-      </div>
-    );
-  }
-
-  // Success Screen
-  if (successData) {
-    return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-4">
-        <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 text-center shadow-2xl">
-          <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-emerald-500/30">
-            <CheckCircle2 className="w-8 h-8" />
+      <div className="min-h-screen bg-[#f3f7f9] flex flex-col items-center justify-center p-6 text-center">
+        <div className="max-w-md w-full bg-white border border-[#d9e4e9] rounded-2xl p-8 shadow-sm">
+          <div className="w-14 h-14 bg-[#fff0ee] text-[#bd2d22] rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <AlertTriangle className="w-7 h-7" />
           </div>
-          <h1 className="text-xl font-bold text-white">Pemeriksaan Berhasil!</h1>
-          <p className="text-xs text-slate-400 mt-1">Data pemeriksaan & bukti foto telah tersimpan aman.</p>
-
-          <div className="my-6 p-4 rounded-2xl bg-slate-950 border border-slate-800/80 text-left space-y-2">
-            <div className="flex justify-between text-xs">
-              <span className="text-slate-400">Ruangan:</span>
-              <span className="font-semibold text-white">{successData.roomName}</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-slate-400">Slot:</span>
-              <span className="font-semibold text-white">{successData.slotName}</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-slate-400">Waktu:</span>
-              <span className="font-semibold text-white">{successData.displayTime}</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-slate-400">Status:</span>
-              <span
-                className={`font-semibold ${
-                  successData.overallStatus === "BERSIH" ? "text-emerald-400" : "text-amber-400"
-                }`}
-              >
-                {successData.overallStatus === "BERSIH" ? "✓ Bersih / Normal" : `⚠ Ada ${successData.dirtyCount} Temuan`}
-              </span>
-            </div>
-          </div>
-
+          <h2 className="text-xl font-bold text-[#17313d]">QR Code Tidak Dikenali</h2>
+          <p className="text-xs text-[#647783] mt-2 mb-6 leading-relaxed">
+            {error || "Ruangan tidak ditemukan dalam database."}
+          </p>
           <button
             onClick={() => router.push("/scanner")}
-            className="w-full py-3.5 bg-pln-blue hover:bg-pln-blue-dark text-white font-bold rounded-xl transition-all"
+            className="w-full py-3 bg-[#0076a8] hover:bg-[#00577d] text-white font-bold rounded-xl text-sm transition-all"
           >
-            Pindai Ruangan Lain
+            Kembali ke Scanner
           </button>
         </div>
       </div>
     );
   }
 
+  if (success) {
+    return (
+      <div className="min-h-screen bg-[#f3f7f9] flex flex-col items-center justify-center p-6 text-center">
+        <div className="max-w-md w-full bg-white border border-[#d9e4e9] rounded-2xl p-8 shadow-md">
+          <div className="w-16 h-16 bg-[#e7f6ef] text-[#157a55] rounded-full flex items-center justify-center mx-auto mb-4">
+            <CheckCircle2 className="w-10 h-10" />
+          </div>
+          <h2 className="text-2xl font-bold text-[#17313d]">Checklist Tersimpan!</h2>
+          <p className="text-xs text-[#647783] mt-2 mb-6">
+            Data kebersihan untuk <strong>{data.room.name}</strong> berhasil direkam dan foto telah disinkronkan.
+          </p>
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#e8f5fa] text-[#00577d] rounded-xl text-xs font-bold">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span>Mengarahkan kembali...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const selectedSlot = data.slots.find((s) => s.id === selectedSlotId);
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 pb-16">
-      {/* Top Header */}
-      <header className="sticky top-0 z-30 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 py-3">
-        <div className="max-w-lg mx-auto flex items-center justify-between">
+    <div className="min-h-screen bg-[#f3f7f9] text-[#17313d] pb-28">
+      {/* Topbar Header */}
+      <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-[#d9e4e9] shadow-sm">
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
           <button
             onClick={() => router.push("/scanner")}
-            className="p-1.5 -ml-1.5 rounded-xl hover:bg-slate-800 text-slate-300 transition-colors flex items-center gap-1 text-xs font-semibold"
+            className="inline-flex items-center gap-2 text-xs font-bold text-[#00577d] hover:text-[#0076a8]"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Kembali</span>
           </button>
-          <span className="text-xs font-bold text-slate-300 truncate max-w-[200px]">{roomData.room.name}</span>
-          <div className="w-6" />
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-[#17313d]">{data.currentUser.fullName}</span>
+            <span className="text-[10px] px-2 py-0.5 bg-[#e8f5fa] text-[#0076a8] font-bold rounded-full uppercase">
+              {data.currentUser.role}
+            </span>
+          </div>
         </div>
       </header>
 
-      <main className="max-w-lg mx-auto p-4 space-y-5">
-        {/* Room Header Info */}
-        <div className="bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-800 rounded-3xl p-5 shadow-lg">
-          <div className="flex items-start justify-between">
+      {/* Main Form Container */}
+      <main className="max-w-4xl mx-auto p-4 sm:p-6">
+        {/* Room Header Banner (GAS style) */}
+        <div className="bg-[#00577d] text-white p-6 rounded-2xl shadow-md mb-6 relative overflow-hidden">
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-pln-yellow px-2 py-0.5 rounded-md bg-pln-yellow/10 border border-pln-yellow/20">
-                {roomData.room.roomTypeName}
-              </span>
-              <h1 className="text-xl font-bold text-white mt-1.5 leading-tight">{roomData.room.name}</h1>
-              <p className="text-xs text-slate-400 mt-0.5 font-mono">Kode: {roomData.room.code}</p>
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full border border-white/20 text-xs font-bold text-[#ffd100] mb-2 uppercase tracking-wide">
+                <span>{data.room.roomType.name}</span>
+                <span>•</span>
+                <span>{data.room.code}</span>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight">{data.room.name}</h1>
+              <div className="flex items-center gap-4 mt-2 text-xs text-white/80">
+                <span className="flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-[#ffd100]" />
+                  <span>{data.dateKey}</span>
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-[#ffd100]" />
+                  <span>Scan: {data.scanTime}</span>
+                </span>
+              </div>
             </div>
-            <div className="text-right">
-              <span className="text-[11px] text-slate-400 block font-medium">Scan Terverifikasi</span>
-              <span className="text-xs font-semibold text-white">{roomData.scan?.displayTime}</span>
+
+            <div className="border-t md:border-t-0 md:border-l border-white/20 pt-3 md:pt-0 md:pl-6 text-left md:text-right">
+              <span className="text-[11px] text-white/70 block uppercase font-semibold">Total Indikator</span>
+              <strong className="text-2xl font-black text-[#ffd100]">{data.activities.length} Butir 5S</strong>
             </div>
           </div>
+          <div className="absolute -right-10 -bottom-10 w-36 h-36 border-8 border-[#ffd100]/20 rounded-full pointer-events-none" />
         </div>
 
-        {/* Slot Selector */}
-        <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
-            Pilih Slot Pemeriksaan <span className="text-red-400">*</span>
+        {/* Slot Selector Pills (GAS style) */}
+        <div className="mb-6">
+          <label className="block text-xs font-bold text-[#304b57] uppercase tracking-wider mb-2.5">
+            Pilih Sesi / Slot Waktu Pemeriksaan:
           </label>
-          <div className="grid grid-cols-2 gap-2.5">
-            {roomData.slots.map((slot: Slot) => {
-              const isCompleted = Boolean(slot.completed);
-              const isSelected = selectedSlot?.slotId === slot.slotId;
-
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
+            {data.slots.map((slot) => {
+              const isSelected = slot.id === selectedSlotId;
+              const isOfficerSlot = slot.role === "PETUGAS";
               return (
                 <button
-                  key={slot.slotId}
+                  key={slot.id}
                   type="button"
-                  disabled={isCompleted}
-                  onClick={() => setSelectedSlot(slot)}
-                  className={`p-3.5 rounded-2xl text-left border transition-all ${
-                    isCompleted
-                      ? "bg-slate-900/50 border-slate-800/60 opacity-60 cursor-not-allowed"
-                      : isSelected
-                      ? "bg-pln-blue/20 border-pln-blue text-white shadow-lg ring-1 ring-pln-blue"
-                      : "bg-slate-900 border-slate-800 hover:border-slate-700 text-slate-200"
+                  onClick={() => setSelectedSlotId(slot.id)}
+                  className={`p-3.5 rounded-xl border text-left transition-all relative overflow-hidden ${
+                    isSelected
+                      ? "bg-[#0076a8] text-white border-[#0076a8] shadow-md ring-2 ring-[#0076a8]/20"
+                      : slot.completed
+                      ? "bg-[#e7f6ef] border-[#a3e6cb] text-[#157a55]"
+                      : "bg-white border-[#d9e4e9] text-[#17313d] hover:border-[#0076a8]"
                   }`}
                 >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-bold text-sm">{slot.name}</span>
-                    {isCompleted ? (
-                      <Check className="w-4 h-4 text-emerald-400" />
-                    ) : isSelected ? (
-                      <span className="w-2.5 h-2.5 rounded-full bg-pln-blue" />
-                    ) : null}
-                  </div>
-                  <span className="text-[11px] text-slate-400 block">
-                    {isCompleted ? `Selesai (${slot.completed.officerName})` : "Belum diisi"}
+                  <span
+                    className={`text-[10px] font-bold block uppercase tracking-wider ${
+                      isSelected ? "text-[#ffd100]" : "text-[#647783]"
+                    }`}
+                  >
+                    {slot.role}
                   </span>
+                  <strong className="text-sm font-bold block mt-0.5">{slot.name}</strong>
+                  {slot.completed && (
+                    <span
+                      className={`text-[10px] font-bold mt-1 inline-flex items-center gap-1 ${
+                        isSelected ? "text-white" : "text-[#157a55]"
+                      }`}
+                    >
+                      <CheckCircle2 className="w-3 h-3" />
+                      <span>Selesai</span>
+                    </span>
+                  )}
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* Prior results for supervisors */}
-        {roomData.petugasResults && roomData.petugasResults.length > 0 && (
-          <div className="p-4 rounded-2xl bg-slate-900/70 border border-slate-800">
-            <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">Hasil Petugas Hari Ini</h3>
-            <div className="space-y-1.5">
-              {roomData.petugasResults.map((pr: any, i: number) => (
-                <div key={i} className="flex justify-between items-center text-xs py-1 border-b border-slate-800/60 last:border-0">
-                  <span className="text-slate-300">{pr.slotName} ({pr.officerName})</span>
-                  <span className={pr.overallStatus === "BERSIH" ? "text-emerald-400 font-semibold" : "text-amber-400 font-semibold"}>
-                    {pr.overallStatus === "BERSIH" ? "Bersih" : `Ada ${pr.dirtyCount} Temuan`}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Checklist 5S Section */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-3">
+            {data.activities.map((act, index) => {
+              const state = checklist[act.id] || {
+                quality: "POSITIVE",
+                function: "POSITIVE",
+                note: "",
+              };
+              const isDirty = state.quality === "NEGATIVE" || state.function === "NEGATIVE";
 
-        {/* Form Checklist */}
-        {selectedSlot && (
-          <form onSubmit={handleSubmit} className="space-y-5 pt-2">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-white">Indikator 5S & Checklist</h2>
-              <span className="text-xs text-slate-400 font-medium">{roomData.activities.length} Indikator</span>
-            </div>
+              return (
+                <div
+                  key={act.id}
+                  className={`bg-white border rounded-2xl p-4 sm:p-5 shadow-sm transition-all ${
+                    isDirty ? "border-[#bd2d22]/40 bg-[#fffbfb]" : "border-[#d9e4e9]"
+                  }`}
+                >
+                  {/* Activity Head */}
+                  <div className="flex items-start gap-3.5">
+                    <div className="w-9 h-9 rounded-xl bg-[#e8f5fa] text-[#00577d] font-black text-sm flex items-center justify-center shrink-0">
+                      {index + 1}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-bold text-[#17313d] leading-snug">{act.name}</h3>
 
-            {error && (
-              <div className="p-3.5 rounded-2xl bg-red-500/20 border border-red-500/30 text-red-200 text-xs font-medium flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
-                <span>{error}</span>
-              </div>
-            )}
+                      {/* 5S Standard Indicator Box (GAS style) */}
+                      {act.standardText && (
+                        <div className="mt-2 p-2.5 bg-[#f5fafc] border-l-4 border-[#ffd100] rounded-r-xl text-xs text-[#405b67]">
+                          <span className="font-bold text-[#00577d] block text-[11px] mb-0.5">
+                            {act.standardCategory || "Standar 5S"}:
+                          </span>
+                          <p className="leading-relaxed">{act.standardText}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
 
-            {/* Checklist Items */}
-            <div className="space-y-3">
-              {roomData.activities.map((act: Activity, idx: number) => {
-                const ans = answers[act.activityId] || { quality: "POSITIVE", function: "POSITIVE", note: "" };
-                const hasFinding = ans.quality === "NEGATIVE" || ans.function === "NEGATIVE";
-
-                return (
-                  <div
-                    key={act.activityId}
-                    className={`p-4 rounded-2xl border transition-all ${
-                      hasFinding ? "bg-amber-950/20 border-amber-500/40" : "bg-slate-900 border-slate-800"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 mb-3">
-                      <span className="w-6 h-6 rounded-lg bg-slate-800 text-slate-300 text-xs font-bold flex items-center justify-center shrink-0">
-                        {idx + 1}
-                      </span>
+                  {/* 2-Way Toggles: Kualitas & Fungsi (GAS style) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 pt-3 border-t border-[#f1f5f9]">
+                    {/* Quality Toggle */}
+                    {act.qualityApplicable && (
                       <div>
-                        <h3 className="text-sm font-bold text-white leading-tight">{act.name}</h3>
-                        {act.standardText && (
-                          <p className="text-[11px] text-slate-400 mt-0.5">{act.standardText}</p>
-                        )}
+                        <span className="block text-[11px] font-bold text-[#647783] uppercase mb-1.5">
+                          Kualitas Fisik:
+                        </span>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleQualityToggle(act.id, "POSITIVE")}
+                            className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all ${
+                              state.quality === "POSITIVE"
+                                ? "bg-[#e7f6ef] border-[#157a55] text-[#157a55] shadow-sm font-black"
+                                : "bg-white border-[#d9e4e9] text-[#647783] hover:border-[#157a55]"
+                            }`}
+                          >
+                            ✓ {act.qualityPositive}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleQualityToggle(act.id, "NEGATIVE")}
+                            className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all ${
+                              state.quality === "NEGATIVE"
+                                ? "bg-[#fff0ee] border-[#bd2d22] text-[#bd2d22] shadow-sm font-black"
+                                : "bg-white border-[#d9e4e9] text-[#647783] hover:border-[#bd2d22]"
+                            }`}
+                          >
+                            ✕ {act.qualityNegative}
+                          </button>
+                        </div>
                       </div>
-                    </div>
+                    )}
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
-                      {/* Quality */}
-                      {act.qualityApplicable && (
-                        <div>
-                          <span className="text-[11px] font-semibold text-slate-400 block mb-1">Kualitas / Kebersihan</span>
-                          <div className="grid grid-cols-2 gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => handleDimensionChange(act.activityId, "quality", "POSITIVE")}
-                              className={`py-2 px-2.5 rounded-xl font-semibold border text-center transition-all ${
-                                ans.quality === "POSITIVE"
-                                  ? "bg-emerald-600/30 border-emerald-500 text-emerald-200"
-                                  : "bg-slate-950/60 border-slate-800 text-slate-400 hover:bg-slate-800"
-                              }`}
-                            >
-                              {act.qualityPositive || "Bersih"}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDimensionChange(act.activityId, "quality", "NEGATIVE")}
-                              className={`py-2 px-2.5 rounded-xl font-semibold border text-center transition-all ${
-                                ans.quality === "NEGATIVE"
-                                  ? "bg-rose-600/30 border-rose-500 text-rose-200"
-                                  : "bg-slate-950/60 border-slate-800 text-slate-400 hover:bg-slate-800"
-                              }`}
-                            >
-                              {act.qualityNegative || "Kotor"}
-                            </button>
-                          </div>
+                    {/* Function Toggle */}
+                    {act.functionApplicable && (
+                      <div>
+                        <span className="block text-[11px] font-bold text-[#647783] uppercase mb-1.5">
+                          Fungsi Sarana:
+                        </span>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleFunctionToggle(act.id, "POSITIVE")}
+                            className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all ${
+                              state.function === "POSITIVE"
+                                ? "bg-[#e7f6ef] border-[#157a55] text-[#157a55] shadow-sm font-black"
+                                : "bg-white border-[#d9e4e9] text-[#647783] hover:border-[#157a55]"
+                            }`}
+                          >
+                            ✓ {act.functionPositive}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleFunctionToggle(act.id, "NEGATIVE")}
+                            className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all ${
+                              state.function === "NEGATIVE"
+                                ? "bg-[#fff0ee] border-[#bd2d22] text-[#bd2d22] shadow-sm font-black"
+                                : "bg-white border-[#d9e4e9] text-[#647783] hover:border-[#bd2d22]"
+                            }`}
+                          >
+                            ✕ {act.functionNegative}
+                          </button>
                         </div>
-                      )}
-
-                      {/* Function */}
-                      {act.functionApplicable && (
-                        <div>
-                          <span className="text-[11px] font-semibold text-slate-400 block mb-1">Fungsi / Kondisi</span>
-                          <div className="grid grid-cols-2 gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => handleDimensionChange(act.activityId, "function", "POSITIVE")}
-                              className={`py-2 px-2.5 rounded-xl font-semibold border text-center transition-all ${
-                                ans.function === "POSITIVE"
-                                  ? "bg-emerald-600/30 border-emerald-500 text-emerald-200"
-                                  : "bg-slate-950/60 border-slate-800 text-slate-400 hover:bg-slate-800"
-                              }`}
-                            >
-                              {act.functionPositive || "Normal"}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDimensionChange(act.activityId, "function", "NEGATIVE")}
-                              className={`py-2 px-2.5 rounded-xl font-semibold border text-center transition-all ${
-                                ans.function === "NEGATIVE"
-                                  ? "bg-rose-600/30 border-rose-500 text-rose-200"
-                                  : "bg-slate-950/60 border-slate-800 text-slate-400 hover:bg-slate-800"
-                              }`}
-                            >
-                              {act.functionNegative || "Rusak"}
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Note on findings */}
-                    {hasFinding && (
-                      <div className="mt-3 pt-2.5 border-t border-slate-800/80">
-                        <label className="block text-[11px] font-semibold text-amber-300 mb-1">
-                          Catatan Temuan <span className="text-red-400">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={ans.note}
-                          onChange={(e) => handleNoteChange(act.activityId, e.target.value)}
-                          placeholder="Jelaskan kondisi atau temuan yang ada..."
-                          required
-                          className="w-full px-3 py-2 bg-slate-950 border border-amber-500/40 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
-                        />
                       </div>
                     )}
                   </div>
-                );
-              })}
-            </div>
 
-            {/* Photo Evidence Section */}
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 shadow-lg">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-white">
-                  Bukti Foto (Evidence) <span className="text-red-400">*</span>
-                </h3>
-                <span className="text-[11px] text-slate-400">{photos.length}/8 Foto</span>
-              </div>
-              <p className="text-[11px] text-slate-400 mb-3">
-                Minimal 1 foto wajib diambil langsung menggunakan kamera HP.
-              </p>
-
-              {/* Photo Previews */}
-              {photos.length > 0 && (
-                <div className="grid grid-cols-3 gap-2.5 mb-3">
-                  {photos.map((photo, i) => (
-                    <div key={i} className="relative aspect-square rounded-2xl overflow-hidden border border-slate-700 bg-slate-950">
-                      <img src={photo} alt={`Foto ${i + 1}`} className="w-full h-full object-cover" />
-                      <button
-                        type="button"
-                        onClick={() => removePhoto(i)}
-                        className="absolute top-1 right-1 p-1 bg-red-600/80 hover:bg-red-600 text-white rounded-lg backdrop-blur-sm"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
+                  {/* Finding Note (Shows when dirty/rusak) */}
+                  {isDirty && (
+                    <div className="mt-3 pt-3 border-t border-[#f1f5f9]">
+                      <label className="block text-xs font-bold text-[#bd2d22] mb-1">
+                        Catatan Temuan / Kerusakan:
+                      </label>
+                      <input
+                        type="text"
+                        value={state.note}
+                        onChange={(e) => handleNoteChange(act.id, e.target.value)}
+                        placeholder="Deskripsikan temuan agar segera ditindaklanjuti..."
+                        className="w-full px-3.5 py-2 bg-white border border-[#bd2d22]/40 rounded-xl text-xs text-[#17313d] focus:outline-none focus:ring-2 focus:ring-[#bd2d22]/20"
+                      />
                     </div>
-                  ))}
+                  )}
                 </div>
-              )}
+              );
+            })}
+          </div>
 
-              {photos.length < 8 && (
-                <label
-                  htmlFor="evidence-camera-input"
-                  className="w-full py-3.5 px-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-2xl flex items-center justify-center gap-2 text-xs font-bold text-pln-yellow cursor-pointer transition-all active:scale-[0.98]"
-                >
-                  <Camera className="w-4 h-4" />
-                  <span>Ambil Foto Langsung</span>
-                </label>
-              )}
-              <input
-                id="evidence-camera-input"
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handlePhotoCapture}
-                className="hidden"
-              />
+          {/* Photo Evidence Section */}
+          <div className="bg-white border border-[#d9e4e9] rounded-2xl p-5 shadow-sm mt-6">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3 className="text-sm font-bold text-[#17313d]">Foto Bukti Lapangan (Evidence)</h3>
+                <p className="text-xs text-[#647783] mt-0.5">
+                  Lampirkan foto kondisi ruangan sebelum atau sesudah dibersihkan
+                </p>
+              </div>
+              <span className="text-xs font-bold text-[#0076a8] bg-[#e8f5fa] px-2.5 py-1 rounded-full">
+                {photos.length} Foto
+              </span>
             </div>
 
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full py-4 px-5 bg-pln-blue hover:bg-pln-blue-dark text-white font-bold rounded-2xl shadow-xl shadow-pln-blue/25 flex items-center justify-center gap-2 text-base transition-all active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none"
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Menyimpan ke Database & NAS...</span>
-                </>
-              ) : (
-                <>
-                  <Send className="w-4 h-4" />
-                  <span>Kirim Laporan Pemeriksaan</span>
-                </>
-              )}
-            </button>
-          </form>
-        )}
+            {/* Photo Grid Preview */}
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3 mb-4">
+              {photos.map((photo, i) => (
+                <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-[#d9e4e9] group">
+                  <img src={photo.preview} alt="Evidence" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => handleRemovePhoto(i)}
+                    className="absolute top-1 right-1 p-1 bg-black/60 text-white rounded-full hover:bg-[#bd2d22] transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+
+              {/* Add Photo Button */}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="aspect-square rounded-xl border-2 border-dashed border-[#b9cbd3] hover:border-[#0076a8] hover:bg-[#e8f5fa] flex flex-col items-center justify-center text-[#647783] hover:text-[#0076a8] transition-all gap-1"
+              >
+                <Camera className="w-6 h-6" />
+                <span className="text-[10px] font-bold">Ambil Foto</span>
+              </button>
+            </div>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              capture="environment"
+              onChange={handlePhotoAdd}
+              className="hidden"
+            />
+          </div>
+
+          {/* Sticky Bottom Submit Bar (GAS style) */}
+          <div className="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-[#d9e4e9] p-4 shadow-xl z-30">
+            <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-[#17313d]">
+                    Sesi: <strong className="text-[#0076a8]">{selectedSlot?.name || "-"}</strong>
+                  </span>
+                  {dirtyCount > 0 ? (
+                    <span className="text-[11px] font-bold text-[#bd2d22] bg-[#fff0ee] px-2 py-0.5 rounded-full">
+                      {dirtyCount} Temuan
+                    </span>
+                  ) : (
+                    <span className="text-[11px] font-bold text-[#157a55] bg-[#e7f6ef] px-2 py-0.5 rounded-full">
+                      Semua Bersih ✓
+                    </span>
+                  )}
+                </div>
+                <span className="text-[11px] text-[#647783] block mt-0.5">
+                  Foto akan otomatis tersimpan di NAS PLN
+                </span>
+              </div>
+
+              <button
+                type="submit"
+                disabled={submitting}
+                className="py-3.5 px-6 bg-[#0076a8] hover:bg-[#00577d] text-white font-bold rounded-xl shadow-lg shadow-[#0076a8]/20 flex items-center gap-2 text-sm transition-all active:scale-[0.99] disabled:opacity-60 shrink-0"
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Menyimpan...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4" />
+                    <span>Kirim Checklist</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </form>
       </main>
     </div>
   );
