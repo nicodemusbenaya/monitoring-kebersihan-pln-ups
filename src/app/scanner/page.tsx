@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Html5Qrcode } from "html5-qrcode";
 import Image from "next/image";
 import { Camera, X, Upload, ArrowRight, ShieldCheck, RefreshCw } from "lucide-react";
+import { extractQrToken } from "@/lib/utils";
 
 export default function ScannerPage() {
   const router = useRouter();
@@ -26,10 +27,18 @@ export default function ScannerPage() {
         }
       })
       .catch(() => router.push("/login"));
+
+    return () => {
+      if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
+        html5QrCodeRef.current.stop().catch(() => {});
+      }
+    };
   }, [router]);
 
   const handleScanSuccess = (decodedText: string) => {
+    console.log("Raw QR scanned:", decodedText);
     const token = extractQrToken(decodedText);
+    console.log("Extracted token:", token);
 
     if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
       html5QrCodeRef.current.stop().catch(() => {});
@@ -47,29 +56,44 @@ export default function ScannerPage() {
     setError("");
     setScanning(true);
 
-    // Allow DOM to render #qr-reader-container first
     setTimeout(async () => {
       try {
         if (!html5QrCodeRef.current) {
           html5QrCodeRef.current = new Html5Qrcode("qr-reader-container");
         }
 
-        await html5QrCodeRef.current.start(
-          { facingMode: "environment" },
-          {
-            fps: 15,
-            qrbox: { width: 260, height: 260 },
-            aspectRatio: 1.0,
+        const config = {
+          fps: 20,
+          qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+            const minDim = Math.min(viewfinderWidth, viewfinderHeight);
+            const size = Math.floor(minDim * 0.75);
+            return { width: size, height: size };
           },
-          handleScanSuccess,
-          () => {}
-        );
+          aspectRatio: 1.0,
+        };
+
+        try {
+          await html5QrCodeRef.current.start(
+            { facingMode: "environment" },
+            config,
+            handleScanSuccess,
+            () => {}
+          );
+        } catch (backCamErr) {
+          console.warn("Back camera failed, trying any available camera:", backCamErr);
+          await html5QrCodeRef.current.start(
+            { facingMode: "user" },
+            config,
+            handleScanSuccess,
+            () => {}
+          );
+        }
       } catch (err: any) {
-        console.error("Camera error:", err);
+        console.error("Camera start error:", err);
         setScanning(false);
-        setError("Tidak dapat mengakses kamera. Pastikan izin kamera telah diberikan atau gunakan pilihan foto/kode manual.");
+        setError("Tidak dapat membuka kamera. Pastikan izin akses kamera aktif atau gunakan tombol pilih foto / kode manual.");
       }
-    }, 150);
+    }, 100);
   };
 
   const stopQrScanner = async () => {
@@ -81,6 +105,25 @@ export default function ScannerPage() {
       }
     }
     setScanning(false);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError("");
+
+    try {
+      let qrEngine = html5QrCodeRef.current;
+      if (!qrEngine) {
+        qrEngine = new Html5Qrcode("qr-reader-hidden");
+        html5QrCodeRef.current = qrEngine;
+      }
+      const result = await qrEngine.scanFile(file, true);
+      handleScanSuccess(result);
+    } catch (err) {
+      console.error("File QR scan error:", err);
+      setError("Gagal mendeteksi QR Code dari foto. Pastikan gambar fokus, terang, dan tidak buram.");
+    }
   };
 
   const handleManualSubmit = (e: React.FormEvent) => {
@@ -102,6 +145,9 @@ export default function ScannerPage() {
 
   return (
     <div className="min-h-screen bg-[#edf2f6] text-[#17313d] font-sans flex flex-col">
+      {/* Hidden container for file scanning fallback */}
+      <div id="qr-reader-hidden" className="hidden" />
+
       {/* ────────────────── TOPBAR HEADER ────────────────── */}
       <header className="bg-white border-b border-[#d8e3ea] px-6 py-3.5 flex items-center justify-between shadow-sm sticky top-0 z-30">
         <div className="flex items-center gap-3">
@@ -225,17 +271,7 @@ export default function ScannerPage() {
                   accept="image/*"
                   capture="environment"
                   className="hidden"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    try {
-                      const html5Qr = new Html5Qrcode("qr-reader-container");
-                      const result = await html5Qr.scanFile(file, true);
-                      handleScanSuccess(result);
-                    } catch {
-                      setError("Gagal mendeteksi QR Code dari foto. Pastikan gambar fokus, terang, dan tidak buram.");
-                    }
-                  }}
+                  onChange={handleFileUpload}
                 />
               </label>
             </div>
