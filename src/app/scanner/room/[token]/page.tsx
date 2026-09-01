@@ -272,7 +272,7 @@ async function compressImageFile(file: File, maxWidth = 1280, quality = 0.75): P
       setSuccess(true);
       setTimeout(() => {
         router.push("/scanner");
-      }, 1500);
+      }, 5000);
     } catch (err: any) {
       setError(err.message || "Terjadi kesalahan saat submit data.");
       setSubmitting(false);
@@ -343,13 +343,36 @@ async function compressImageFile(file: File, maxWidth = 1280, quality = 0.75): P
       <div className="app-shell">
         <main className="page" style={{ maxWidth: "480px", paddingTop: "80px", textAlign: "center" }}>
           <section className="panel">
-            <div className="panel-body">
+            <div className="panel-body" style={{ position: "relative" }}>
+              <button
+                type="button"
+                onClick={() => router.push("/scanner")}
+                aria-label="Tutup"
+                style={{
+                  position: "absolute",
+                  top: 12,
+                  right: 12,
+                  width: 32,
+                  height: 32,
+                  borderRadius: 999,
+                  border: "1px solid var(--line)",
+                  background: "white",
+                  cursor: "pointer",
+                  fontSize: 16,
+                  lineHeight: "32px",
+                }}
+              >
+                ✕
+              </button>
               <div style={{ fontSize: "48px", color: "var(--success)", marginBottom: "16px" }}>●</div>
               <h2>Pemeriksaan Berhasil Disimpan!</h2>
               <p style={{ color: "var(--muted)", margin: "8px 0 24px" }}>
                 Data checklist untuk <strong>{data.room.name}</strong> telah berhasil direkam ke dalam sistem dan foto evidence tersimpan di NAS.
               </p>
-              <div className="notice notice-success">Mengarahkan kembali ke pemindai...</div>
+              <div className="notice notice-success">Otomatis kembali ke pemindai dalam 5 detik — atau tekan Tutup.</div>
+              <button type="button" className="btn btn-primary" style={{ marginTop: 16 }} onClick={() => router.push("/scanner")}>
+                Tutup & Kembali ke Pemindai
+              </button>
             </div>
           </section>
         </main>

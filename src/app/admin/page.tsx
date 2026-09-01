@@ -697,7 +697,7 @@ export default function DashboardSummaryPage() {
             </div>
 
             {/* Bars container - skeleton when loading */}
-            <div className={`h-48 flex items-end gap-1 sm:gap-1.5 pt-6 pb-2 border-b border-[#e2e8f0] overflow-x-auto ${loading ? "opacity-40" : ""}`}>
+            <div className={`h-48 flex items-end gap-1 sm:gap-1.5 pt-10 pb-2 px-2 border-b border-[#e2e8f0] overflow-x-auto overflow-y-visible ${loading ? "opacity-40" : ""}`} style={{ scrollbarGutter: 'stable' } as any}>
               {loading
                 ? Array.from({ length: 30 }).map((_, i) => (
                     <div key={i} className="flex-1 min-w-[8px] h-full flex items-end justify-center pb-1">
@@ -709,13 +709,19 @@ export default function DashboardSummaryPage() {
                 const findings = item.finding || 0;
                 const heightPct = count > 0 ? Math.min(100, Math.max(8, (count / maxTrendValue) * 100)) : 3;
 
+                const isLeftEdge = item.day <= 2;
+                const isRightEdge = item.day >= (dashboardData?.dailyTrend?.length || 31) - 1;
                 return (
                   <div
                     key={item.day}
                     className="flex-1 min-w-[8px] flex flex-col items-center gap-1 group relative h-full justify-end"
                   >
-                    {/* Tooltip on hover */}
-                    <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute bottom-full mb-2 bg-[#072d3f] text-white text-[10px] font-bold py-1.5 px-2.5 rounded-lg shadow-xl pointer-events-none whitespace-nowrap z-20">
+                    {/* Tooltip on hover - anti-kepotong di tepi */}
+                    <div
+                      className={`opacity-0 group-hover:opacity-100 transition-opacity absolute bottom-full mb-2 bg-[#072d3f] text-white text-[10px] font-bold py-1.5 px-2.5 rounded-lg shadow-xl pointer-events-none whitespace-nowrap z-30 ${
+                        isLeftEdge ? "left-0 -translate-x-0" : isRightEdge ? "right-0 left-auto translate-x-0" : "left-1/2 -translate-x-1/2"
+                      }`}
+                    >
                       <div>Tgl {item.day}: {count} Sesi</div>
                       {findings > 0 && <div className="text-[#ffd100] font-black">{findings} Temuan</div>}
                     </div>

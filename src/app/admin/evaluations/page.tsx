@@ -206,8 +206,8 @@ export default function EvaluationsPage() {
             </p>
           </div>
 
-          <div className="overflow-x-auto pt-2">
-            <table className="w-full text-left text-xs">
+          <div className="overflow-x-auto pt-2 -mx-6 px-6" style={{ scrollbarGutter: 'stable' } as any}>
+            <table className="w-full min-w-[520px] text-left text-xs">
               <thead className="bg-[#f8fafc] border-y border-[#d8e3ea] text-[#647783] font-bold">
                 <tr>
                   <th className="p-3">Aspek</th>
