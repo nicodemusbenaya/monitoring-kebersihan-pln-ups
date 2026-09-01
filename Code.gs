@@ -44,6 +44,25 @@ var APP = {
 function doGet(e) {
   var params = (e && e.parameter) || {};
 
+  // 1. Redirect QR Evaluasi Pengunjung ke Next.js Vercel
+  if (params.evaluate || params.evaluation) {
+    var evalToken = String(params.evaluate || params.evaluation || '').trim();
+    var evalUrl = 'https://monitoring-kebersihan-pln-ups.vercel.app/evaluate/' + encodeURIComponent(evalToken);
+    return createRedirectOutput_(evalUrl, 'Mengarahkan ke Formulir Penilaian Kebersihan...');
+  }
+
+  // 2. Redirect QR Checklist Petugas ke Next.js Vercel
+  if (params.room || params.checklist) {
+    var roomToken = String(params.room || params.checklist || '').trim();
+    var scanUrl = 'https://monitoring-kebersihan-pln-ups.vercel.app/scanner/room/' + encodeURIComponent(roomToken);
+    return createRedirectOutput_(scanUrl, 'Mengarahkan ke Checklist Kebersihan Ruangan...');
+  }
+
+  // 3. Redirect Admin / Akses Umum langsung ke Portal Admin Vercel
+  if (params.admin === '1' || (!params.room && !params.evaluate && !params.checklist && !params.evaluation)) {
+    return createRedirectOutput_('https://monitoring-kebersihan-pln-ups.vercel.app/admin', 'Mengarahkan ke Portal Monitoring Kebersihan...');
+  }
+
   if (!isApplicationReady_()) {
     return simplePage_(
       'Aplikasi belum disiapkan',
@@ -65,6 +84,38 @@ function doGet(e) {
     .setFaviconUrl('https://lh3.googleusercontent.com/d/1XmRrIFaxK_WKS70WhB7o49R80-LM9QO4=w64?favicon.png')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT);
+}
+
+function createRedirectOutput_(targetUrl, message) {
+  var html = '<!DOCTYPE html>' +
+    '<html><head>' +
+    '<meta charset="utf-8">' +
+    '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">' +
+    '<title>PLN UPS Monitoring Kebersihan</title>' +
+    '<meta http-equiv="refresh" content="0;url=' + targetUrl + '">' +
+    '<script>window.location.replace("' + targetUrl + '");</script>' +
+    '<style>' +
+    'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #072d3f; color: #ffffff; text-align: center; padding: 20px; box-sizing: border-box; }' +
+    '.card { background: #0c364d; border: 1px solid #144b67; border-radius: 24px; padding: 36px 24px; max-width: 380px; width: 100%; box-shadow: 0 12px 30px rgba(0,0,0,0.35); }' +
+    '.spinner { width: 38px; height: 38px; border: 3px solid rgba(255,209,0,0.2); border-top-color: #ffd100; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }' +
+    '@keyframes spin { to { transform: rotate(360deg); } }' +
+    'h3 { margin: 0 0 8px; font-size: 17px; font-weight: 800; color: #ffd100; letter-spacing: 0.5px; }' +
+    'p { margin: 0 0 20px; font-size: 13px; color: #97b7c8; line-height: 1.5; }' +
+    'a { display: inline-block; padding: 12px 24px; background: #0076a8; color: #ffffff; text-decoration: none; border-radius: 14px; font-size: 12px; font-weight: bold; }' +
+    '</style>' +
+    '</head><body>' +
+    '<div class="card">' +
+    '<div class="spinner"></div>' +
+    '<h3>PLN UPS MONITORING</h3>' +
+    '<p>' + (message || 'Mengarahkan...') + '</p>' +
+    '<a href="' + targetUrl + '">Buka Halaman Langsung &rarr;</a>' +
+    '</div>' +
+    '</body></html>';
+
+  return HtmlService.createHtmlOutput(html)
+    .setTitle('Mengarahkan ke PLN UPS...')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
 function include(filename) {
