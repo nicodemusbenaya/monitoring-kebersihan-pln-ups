@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect, Fragment } from "react";
-import { Check, Download } from "lucide-react";
+import { Check, Download, FileSpreadsheet, Database } from "lucide-react";
 
 export default function ExportPage() {
-  const [exportActiveTab, setExportActiveTab] = useState<"room" | "monthly">("room");
+  const [exportActiveTab, setExportActiveTab] = useState<"room" | "monthly" | "database">("room");
   const [roomsData, setRoomsData] = useState<any[]>([]);
   const [exportRoomId, setExportRoomId] = useState<string>("");
   const [exportStartDate, setExportStartDate] = useState<string>("2026-09-01");
