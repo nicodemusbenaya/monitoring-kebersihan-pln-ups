@@ -2063,59 +2063,49 @@
   ],
   "users": [
     {
-      "id": "USR-2057f20b-0ae1-4f29-b7d7-3af730655f6b",
+      "id": "USR-admin",
+      "username": "admin",
+      "fullName": "Administrator",
+      "role": "ADMIN",
+      "passwordHash": "$2a$10$cGk5RXQHn/w165Vw808FmuPDpMAcCQFvqn3lqdht0Nb9vHnkDBbz2",
+      "mustChangePassword": false,
+      "active": true
+    },
+    {
+      "id": "USR-dwi",
       "username": "dwi",
       "fullName": "Dwi Meyrizka Prativi",
       "role": "ADMIN",
-      "passwordHash": "$2a$10$GwTk/1kk5gScnKNT46.u6OKwrON7w2Db0uiC5RsyFZ0pPgQUxfw9O",
+      "passwordHash": "$2a$10$cGk5RXQHn/w165Vw808FmuPDpMAcCQFvqn3lqdht0Nb9vHnkDBbz2",
       "mustChangePassword": false,
-      "active": true,
-      "createdAt": "2026-09-01T02:03:06.127Z",
-      "updatedAt": "2026-09-01T02:03:06.127Z"
+      "active": true
     },
     {
-      "id": "USR-39405718-4926-4c86-94f5-fcaa4e6d7d8d",
+      "id": "USR-arif",
       "username": "arif",
       "fullName": "Arif Budi Hartono",
       "role": "PETUGAS",
-      "passwordHash": "$2a$10$3d5DOqUWIgCZWb8KZfvn9OR7AVsJ1pOmv1pVBVgS0zoj1bzDwTHBK",
+      "passwordHash": "$2a$10$cGk5RXQHn/w165Vw808FmuPDpMAcCQFvqn3lqdht0Nb9vHnkDBbz2",
       "mustChangePassword": false,
-      "active": true,
-      "createdAt": "2026-09-01T02:03:06.199Z",
-      "updatedAt": "2026-09-01T02:03:06.199Z"
+      "active": true
     },
     {
-      "id": "USR-e1b30772-c748-47cc-a0b6-fd656d960375",
+      "id": "USR-sulaiman",
       "username": "sulaiman",
       "fullName": "Sulaiman",
       "role": "PETUGAS",
-      "passwordHash": "$2a$10$BJv3GDMZLflRAp50l/uxJOuRDKgmoB4CYzPQKd9ct3mfJ/jHGUcK6",
+      "passwordHash": "$2a$10$cGk5RXQHn/w165Vw808FmuPDpMAcCQFvqn3lqdht0Nb9vHnkDBbz2",
       "mustChangePassword": false,
-      "active": true,
-      "createdAt": "2026-09-01T02:03:06.271Z",
-      "updatedAt": "2026-09-01T02:03:06.271Z"
+      "active": true
     },
     {
-      "id": "USR-dbf1f373-660c-447a-a6c6-4e3bff39f237",
+      "id": "USR-ipal",
       "username": "ipal",
       "fullName": "Ipal Hapidz",
       "role": "SUPERVISOR",
-      "passwordHash": "$2a$10$QoJXBmq/m3nSeTm0U26IqexVQ5kK4lV3umBpumTT4r7ZM.XoWGwpG",
+      "passwordHash": "$2a$10$cGk5RXQHn/w165Vw808FmuPDpMAcCQFvqn3lqdht0Nb9vHnkDBbz2",
       "mustChangePassword": false,
-      "active": true,
-      "createdAt": "2026-09-01T02:03:06.343Z",
-      "updatedAt": "2026-09-01T02:03:06.343Z"
-    },
-    {
-      "id": "USR-e0e00a84-c417-4721-91b3-10e3541eddb9",
-      "username": "test",
-      "fullName": "Test Petugas",
-      "role": "PETUGAS",
-      "passwordHash": "$2a$10$U5UHWs5qokWP6eqQKHsN8.zCO0CE86Ki/N52DAcfY4yp.IiZPDtzC",
-      "mustChangePassword": false,
-      "active": true,
-      "createdAt": "2026-09-01T02:03:06.415Z",
-      "updatedAt": "2026-09-01T02:03:06.415Z"
+      "active": true
     }
   ],
   "inspections": [
