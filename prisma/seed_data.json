@@ -1759,6 +1759,13 @@
   ],
   "users": [
     {
+      "username": "admin",
+      "fullName": "Administrator",
+      "role": "ADMIN",
+      "passwordHash": "$2a$10$0oqeKOfGJ8DEPr6EMg3zjO3XKFFJC/ux4KKvVxSahtEypTJH/69dG",
+      "active": true
+    },
+    {
       "username": "dwi",
       "fullName": "Dwi Meyrizka Prativi",
       "role": "ADMIN",
