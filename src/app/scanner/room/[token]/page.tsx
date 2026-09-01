@@ -2,23 +2,6 @@
 
 import { useEffect, useState, use, useRef } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
-import {
-  CheckCircle2,
-  AlertTriangle,
-  Camera,
-  X,
-  Upload,
-  ArrowLeft,
-  Loader2,
-  Calendar,
-  Clock,
-  Send,
-  Sparkles,
-  ChevronDown,
-  Info,
-  ShieldCheck,
-} from "lucide-react";
 
 interface Activity {
   id: string;
@@ -41,6 +24,8 @@ interface Slot {
   available: boolean;
   completed: boolean;
   completedAt?: string;
+  officerName?: string;
+  overallStatus?: string;
 }
 
 interface RoomData {
@@ -102,7 +87,7 @@ export default function RoomInspectionPage({
         }
         setData(json);
 
-        // Default slot selection
+        // Auto select slot
         const availableSlot =
           json.slots.find((s: Slot) => s.available && !s.completed) ||
           json.slots.find((s: Slot) => s.available) ||
@@ -112,7 +97,7 @@ export default function RoomInspectionPage({
           setSelectedSlotId(availableSlot.id);
         }
 
-        // Initialize checklist state
+        // Initialize checklist
         const initialChecklist: Record<string, any> = {};
         json.activities.forEach((act: Activity) => {
           initialChecklist[act.id] = {
@@ -129,14 +114,14 @@ export default function RoomInspectionPage({
       .finally(() => setLoading(false));
   }, [token]);
 
-  const handleQualityToggle = (actId: string, val: string) => {
+  const handleQualityChange = (actId: string, val: string) => {
     setChecklist((prev) => ({
       ...prev,
       [actId]: { ...prev[actId], quality: val },
     }));
   };
 
-  const handleFunctionToggle = (actId: string, val: string) => {
+  const handleFunctionChange = (actId: string, val: string) => {
     setChecklist((prev) => ({
       ...prev,
       [actId]: { ...prev[actId], function: val },
@@ -168,10 +153,6 @@ export default function RoomInspectionPage({
       return updated;
     });
   };
-
-  const dirtyCount = Object.values(checklist).filter(
-    (item) => item.quality === "NEGATIVE" || item.function === "NEGATIVE"
-  ).length;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -216,178 +197,195 @@ export default function RoomInspectionPage({
       setSuccess(true);
       setTimeout(() => {
         router.push("/scanner");
-      }, 2000);
+      }, 1500);
     } catch (err: any) {
       setError(err.message || "Terjadi kesalahan saat submit data.");
       setSubmitting(false);
     }
   };
 
+  const handleLogout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/login");
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#f3f7f9] flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-20 h-20 bg-white rounded-2xl border border-[#d9e4e9] p-3 shadow-md flex items-center justify-center mb-4 relative overflow-hidden">
-          <Image
-            src="https://upload.wikimedia.org/wikipedia/commons/2/20/Logo_PLN.svg"
-            alt="Logo PLN"
-            width={38}
-            height={48}
-            priority
-          />
-          <div className="absolute inset-x-2 top-0 h-1 bg-[#ffd100] rounded-full animate-bounce" />
+      <div className="app-shell">
+        <div className="initial-loader">
+          <div className="brand-mark">
+            <img
+              src="https://upload.wikimedia.org/wikipedia/commons/2/20/Logo_PLN.svg"
+              alt="Logo PLN"
+            />
+          </div>
+          <div className="skeleton-line wide"></div>
+          <div className="skeleton-line"></div>
         </div>
-        <h2 className="text-lg font-bold text-[#17313d]">Memuat Form Checklist...</h2>
-        <p className="text-xs text-[#647783] mt-1">Mengidentifikasi ruangan dan indikator 5S</p>
       </div>
     );
   }
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-[#f3f7f9] flex flex-col items-center justify-center p-6 text-center">
-        <div className="max-w-md w-full bg-white border border-[#d9e4e9] rounded-2xl p-8 shadow-sm">
-          <div className="w-14 h-14 bg-[#fff0ee] text-[#bd2d22] rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <AlertTriangle className="w-7 h-7" />
+      <div className="app-shell">
+        <header className="topbar">
+          <div className="topbar-inner">
+            <div className="topbar-brand">
+              <img
+                src="https://upload.wikimedia.org/wikipedia/commons/2/20/Logo_PLN.svg"
+                alt="Logo PLN"
+              />
+              <span className="brand-divider"></span>
+              <div className="topbar-title">
+                <strong>Monitoring Kebersihan PLN UPS</strong>
+                <span>Kesalahan</span>
+              </div>
+            </div>
           </div>
-          <h2 className="text-xl font-bold text-[#17313d]">QR Code Tidak Dikenali</h2>
-          <p className="text-xs text-[#647783] mt-2 mb-6 leading-relaxed">
-            {error || "Ruangan tidak ditemukan dalam database."}
-          </p>
-          <button
-            onClick={() => router.push("/scanner")}
-            className="w-full py-3 bg-[#0076a8] hover:bg-[#00577d] text-white font-bold rounded-xl text-sm transition-all"
-          >
-            Kembali ke Scanner
-          </button>
-        </div>
+        </header>
+
+        <main className="page">
+          <section className="panel">
+            <div className="panel-body">
+              <div className="form-error">{error || "Ruangan tidak ditemukan."}</div>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => router.push("/scanner")}
+              >
+                Kembali ke Pemindai
+              </button>
+            </div>
+          </section>
+        </main>
       </div>
     );
   }
 
   if (success) {
     return (
-      <div className="min-h-screen bg-[#f3f7f9] flex flex-col items-center justify-center p-6 text-center">
-        <div className="max-w-md w-full bg-white border border-[#d9e4e9] rounded-2xl p-8 shadow-md">
-          <div className="w-16 h-16 bg-[#e7f6ef] text-[#157a55] rounded-full flex items-center justify-center mx-auto mb-4">
-            <CheckCircle2 className="w-10 h-10" />
-          </div>
-          <h2 className="text-2xl font-bold text-[#17313d]">Checklist Tersimpan!</h2>
-          <p className="text-xs text-[#647783] mt-2 mb-6">
-            Data kebersihan untuk <strong>{data.room.name}</strong> berhasil direkam dan foto telah disinkronkan.
-          </p>
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#e8f5fa] text-[#00577d] rounded-xl text-xs font-bold">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            <span>Mengarahkan kembali...</span>
-          </div>
-        </div>
+      <div className="app-shell">
+        <main className="page" style={{ maxWidth: "480px", paddingTop: "80px", textAlign: "center" }}>
+          <section className="panel">
+            <div className="panel-body">
+              <div style={{ fontSize: "48px", color: "var(--success)", marginBottom: "16px" }}>●</div>
+              <h2>Pemeriksaan Berhasil Disimpan!</h2>
+              <p style={{ color: "var(--muted)", margin: "8px 0 24px" }}>
+                Data checklist untuk <strong>{data.room.name}</strong> telah berhasil direkam ke dalam sistem dan foto evidence tersimpan di NAS.
+              </p>
+              <div className="notice notice-success">Mengarahkan kembali ke pemindai...</div>
+            </div>
+          </section>
+        </main>
       </div>
     );
   }
 
   const selectedSlot = data.slots.find((s) => s.id === selectedSlotId);
+  const dirtyCount = Object.values(checklist).filter(
+    (item) => item.quality === "NEGATIVE" || item.function === "NEGATIVE"
+  ).length;
 
   return (
-    <div className="min-h-screen bg-[#f3f7f9] text-[#17313d] pb-28">
-      {/* Topbar Header */}
-      <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-[#d9e4e9] shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-          <button
-            onClick={() => router.push("/scanner")}
-            className="inline-flex items-center gap-2 text-xs font-bold text-[#00577d] hover:text-[#0076a8]"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Kembali</span>
-          </button>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-[#17313d]">{data.currentUser.fullName}</span>
-            <span className="text-[10px] px-2 py-0.5 bg-[#e8f5fa] text-[#0076a8] font-bold rounded-full uppercase">
-              {data.currentUser.role}
-            </span>
+    <div className="app-shell">
+      {/* Header (GAS style) */}
+      <header className="topbar">
+        <div className="topbar-inner">
+          <div className="topbar-brand">
+            <img
+              src="https://upload.wikimedia.org/wikipedia/commons/2/20/Logo_PLN.svg"
+              alt="Logo PLN"
+            />
+            <span className="brand-divider"></span>
+            <div className="topbar-title">
+              <strong>{data.room.name}</strong>
+              <span>{selectedSlot ? `${selectedSlot.name} • ${data.dateKey}` : data.dateKey}</span>
+            </div>
+          </div>
+
+          <div className="user-area">
+            <div className="user-copy">
+              <strong>{data.currentUser.fullName}</strong>
+              <span>{data.currentUser.role}</span>
+            </div>
+            <button className="btn btn-secondary btn-sm" onClick={() => router.push("/scanner")}>
+              Ganti Ruangan
+            </button>
           </div>
         </div>
       </header>
 
-      {/* Main Form Container */}
-      <main className="max-w-4xl mx-auto p-4 sm:p-6">
-        {/* Room Header Banner (GAS style) */}
-        <div className="bg-[#00577d] text-white p-6 rounded-2xl shadow-md mb-6 relative overflow-hidden">
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full border border-white/20 text-xs font-bold text-[#ffd100] mb-2 uppercase tracking-wide">
-                <span>{data.room.roomType.name}</span>
-                <span>•</span>
-                <span>{data.room.code}</span>
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-black tracking-tight">{data.room.name}</h1>
-              <div className="flex items-center gap-4 mt-2 text-xs text-white/80">
-                <span className="flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5 text-[#ffd100]" />
-                  <span>{data.dateKey}</span>
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-[#ffd100]" />
-                  <span>Scan: {data.scanTime}</span>
-                </span>
-              </div>
+      {/* Main Container */}
+      <main className="page">
+        {/* Room Banner (GAS style) */}
+        <section className="room-banner">
+          <div>
+            <div className="eyebrow" style={{ color: "#ffd100" }}>
+              {data.room.roomType.name.toUpperCase()}
             </div>
-
-            <div className="border-t md:border-t-0 md:border-l border-white/20 pt-3 md:pt-0 md:pl-6 text-left md:text-right">
-              <span className="text-[11px] text-white/70 block uppercase font-semibold">Total Indikator</span>
-              <strong className="text-2xl font-black text-[#ffd100]">{data.activities.length} Butir 5S</strong>
-            </div>
+            <h1>{data.room.name}</h1>
+            <p>Pilih slot waktu pemeriksaan untuk memulai checklist standar 5S.</p>
           </div>
-          <div className="absolute -right-10 -bottom-10 w-36 h-36 border-8 border-[#ffd100]/20 rounded-full pointer-events-none" />
-        </div>
+          <div className="scan-box">
+            <span>Waktu Scan</span>
+            <strong>{data.scanTime}</strong>
+          </div>
+        </section>
 
-        {/* Slot Selector Pills (GAS style) */}
-        <div className="mb-6">
-          <label className="block text-xs font-bold text-[#304b57] uppercase tracking-wider mb-2.5">
-            Pilih Sesi / Slot Waktu Pemeriksaan:
-          </label>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
-            {data.slots.map((slot) => {
-              const isSelected = slot.id === selectedSlotId;
-              const isOfficerSlot = slot.role === "PETUGAS";
-              return (
-                <button
-                  key={slot.id}
-                  type="button"
-                  onClick={() => setSelectedSlotId(slot.id)}
-                  className={`p-3.5 rounded-xl border text-left transition-all relative overflow-hidden ${
-                    isSelected
-                      ? "bg-[#0076a8] text-white border-[#0076a8] shadow-md ring-2 ring-[#0076a8]/20"
-                      : slot.completed
-                      ? "bg-[#e7f6ef] border-[#a3e6cb] text-[#157a55]"
-                      : "bg-white border-[#d9e4e9] text-[#17313d] hover:border-[#0076a8]"
-                  }`}
-                >
-                  <span
-                    className={`text-[10px] font-bold block uppercase tracking-wider ${
-                      isSelected ? "text-[#ffd100]" : "text-[#647783]"
-                    }`}
+        {error && <div className="notice notice-danger">{error}</div>}
+
+        {/* Slot Choice Panel (GAS style) */}
+        <section className="panel">
+          <div className="panel-head">
+            <h2>Pilih slot waktu</h2>
+          </div>
+          <div className="panel-body">
+            <div className="slot-choice-list">
+              {data.slots.map((slot) => {
+                const isSelected = slot.id === selectedSlotId;
+                const done = slot.completed;
+
+                return (
+                  <button
+                    key={slot.id}
+                    type="button"
+                    onClick={() => setSelectedSlotId(slot.id)}
+                    className={`slot-choice ${done ? "completed" : "available"}`}
+                    style={
+                      isSelected
+                        ? { borderColor: "var(--pln-blue)", background: "var(--pln-blue-soft)" }
+                        : {}
+                    }
                   >
-                    {slot.role}
-                  </span>
-                  <strong className="text-sm font-bold block mt-0.5">{slot.name}</strong>
-                  {slot.completed && (
-                    <span
-                      className={`text-[10px] font-bold mt-1 inline-flex items-center gap-1 ${
-                        isSelected ? "text-white" : "text-[#157a55]"
-                      }`}
-                    >
-                      <CheckCircle2 className="w-3 h-3" />
-                      <span>Selesai</span>
+                    <span className="slot-choice-copy">
+                      <strong>{slot.name}</strong>
+                      <small>
+                        {done
+                          ? `Sudah diisi • ${slot.role}`
+                          : `Tersedia untuk ${slot.role}`}
+                      </small>
                     </span>
-                  )}
-                </button>
-              );
-            })}
+                    <span className="slot-choice-end">
+                      {done ? (
+                        <span className="badge badge-clean">Selesai</span>
+                      ) : (
+                        <>
+                          <strong>Isi sekarang</strong>
+                          <span aria-hidden="true">→</span>
+                        </>
+                      )}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        </section>
 
-        {/* Checklist 5S Section */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-3">
+        {/* Checklist Form */}
+        <form onSubmit={handleSubmit}>
+          <div className="checklist">
             {data.activities.map((act, index) => {
               const state = checklist[act.id] || {
                 quality: "POSITIVE",
@@ -397,213 +395,192 @@ export default function RoomInspectionPage({
               const isDirty = state.quality === "NEGATIVE" || state.function === "NEGATIVE";
 
               return (
-                <div
+                <section
                   key={act.id}
-                  className={`bg-white border rounded-2xl p-4 sm:p-5 shadow-sm transition-all ${
-                    isDirty ? "border-[#bd2d22]/40 bg-[#fffbfb]" : "border-[#d9e4e9]"
-                  }`}
+                  className={`activity-card ${isDirty ? "is-dirty" : ""}`}
+                  data-activity-id={act.id}
                 >
-                  {/* Activity Head */}
-                  <div className="flex items-start gap-3.5">
-                    <div className="w-9 h-9 rounded-xl bg-[#e8f5fa] text-[#00577d] font-black text-sm flex items-center justify-center shrink-0">
-                      {index + 1}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-bold text-[#17313d] leading-snug">{act.name}</h3>
-
-                      {/* 5S Standard Indicator Box (GAS style) */}
+                  <div className="activity-head">
+                    <div className="activity-number">{index + 1}</div>
+                    <div className="activity-heading-copy">
+                      <div className="activity-name">{act.name}</div>
                       {act.standardText && (
-                        <div className="mt-2 p-2.5 bg-[#f5fafc] border-l-4 border-[#ffd100] rounded-r-xl text-xs text-[#405b67]">
-                          <span className="font-bold text-[#00577d] block text-[11px] mb-0.5">
-                            {act.standardCategory || "Standar 5S"}:
-                          </span>
-                          <p className="leading-relaxed">{act.standardText}</p>
+                        <div className="activity-standard">
+                          <div className="activity-standard-label">
+                            {act.standardCategory || "Standar 5S"}
+                            <span>• Standar Kebersihan</span>
+                          </div>
+                          <p>{act.standardText}</p>
                         </div>
                       )}
                     </div>
                   </div>
 
-                  {/* 2-Way Toggles: Kualitas & Fungsi (GAS style) */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 pt-3 border-t border-[#f1f5f9]">
-                    {/* Quality Toggle */}
+                  {/* 2-Way Toggles (GAS style) */}
+                  <div className="activity-choices">
+                    {/* Quality Choice */}
                     {act.qualityApplicable && (
-                      <div>
-                        <span className="block text-[11px] font-bold text-[#647783] uppercase mb-1.5">
-                          Kualitas Fisik:
-                        </span>
-                        <div className="grid grid-cols-2 gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleQualityToggle(act.id, "POSITIVE")}
-                            className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all ${
-                              state.quality === "POSITIVE"
-                                ? "bg-[#e7f6ef] border-[#157a55] text-[#157a55] shadow-sm font-black"
-                                : "bg-white border-[#d9e4e9] text-[#647783] hover:border-[#157a55]"
-                            }`}
-                          >
-                            ✓ {act.qualityPositive}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleQualityToggle(act.id, "NEGATIVE")}
-                            className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all ${
-                              state.quality === "NEGATIVE"
-                                ? "bg-[#fff0ee] border-[#bd2d22] text-[#bd2d22] shadow-sm font-black"
-                                : "bg-white border-[#d9e4e9] text-[#647783] hover:border-[#bd2d22]"
-                            }`}
-                          >
-                            ✕ {act.qualityNegative}
-                          </button>
+                      <div className="choice-row">
+                        <span className="choice-label">Aktivitas / kualitas</span>
+                        <div className="choice-group">
+                          <div className="choice clean">
+                            <input
+                              type="radio"
+                              id={`q-pos-${act.id}`}
+                              name={`quality-${act.id}`}
+                              checked={state.quality === "POSITIVE"}
+                              onChange={() => handleQualityChange(act.id, "POSITIVE")}
+                            />
+                            <label htmlFor={`q-pos-${act.id}`}>{act.qualityPositive}</label>
+                          </div>
+                          <div className="choice dirty">
+                            <input
+                              type="radio"
+                              id={`q-neg-${act.id}`}
+                              name={`quality-${act.id}`}
+                              checked={state.quality === "NEGATIVE"}
+                              onChange={() => handleQualityChange(act.id, "NEGATIVE")}
+                            />
+                            <label htmlFor={`q-neg-${act.id}`}>{act.qualityNegative}</label>
+                          </div>
                         </div>
                       </div>
                     )}
 
-                    {/* Function Toggle */}
+                    {/* Function Choice */}
                     {act.functionApplicable && (
-                      <div>
-                        <span className="block text-[11px] font-bold text-[#647783] uppercase mb-1.5">
-                          Fungsi Sarana:
-                        </span>
-                        <div className="grid grid-cols-2 gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleFunctionToggle(act.id, "POSITIVE")}
-                            className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all ${
-                              state.function === "POSITIVE"
-                                ? "bg-[#e7f6ef] border-[#157a55] text-[#157a55] shadow-sm font-black"
-                                : "bg-white border-[#d9e4e9] text-[#647783] hover:border-[#157a55]"
-                            }`}
-                          >
-                            ✓ {act.functionPositive}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleFunctionToggle(act.id, "NEGATIVE")}
-                            className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all ${
-                              state.function === "NEGATIVE"
-                                ? "bg-[#fff0ee] border-[#bd2d22] text-[#bd2d22] shadow-sm font-black"
-                                : "bg-white border-[#d9e4e9] text-[#647783] hover:border-[#bd2d22]"
-                            }`}
-                          >
-                            ✕ {act.functionNegative}
-                          </button>
+                      <div className="choice-row">
+                        <span className="choice-label">Fungsi / kondisi</span>
+                        <div className="choice-group">
+                          <div className="choice clean">
+                            <input
+                              type="radio"
+                              id={`f-pos-${act.id}`}
+                              name={`func-${act.id}`}
+                              checked={state.function === "POSITIVE"}
+                              onChange={() => handleFunctionChange(act.id, "POSITIVE")}
+                            />
+                            <label htmlFor={`f-pos-${act.id}`}>{act.functionPositive}</label>
+                          </div>
+                          <div className="choice dirty">
+                            <input
+                              type="radio"
+                              id={`f-neg-${act.id}`}
+                              name={`func-${act.id}`}
+                              checked={state.function === "NEGATIVE"}
+                              onChange={() => handleFunctionChange(act.id, "NEGATIVE")}
+                            />
+                            <label htmlFor={`f-neg-${act.id}`}>{act.functionNegative}</label>
+                          </div>
                         </div>
                       </div>
                     )}
                   </div>
 
-                  {/* Finding Note (Shows when dirty/rusak) */}
-                  {isDirty && (
-                    <div className="mt-3 pt-3 border-t border-[#f1f5f9]">
-                      <label className="block text-xs font-bold text-[#bd2d22] mb-1">
-                        Catatan Temuan / Kerusakan:
-                      </label>
-                      <input
-                        type="text"
+                  {/* Finding Note (GAS style finding-fields) */}
+                  <div className="finding-fields">
+                    <div className="field" style={{ gridColumn: "1 / -1", margin: 0 }}>
+                      <label>Catatan temuan</label>
+                      <textarea
                         value={state.note}
                         onChange={(e) => handleNoteChange(act.id, e.target.value)}
                         placeholder="Deskripsikan temuan agar segera ditindaklanjuti..."
-                        className="w-full px-3.5 py-2 bg-white border border-[#bd2d22]/40 rounded-xl text-xs text-[#17313d] focus:outline-none focus:ring-2 focus:ring-[#bd2d22]/20"
                       />
                     </div>
-                  )}
-                </div>
+                  </div>
+                </section>
               );
             })}
           </div>
 
-          {/* Photo Evidence Section */}
-          <div className="bg-white border border-[#d9e4e9] rounded-2xl p-5 shadow-sm mt-6">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <h3 className="text-sm font-bold text-[#17313d]">Foto Bukti Lapangan (Evidence)</h3>
-                <p className="text-xs text-[#647783] mt-0.5">
-                  Lampirkan foto kondisi ruangan sebelum atau sesudah dibersihkan
-                </p>
-              </div>
-              <span className="text-xs font-bold text-[#0076a8] bg-[#e8f5fa] px-2.5 py-1 rounded-full">
-                {photos.length} Foto
-              </span>
+          {/* Photo Evidence Panel (GAS style) */}
+          <section className="panel" style={{ marginTop: "24px" }}>
+            <div className="panel-head">
+              <h2>Foto bukti pemeriksaan</h2>
+              <span className="badge badge-neutral">{photos.length} Foto</span>
             </div>
-
-            {/* Photo Grid Preview */}
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3 mb-4">
-              {photos.map((photo, i) => (
-                <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-[#d9e4e9] group">
-                  <img src={photo.preview} alt="Evidence" className="w-full h-full object-cover" />
-                  <button
-                    type="button"
-                    onClick={() => handleRemovePhoto(i)}
-                    className="absolute top-1 right-1 p-1 bg-black/60 text-white rounded-full hover:bg-[#bd2d22] transition-colors"
+            <div className="panel-body">
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "12px", marginBottom: "16px" }}>
+                {photos.map((photo, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      position: "relative",
+                      width: "100px",
+                      height: "100px",
+                      borderRadius: "8px",
+                      overflow: "hidden",
+                      border: "1px solid var(--line)",
+                    }}
                   >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
+                    <img
+                      src={photo.preview}
+                      alt="Preview"
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleRemovePhoto(i)}
+                      style={{
+                        position: "absolute",
+                        top: 2,
+                        right: 2,
+                        background: "rgba(0,0,0,0.6)",
+                        color: "white",
+                        border: 0,
+                        borderRadius: "50%",
+                        width: "20px",
+                        height: "20px",
+                        fontSize: "12px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
 
-              {/* Add Photo Button */}
               <button
                 type="button"
+                className="btn btn-secondary btn-sm"
                 onClick={() => fileInputRef.current?.click()}
-                className="aspect-square rounded-xl border-2 border-dashed border-[#b9cbd3] hover:border-[#0076a8] hover:bg-[#e8f5fa] flex flex-col items-center justify-center text-[#647783] hover:text-[#0076a8] transition-all gap-1"
               >
-                <Camera className="w-6 h-6" />
-                <span className="text-[10px] font-bold">Ambil Foto</span>
+                📷 Tambah Foto Evidence
               </button>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                capture="environment"
+                onChange={handlePhotoAdd}
+                style={{ display: "none" }}
+              />
+            </div>
+          </section>
+
+          {/* Sticky Submit Bar (GAS style) */}
+          <div className="submit-bar">
+            <div>
+              <p>
+                Sesi: <strong>{selectedSlot?.name || "-"}</strong> •{" "}
+                {dirtyCount > 0 ? `${dirtyCount} temuan kotor/rusak` : "Semua bersih"}
+              </p>
+              <small style={{ color: "var(--muted)", fontSize: "11px" }}>
+                Semua foto otomatis tersimpan aman di NAS PLN
+              </small>
             </div>
 
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              multiple
-              capture="environment"
-              onChange={handlePhotoAdd}
-              className="hidden"
-            />
-          </div>
-
-          {/* Sticky Bottom Submit Bar (GAS style) */}
-          <div className="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-[#d9e4e9] p-4 shadow-xl z-30">
-            <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-[#17313d]">
-                    Sesi: <strong className="text-[#0076a8]">{selectedSlot?.name || "-"}</strong>
-                  </span>
-                  {dirtyCount > 0 ? (
-                    <span className="text-[11px] font-bold text-[#bd2d22] bg-[#fff0ee] px-2 py-0.5 rounded-full">
-                      {dirtyCount} Temuan
-                    </span>
-                  ) : (
-                    <span className="text-[11px] font-bold text-[#157a55] bg-[#e7f6ef] px-2 py-0.5 rounded-full">
-                      Semua Bersih ✓
-                    </span>
-                  )}
-                </div>
-                <span className="text-[11px] text-[#647783] block mt-0.5">
-                  Foto akan otomatis tersimpan di NAS PLN
-                </span>
-              </div>
-
-              <button
-                type="submit"
-                disabled={submitting}
-                className="py-3.5 px-6 bg-[#0076a8] hover:bg-[#00577d] text-white font-bold rounded-xl shadow-lg shadow-[#0076a8]/20 flex items-center gap-2 text-sm transition-all active:scale-[0.99] disabled:opacity-60 shrink-0"
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Menyimpan...</span>
-                  </>
-                ) : (
-                  <>
-                    <Send className="w-4 h-4" />
-                    <span>Kirim Checklist</span>
-                  </>
-                )}
-              </button>
-            </div>
+            <button
+              id="submit-button"
+              type="submit"
+              disabled={submitting}
+              className="btn btn-primary"
+            >
+              {submitting ? "Menyimpan..." : "Simpan Pemeriksaan"}
+            </button>
           </div>
         </form>
       </main>

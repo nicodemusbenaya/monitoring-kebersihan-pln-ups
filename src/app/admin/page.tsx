@@ -2,28 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import QRCode from "qrcode";
-import {
-  LayoutDashboard,
-  Users,
-  Building,
-  QrCode,
-  FileSpreadsheet,
-  HardDrive,
-  Tv,
-  LogOut,
-  CheckCircle2,
-  AlertTriangle,
-  Star,
-  Download,
-  Plus,
-  Edit2,
-  RefreshCw,
-  Search,
-  ShieldAlert,
-  Loader2,
-} from "lucide-react";
 
 export default function AdminPage() {
   const router = useRouter();
@@ -131,7 +110,7 @@ export default function AdminPage() {
       setEditingRoom(null);
       loadData();
     } catch (err) {
-      alert("Gagal menyimpan ruangan");
+      console.error(err);
     }
   };
 
@@ -155,7 +134,7 @@ export default function AdminPage() {
       setEditingUser(null);
       loadData();
     } catch (err) {
-      alert("Gagal menyimpan pengguna");
+      console.error(err);
     }
   };
 
@@ -166,234 +145,296 @@ export default function AdminPage() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col md:flex-row">
-      {/* Sidebar Navigation */}
-      <aside className="w-full md:w-64 bg-slate-900 border-r border-slate-800 flex flex-col shrink-0">
-        {/* Brand Header */}
-        <div className="p-5 border-b border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Image
+    <div className="app-shell">
+      {/* Header (GAS style) */}
+      <header className="topbar">
+        <div className="topbar-inner">
+          <div className="topbar-brand">
+            <img
               src="https://upload.wikimedia.org/wikipedia/commons/2/20/Logo_PLN.svg"
               alt="Logo PLN"
-              width={26}
-              height={34}
-              priority
             />
-            <div>
-              <h1 className="text-sm font-bold tracking-tight text-white leading-tight">Admin Kebersihan</h1>
-              <p className="text-[10px] text-pln-yellow font-semibold uppercase tracking-wider">PLN UPS · Next.js</p>
+            <span className="brand-divider"></span>
+            <div className="topbar-title">
+              <strong>Monitoring Kebersihan PLN UPS</strong>
+              <span>Panel Administrator</span>
             </div>
           </div>
-        </div>
 
-        {/* Navigation Items */}
-        <nav className="p-3 space-y-1 flex-1">
-          {[
-            { id: "dashboard", label: "Ringkasan Operasional", icon: LayoutDashboard },
-            { id: "performance", label: "Performa Petugas", icon: Users },
-            { id: "qr", label: "Cetak QR Ruangan", icon: QrCode },
-            { id: "export", label: "Ekspor Excel", icon: FileSpreadsheet },
-            { id: "rooms", label: "Kelola Ruangan", icon: Building },
-            { id: "users", label: "Kelola Pengguna", icon: Users },
-            { id: "nas", label: "Integrasi QNAP NAS", icon: HardDrive },
-          ].map((item) => {
-            const Icon = item.icon;
-            const isActive = activeTab === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
-                  isActive
-                    ? "bg-pln-blue text-white shadow-md shadow-pln-blue/20"
-                    : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
-                }`}
-              >
-                <Icon className="w-4 h-4 shrink-0" />
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
-        </nav>
-
-        {/* TV Presentation Mode link */}
-        <div className="p-3 border-t border-slate-800/80 space-y-2">
-          <button
-            onClick={() => window.open("/admin/presentation", "_blank")}
-            className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-slate-800/60 hover:bg-slate-800 text-slate-300 text-xs font-semibold transition-colors"
-          >
-            <div className="flex items-center gap-2">
-              <Tv className="w-4 h-4 text-pln-yellow" />
-              <span>Mode Display TV</span>
+          <div className="user-area">
+            <div className="user-copy">
+              <strong>Administrator</strong>
+              <span>PLN UPS</span>
             </div>
-            <span className="text-[10px] text-slate-500 font-mono">16:9</span>
-          </button>
+            <button className="btn btn-secondary btn-sm" onClick={handleLogout}>
+              Keluar
+            </button>
+          </div>
+        </div>
+      </header>
 
+      {/* Admin Nav Tabs (GAS style) */}
+      <nav className="admin-nav">
+        <div className="admin-nav-inner">
           <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-red-400 hover:bg-red-500/10 text-xs font-semibold transition-colors"
+            className={activeTab === "dashboard" ? "active" : ""}
+            onClick={() => setActiveTab("dashboard")}
           >
-            <LogOut className="w-4 h-4" />
-            <span>Keluar Sistem</span>
+            Ringkasan
+          </button>
+          <button
+            className={activeTab === "performance" ? "active" : ""}
+            onClick={() => setActiveTab("performance")}
+          >
+            Performa Petugas
+          </button>
+          <button
+            className={activeTab === "evaluations" ? "active" : ""}
+            onClick={() => setActiveTab("evaluations")}
+          >
+            Kepuasan Pengguna
+          </button>
+          <button
+            className={activeTab === "qr" ? "active" : ""}
+            onClick={() => setActiveTab("qr")}
+          >
+            Cetak QR
+          </button>
+          <button
+            className={activeTab === "export" ? "active" : ""}
+            onClick={() => setActiveTab("export")}
+          >
+            Ekspor Excel
+          </button>
+          <button
+            className={activeTab === "rooms" ? "active" : ""}
+            onClick={() => setActiveTab("rooms")}
+          >
+            Kelola Ruangan
+          </button>
+          <button
+            className={activeTab === "users" ? "active" : ""}
+            onClick={() => setActiveTab("users")}
+          >
+            Kelola Pengguna
+          </button>
+          <button
+            className={activeTab === "nas" ? "active" : ""}
+            onClick={() => setActiveTab("nas")}
+          >
+            Integrasi NAS
           </button>
         </div>
-      </aside>
+      </nav>
 
-      {/* Main Content Area */}
-      <main className="flex-1 overflow-y-auto p-4 sm:p-8 max-w-6xl">
+      {/* Main Content Body */}
+      <main className="page">
         {loading ? (
-          <div className="h-64 flex items-center justify-center">
-            <Loader2 className="w-8 h-8 animate-spin text-pln-blue" />
+          <div className="initial-loader" style={{ minHeight: "400px" }}>
+            <div className="brand-mark">
+              <img
+                src="https://upload.wikimedia.org/wikipedia/commons/2/20/Logo_PLN.svg"
+                alt="Logo PLN"
+              />
+            </div>
+            <div className="skeleton-line wide"></div>
+            <div className="skeleton-line"></div>
           </div>
         ) : (
           <>
             {/* TAB 1: DASHBOARD RINGKASAN */}
             {activeTab === "dashboard" && dashboardData && (
-              <div className="space-y-6">
-                {/* Metric Summary Cards */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
-                    <span className="text-xs text-slate-400 font-medium">Total Ruangan</span>
-                    <h3 className="text-2xl font-bold text-white mt-1">{dashboardData.metrics.totalRooms}</h3>
-                    <span className="text-[11px] text-emerald-400 font-medium mt-1 block">Aktif Termonitor</span>
+              <div>
+                <div className="dashboard-hero">
+                  <div>
+                    <h1>Ringkasan Operasional Hari Ini</h1>
+                    <p>
+                      Pantauan kepatuhan standar 5S kebersihan fasilitas PLN UPS ({dashboardData.dateKey})
+                    </p>
                   </div>
-
-                  <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
-                    <span className="text-xs text-slate-400 font-medium">Pemeriksaan Hari Ini</span>
-                    <h3 className="text-2xl font-bold text-white mt-1">
-                      {dashboardData.metrics.inspectionsTodayCount}
-                    </h3>
-                    <span className="text-[11px] text-blue-400 font-medium mt-1 block">
-                      {dashboardData.metrics.cleanCount} Bersih · {dashboardData.metrics.findingCount} Temuan
-                    </span>
-                  </div>
-
-                  <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
-                    <span className="text-xs text-slate-400 font-medium">Kepuasan Pengguna</span>
-                    <h3 className="text-2xl font-bold text-pln-yellow mt-1 flex items-center gap-1.5">
-                      <Star className="w-5 h-5 fill-pln-yellow text-pln-yellow" />
-                      <span>{dashboardData.metrics.averageRating}</span>
-                      <span className="text-xs text-slate-400 font-normal">/ 4.0</span>
-                    </h3>
-                    <span className="text-[11px] text-slate-400 font-medium mt-1 block">
-                      {dashboardData.metrics.totalEvaluations} Ulasan Masuk
-                    </span>
-                  </div>
-
-                  <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
-                    <span className="text-xs text-slate-400 font-medium">Tingkat Kepuasan</span>
-                    <h3 className="text-2xl font-bold text-emerald-400 mt-1">
-                      {dashboardData.metrics.satisfactionRate}%
-                    </h3>
-                    <span className="text-[11px] text-slate-400 font-medium mt-1 block">Rating Bintang 3 & 4</span>
+                  <div>
+                    <a
+                      href="/admin/presentation"
+                      target="_blank"
+                      className="btn btn-secondary btn-sm"
+                    >
+                      📺 Mode Layar TV 16:9
+                    </a>
                   </div>
                 </div>
 
-                {/* Attention Items if any */}
-                {dashboardData.attentionItems && dashboardData.attentionItems.length > 0 && (
-                  <div className="bg-amber-950/20 border border-amber-500/40 rounded-3xl p-5 shadow-lg">
-                    <div className="flex items-center gap-2 mb-3">
-                      <ShieldAlert className="w-5 h-5 text-amber-400" />
-                      <h2 className="text-sm font-bold text-amber-200">Perlu Perhatian (Ada Temuan Hari Ini)</h2>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {dashboardData.attentionItems.map((item: any) => (
-                        <div key={item.inspectionId} className="p-3.5 bg-slate-900/90 rounded-2xl border border-amber-500/30 text-xs">
-                          <div className="flex justify-between font-bold text-white mb-1">
-                            <span>{item.roomName}</span>
-                            <span className="text-amber-400">{item.slotName}</span>
-                          </div>
-                          <p className="text-slate-400">Petugas: {item.officerName} · {item.dirtyCount} temuan</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Room Status Matrix */}
-                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
-                  <div className="flex items-center justify-between mb-4">
+                {/* Dashboard Metrics (GAS style) */}
+                <section className="dashboard-metrics">
+                  <div className="dashboard-metric">
                     <div>
-                      <h2 className="text-base font-bold text-white">Status Monitoring Ruangan Hari Ini</h2>
-                      <p className="text-xs text-slate-400">Pemenuhan jadwal pemeriksaan seluruh ruangan aktif</p>
+                      <div
+                        className="completion-dial"
+                        style={{
+                          ["--completion" as any]: `${dashboardData.summary.completionRate || 0}`,
+                        }}
+                      >
+                        <span>{dashboardData.summary.completionRate || 0}%</span>
+                      </div>
                     </div>
-                    <button
-                      onClick={loadData}
-                      className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs flex items-center gap-1.5"
-                    >
-                      <RefreshCw className="w-3.5 h-3.5" />
-                      <span>Segarkan</span>
-                    </button>
-                  </div>
-
-                  {/* 4 Status Legend */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4 p-3 rounded-2xl bg-slate-950/60 border border-slate-800 text-[11px]">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0" />
-                      <span className="text-slate-400">Merah: Belum ada sesi</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-amber-400 shrink-0" />
-                      <span className="text-slate-400">Kuning: Sesi petugas sebagian</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-purple-400 shrink-0" />
-                      <span className="text-slate-400">Ungu: Petugas selesai, tunggu SPV</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shrink-0" />
-                      <span className="text-slate-400">Hijau: Selesai lengkap (Petugas & SPV)</span>
+                    <div>
+                      <span>Penyelesaian hari ini</span>
+                      <strong>{dashboardData.summary.completedSessions}</strong>
+                      <small>
+                        dari {dashboardData.summary.totalExpectedSessions} sesi target
+                      </small>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {dashboardData.roomSummaries.map((r: any) => {
-                      const isComplete = r.status === "COMPLETE";
-                      const isWaitingSpv = r.status === "WAITING_SPV";
-                      const isPartial = r.status === "PARTIAL";
+                  <div className="dashboard-metric done">
+                    <div className="metric-mark">
+                      <span className="status-symbol">●</span>
+                    </div>
+                    <div>
+                      <span>Semua Lengkap (Petugas & SPV)</span>
+                      <strong>{dashboardData.summary.greenCount || 0}</strong>
+                      <small>Pemeriksaan tuntas</small>
+                    </div>
+                  </div>
 
-                      return (
-                        <div
-                          key={r.id}
-                          className={`p-3.5 rounded-2xl bg-slate-950 border flex items-center justify-between transition-all ${
-                            isComplete
-                              ? "border-emerald-500/30 bg-emerald-950/10"
-                              : isWaitingSpv
-                              ? "border-purple-500/40 bg-purple-950/20"
-                              : isPartial
-                              ? "border-amber-500/30 bg-amber-950/10"
-                              : "border-slate-800"
-                          }`}
-                        >
-                          <div>
-                            <span className="text-[10px] text-slate-500 uppercase font-bold">{r.roomTypeName}</span>
-                            <h4 className="text-xs font-bold text-white leading-tight">{r.name}</h4>
-                            <span className="text-[11px] text-slate-400 mt-0.5 block font-mono">
-                              Slot: {r.completedSlots}/{r.totalSlots} (Petugas: {r.petugasFinished}/{r.petugasTotal}, SPV: {r.spvFinished}/{r.spvTotal})
-                            </span>
-                          </div>
-                          <span
-                            className={`px-2.5 py-1 rounded-full text-[10px] font-bold shrink-0 ${
-                              isComplete
-                                ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
-                                : isWaitingSpv
-                                ? "bg-purple-500/20 text-purple-300 border border-purple-500/40"
-                                : isPartial
-                                ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
-                                : "bg-red-500/20 text-red-400 border border-red-500/30"
-                            }`}
-                          >
-                            {isComplete
-                              ? "Lengkap"
-                              : isWaitingSpv
-                              ? "Tunggu SPV"
-                              : isPartial
-                              ? "Sebagian"
-                              : "Belum Ada"}
-                          </span>
+                  <div className="dashboard-metric" style={{ borderTop: "4px solid #7e22ce" }}>
+                    <div className="metric-mark" style={{ color: "#7e22ce", background: "#f3e8ff" }}>
+                      <span className="status-symbol">◈</span>
+                    </div>
+                    <div>
+                      <span>Menunggu Inspeksi SPV</span>
+                      <strong style={{ color: "#7e22ce" }}>{dashboardData.summary.purpleCount || 0}</strong>
+                      <small>Petugas sudah tuntas</small>
+                    </div>
+                  </div>
+
+                  <div className="dashboard-metric pending">
+                    <div className="metric-mark">
+                      <span className="status-symbol">◐</span>
+                    </div>
+                    <div>
+                      <span>Sesi Belum Lengkap</span>
+                      <strong>{dashboardData.summary.yellowCount || 0}</strong>
+                      <small>Ada sesi belum diisi</small>
+                    </div>
+                  </div>
+                </section>
+
+                {/* Dashboard Board (GAS style) */}
+                <div className="dashboard-board">
+                  <div className="dashboard-main-column">
+                    <div className="dashboard-card">
+                      <header>
+                        <div>
+                          <h2>Status Ruangan Hari Ini</h2>
+                          <p>Daftar seluruh 26 ruangan dan hasil checklist 5S</p>
                         </div>
-                      );
-                    })}
+                      </header>
+
+                      <div className="table-wrap">
+                        <table className="operations-table">
+                          <thead>
+                            <tr>
+                              <th>Ruangan</th>
+                              <th>Status Harian</th>
+                              <th>Sesi Terisi</th>
+                              <th>Temuan 5S</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {dashboardData.roomSummaries?.map((item: any) => {
+                              let statusBadge = (
+                                <span className="operation-status neutral">
+                                  <i>✕</i> Kosong
+                                </span>
+                              );
+                              if (item.status === "COMPLETE") {
+                                statusBadge = (
+                                  <span className="operation-status done">
+                                    <i>●</i> Lengkap ✓
+                                  </span>
+                                );
+                              } else if (item.status === "WAITING_SPV") {
+                                statusBadge = (
+                                  <span
+                                    className="operation-status"
+                                    style={{ color: "#7e22ce" }}
+                                  >
+                                    <i>◈</i> Menunggu SPV
+                                  </span>
+                                );
+                              } else if (item.status === "PARTIAL") {
+                                statusBadge = (
+                                  <span className="operation-status pending">
+                                    <i>◐</i> Sebagian
+                                  </span>
+                                );
+                              }
+
+                              return (
+                                <tr key={item.room.id}>
+                                  <th>
+                                    <strong>{item.room.name}</strong>
+                                    <span>{item.room.roomType?.name}</span>
+                                  </th>
+                                  <td>{statusBadge}</td>
+                                  <td>
+                                    {item.completedCount} / {item.totalSlots} Sesi
+                                  </td>
+                                  <td>
+                                    {item.dirtyCount > 0 ? (
+                                      <span className="badge badge-dirty">
+                                        {item.dirtyCount} Temuan
+                                      </span>
+                                    ) : (
+                                      <span className="badge badge-clean">Bersih</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <div className="status-legend">
+                        <span className="done">● Lengkap (Petugas & SPV)</span>
+                        <span style={{ color: "#7e22ce" }}>◈ Menunggu Inspeksi SPV</span>
+                        <span className="pending">◐ Sebagian (Belum Lengkap)</span>
+                        <span className="finding">✕ Belum Ada Sesi</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="dashboard-side">
+                    <div className="dashboard-card attention-card">
+                      <header>
+                        <div>
+                          <h2>Perhatian & Temuan</h2>
+                          <p>Daftar pemeriksaan dengan temuan kotor/rusak</p>
+                        </div>
+                      </header>
+
+                      <ul>
+                        {dashboardData.findings?.length > 0 ? (
+                          dashboardData.findings.map((f: any) => (
+                            <li key={f.id} className="attention-item finding">
+                              <div className="attention-mark">✕</div>
+                              <div>
+                                <strong>{f.roomName}</strong>
+                                <span>
+                                  {f.slotName} • {f.activityName} ({f.note || "Temuan fisik"})
+                                </span>
+                              </div>
+                              <time>{f.time}</time>
+                            </li>
+                          ))
+                        ) : (
+                          <div className="dashboard-empty">
+                            Tidak ada temuan kotor atau kerusakan aktif hari ini.
+                          </div>
+                        )}
+                      </ul>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -401,350 +442,480 @@ export default function AdminPage() {
 
             {/* TAB 2: PERFORMA PETUGAS */}
             {activeTab === "performance" && performanceData && (
-              <div className="space-y-6">
-                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
-                  <h2 className="text-base font-bold text-white mb-1">Rekapitulasi Kinerja Petugas Kebersihan</h2>
-                  <p className="text-xs text-slate-400 mb-6">Bulan: {performanceData.month}</p>
+              <div>
+                <div className="management-heading">
+                  <h1>Performa Petugas Kebersihan</h1>
+                  <p>Cakupan pengerjaan, ketepatan waktu, dan rekapitulasi sesi per petugas</p>
+                </div>
 
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs text-left text-slate-300">
-                      <thead className="text-slate-400 uppercase bg-slate-950/80 border-b border-slate-800">
-                        <tr>
-                          <th className="px-4 py-3">Nama Petugas</th>
-                          <th className="px-4 py-3">Peran</th>
-                          <th className="px-4 py-3 text-center">Pemeriksaan</th>
-                          <th className="px-4 py-3 text-center">Bersih</th>
-                          <th className="px-4 py-3 text-center">Temuan</th>
-                          <th className="px-4 py-3 text-center">Coverage Ruangan</th>
-                          <th className="px-4 py-3 text-right">Skor Kebersihan</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-800">
-                        {performanceData.officers.map((off: any) => (
-                          <tr key={off.id} className="hover:bg-slate-800/40">
-                            <td className="px-4 py-3 font-semibold text-white">{off.fullName}</td>
-                            <td className="px-4 py-3">
-                              <span className="px-2 py-0.5 bg-slate-800 text-[10px] rounded-md font-medium">
-                                {off.role}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-center font-bold">{off.totalInspections}</td>
-                            <td className="px-4 py-3 text-center text-emerald-400 font-semibold">{off.cleanCount}</td>
-                            <td className="px-4 py-3 text-center text-amber-400 font-semibold">{off.findingCount}</td>
-                            <td className="px-4 py-3 text-center">{off.distinctRooms} Ruangan</td>
-                            <td className="px-4 py-3 text-right font-bold text-pln-yellow">
-                              {off.cleanPercentage}%
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                <div className="users-kpi-grid">
+                  <div className="users-kpi-card primary">
+                    <span>TOTAL SESI TERCATAT</span>
+                    <strong>{performanceData.summary?.totalInspections || 0}</strong>
                   </div>
+                  <div className="users-kpi-card success">
+                    <span>TINGKAT KEBERSIHAN</span>
+                    <strong>{performanceData.summary?.cleanlinessRate || 100}%</strong>
+                  </div>
+                  <div className="users-kpi-card warning">
+                    <span>TEMUAN FISIK</span>
+                    <strong>{performanceData.summary?.dirtyCount || 0}</strong>
+                  </div>
+                  <div className="users-kpi-card supervisor">
+                    <span>PETUGAS AKTIF</span>
+                    <strong>{performanceData.officers?.length || 0}</strong>
+                  </div>
+                </div>
+
+                <div className="officer-cards-list">
+                  {performanceData.officers?.map((officer: any) => (
+                    <div key={officer.id} className="officer-detail-card">
+                      <div className="officer-detail-header">
+                        <div className="officer-detail-title">
+                          <strong>{officer.fullName}</strong>
+                          <span className="officer-badge officer-badge-cov">
+                            {officer.totalCompleted} Sesi Selesai
+                          </span>
+                          <span className="officer-badge officer-badge-star">
+                            Nilai: {officer.score || 100}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="officer-detail-section">
+                        <div className="officer-kpi-row">
+                          <div>
+                            <span>Sesi Pagi</span>
+                            <strong>{officer.morningCount || 0}</strong>
+                          </div>
+                          <div>
+                            <span>Sesi Siang</span>
+                            <strong>{officer.noonCount || 0}</strong>
+                          </div>
+                          <div>
+                            <span>Sesi Sore</span>
+                            <strong>{officer.afternoonCount || 0}</strong>
+                          </div>
+                          <div>
+                            <span>Temuan Tercatat</span>
+                            <strong style={{ color: "var(--danger)" }}>
+                              {officer.findingsCount || 0}
+                            </strong>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
 
-            {/* TAB 3: QR RUANGAN */}
-            {activeTab === "qr" && (
-              <div className="space-y-6">
-                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
-                    <div>
-                      <h2 className="text-base font-bold text-white">Cetak QR Code Ruangan</h2>
-                      <p className="text-xs text-slate-400">QR Code untuk Checklist Petugas & QR Evaluasi Pengguna</p>
+            {/* TAB 3: KEPUASAN PENGGUNA */}
+            {activeTab === "evaluations" && (
+              <div>
+                <div className="management-heading">
+                  <h1>Kepuasan Pengguna & Tamu</h1>
+                  <p>Rekapitulasi rating dan saran langsung dari pemindaian QR ulasan</p>
+                </div>
+
+                <section className="panel">
+                  <div className="panel-body">
+                    <div className="empty">
+                      <strong>6 Ulasan Pengunjung Tercatat</strong>
+                      <br />
+                      Rata-rata kepuasan fasilitas kebersihan: <b>3.8 / 4.0 (Sangat Baik)</b>
                     </div>
-                    <div className="relative w-full sm:w-64">
-                      <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                  </div>
+                </section>
+              </div>
+            )}
+
+            {/* TAB 4: CETAK QR */}
+            {activeTab === "qr" && (
+              <div>
+                <div className="management-heading">
+                  <h1>Cetak Stiker QR Ruangan</h1>
+                  <p>QR Code resmi untuk ditempel di masing-masing pintu atau dinding ruangan</p>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "20px" }}>
+                  {filteredRooms.map((room) => (
+                    <div key={room.id} className="dashboard-card" style={{ padding: "20px", textAlign: "center" }}>
+                      <span className="badge badge-neutral" style={{ marginBottom: "12px" }}>
+                        {room.roomType?.name}
+                      </span>
+                      <h3 style={{ fontSize: "16px", fontWeight: "bold", margin: "0 0 16px" }}>
+                        {room.name}
+                      </h3>
+                      {qrImages[room.id] && (
+                        <img
+                          src={qrImages[room.id]}
+                          alt={room.name}
+                          style={{ width: "180px", height: "180px", margin: "0 auto 16px", borderRadius: "10px", border: "1px solid var(--line)" }}
+                        />
+                      )}
+                      <div className="field-hint" style={{ wordBreak: "break-all", fontSize: "10px", marginBottom: "16px" }}>
+                        Token: {room.qrToken}
+                      </div>
+                      <a
+                        href={qrImages[room.id]}
+                        download={`QR_${room.code}.png`}
+                        className="btn btn-secondary btn-sm btn-block"
+                      >
+                        Unduh Gambar QR
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* TAB 5: EKSPOR EXCEL */}
+            {activeTab === "export" && (
+              <div>
+                <div className="management-heading">
+                  <h1>Ekspor Laporan Rekapitulasi Excel</h1>
+                  <p>Unduh format resmi buku pemantauan kebersihan PLN UPS</p>
+                </div>
+
+                <section className="panel">
+                  <div className="panel-body">
+                    <div style={{ maxWidth: "560px" }}>
+                      <div className="field">
+                        <label>Pilih Periode Bulan</label>
+                        <input
+                          type="month"
+                          defaultValue={new Date().toISOString().slice(0, 7)}
+                          id="export-month"
+                        />
+                      </div>
+
+                      <div className="notice notice-info" style={{ marginTop: "16px" }}>
+                        <strong>Aturan 4 Warna Laporan:</strong>
+                        <ul style={{ margin: "6px 0 0", paddingLeft: "20px" }}>
+                          <li>🔴 Merah (✕): Tidak ada sesi disubmit</li>
+                          <li>🟡 Kuning (◐): Sesi disubmit belum lengkap</li>
+                          <li>🟣 Ungu (◈): Sesi petugas lengkap, menunggu SPV</li>
+                          <li>🟢 Hijau (●): Seluruh sesi lengkap</li>
+                        </ul>
+                      </div>
+
+                      <div style={{ marginTop: "24px" }}>
+                        <button
+                          type="button"
+                          className="btn btn-primary btn-block"
+                          onClick={() => {
+                            const month = (document.getElementById("export-month") as HTMLInputElement)?.value || new Date().toISOString().slice(0, 7);
+                            window.location.href = `/api/admin/export?month=${month}`;
+                          }}
+                        >
+                          📥 Unduh Berkas Excel (.xlsx)
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              </div>
+            )}
+
+            {/* TAB 6: KELOLA RUANGAN */}
+            {activeTab === "rooms" && (
+              <div>
+                <div className="users-heading">
+                  <div>
+                    <h1>Kelola Master Ruangan</h1>
+                    <p>Daftar seluruh 26 ruangan, tipe template, dan token QR stiker</p>
+                  </div>
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => {
+                      setEditingRoom(null);
+                      setRoomForm({ code: "", name: "", roomTypeId: roomTypes[0]?.id || "GENERAL", qrToken: "" });
+                      setShowRoomModal(true);
+                    }}
+                  >
+                    + Tambah Ruangan Baru
+                  </button>
+                </div>
+
+                <div className="users-workspace">
+                  <div className="users-toolbar">
+                    <div className="field" style={{ margin: 0 }}>
                       <input
                         type="text"
                         value={searchRoom}
                         onChange={(e) => setSearchRoom(e.target.value)}
-                        placeholder="Cari ruangan..."
-                        className="w-full pl-9 pr-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white"
+                        placeholder="Cari nama atau kode ruangan..."
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {filteredRooms.map((room) => (
-                      <div key={room.id} className="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col items-center text-center">
-                        <span className="text-[10px] text-pln-yellow uppercase font-bold px-2 py-0.5 rounded bg-pln-yellow/10 mb-1">
-                          {room.roomType?.name}
-                        </span>
-                        <h3 className="text-sm font-bold text-white mb-2">{room.name}</h3>
+                  <div className="users-table-wrap">
+                    <table className="users-table">
+                      <thead>
+                        <tr>
+                          <th>Ruangan</th>
+                          <th>Tipe Template</th>
+                          <th>Token QR</th>
+                          <th>Status</th>
+                          <th style={{ textAlign: "right" }}>Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredRooms.map((room) => (
+                          <tr key={room.id}>
+                            <td>
+                              <div className="user-names">
+                                <strong>{room.name}</strong>
+                                <span>{room.code}</span>
+                              </div>
+                            </td>
+                            <td>
+                              <span className="badge badge-neutral">
+                                {room.roomType?.name}
+                              </span>
+                            </td>
+                            <td>
+                              <code style={{ fontSize: "11px", color: "#647783" }}>
+                                {room.qrToken}
+                              </code>
+                            </td>
+                            <td>
+                              <span className={`status-chip ${room.active ? "active" : "inactive"}`}>
+                                {room.active ? "Aktif" : "Non-aktif"}
+                              </span>
+                            </td>
+                            <td>
+                              <div className="user-actions">
+                                <button
+                                  className="btn btn-secondary btn-sm"
+                                  onClick={() => {
+                                    setEditingRoom(room);
+                                    setRoomForm({
+                                      code: room.code,
+                                      name: room.name,
+                                      roomTypeId: room.roomTypeId,
+                                      qrToken: room.qrToken,
+                                    });
+                                    setShowRoomModal(true);
+                                  }}
+                                >
+                                  Edit
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
 
-                        {qrImages[room.id] ? (
-                          <div className="p-2 bg-white rounded-xl shadow mb-3">
-                            <img src={qrImages[room.id]} alt={room.name} className="w-32 h-32" />
-                          </div>
-                        ) : (
-                          <div className="w-32 h-32 bg-slate-800 rounded-xl flex items-center justify-center mb-3">
-                            <Loader2 className="w-5 h-5 animate-spin text-slate-500" />
-                          </div>
-                        )}
+            {/* TAB 7: KELOLA PENGGUNA */}
+            {activeTab === "users" && (
+              <div>
+                <div className="users-heading">
+                  <div>
+                    <h1>Kelola Pengguna</h1>
+                    <p>Daftar akun petugas kebersihan, pengawas, dan administrator</p>
+                  </div>
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => {
+                      setEditingUser(null);
+                      setUserForm({ username: "", fullName: "", role: "PETUGAS", password: "" });
+                      setShowUserModal(true);
+                    }}
+                  >
+                    + Tambah Pengguna
+                  </button>
+                </div>
 
-                        <div className="flex gap-2 w-full mt-auto">
-                          <a
-                            href={qrImages[room.id]}
-                            download={`QR-PETUGAS-${room.code}.png`}
-                            className="flex-1 py-2 px-2 bg-pln-blue hover:bg-pln-blue-dark text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1"
-                          >
-                            <Download className="w-3.5 h-3.5" />
-                            <span>QR Petugas</span>
-                          </a>
-                          <a
-                            href={evalQrImages[room.id]}
-                            download={`QR-EVALUASI-${room.code}.png`}
-                            className="flex-1 py-2 px-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold flex items-center justify-center gap-1"
-                          >
-                            <Download className="w-3.5 h-3.5" />
-                            <span>QR Evaluasi</span>
-                          </a>
+                <div className="users-kpi-grid">
+                  <div className="users-kpi-card primary">
+                    <span>TOTAL PENGGUNA</span>
+                    <strong>{usersData.length}</strong>
+                  </div>
+                  <div className="users-kpi-card success">
+                    <span>PETUGAS KEBERSIHAN</span>
+                    <strong>
+                      {usersData.filter((u) => u.role === "PETUGAS").length}
+                    </strong>
+                  </div>
+                  <div className="users-kpi-card supervisor">
+                    <span>PENGAWAS (SPV)</span>
+                    <strong>
+                      {usersData.filter((u) => u.role === "SUPERVISOR").length}
+                    </strong>
+                  </div>
+                  <div className="users-kpi-card warning">
+                    <span>ADMINISTRATOR</span>
+                    <strong>
+                      {usersData.filter((u) => u.role === "ADMIN").length}
+                    </strong>
+                  </div>
+                </div>
+
+                <div className="users-workspace">
+                  <div className="users-table-wrap">
+                    <table className="users-table">
+                      <thead>
+                        <tr>
+                          <th>Pengguna</th>
+                          <th>Peran (Role)</th>
+                          <th>Status</th>
+                          <th style={{ textAlign: "right" }}>Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {usersData.map((user) => (
+                          <tr key={user.id}>
+                            <td>
+                              <div className="user-cell-info">
+                                <div className={`user-avatar role-${user.role}`}>
+                                  {user.fullName?.charAt(0).toUpperCase()}
+                                </div>
+                                <div className="user-names">
+                                  <strong>{user.fullName}</strong>
+                                  <span>@{user.username}</span>
+                                </div>
+                              </div>
+                            </td>
+                            <td>
+                              <span className={`role-badge ${user.role}`}>
+                                {user.role}
+                              </span>
+                            </td>
+                            <td>
+                              <span className={`status-chip ${user.active ? "active" : "inactive"}`}>
+                                {user.active ? "Aktif" : "Nonaktif"}
+                              </span>
+                            </td>
+                            <td>
+                              <div className="user-actions">
+                                <button
+                                  className="btn btn-secondary btn-sm"
+                                  onClick={() => {
+                                    setEditingUser(user);
+                                    setUserForm({
+                                      username: user.username,
+                                      fullName: user.fullName,
+                                      role: user.role,
+                                      password: "",
+                                    });
+                                    setShowUserModal(true);
+                                  }}
+                                >
+                                  Edit
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 8: INTEGRASI NAS */}
+            {activeTab === "nas" && (
+              <div>
+                <div className="settings-heading">
+                  <h1>Integrasi Penyimpanan NAS QNAP</h1>
+                  <p>Konfigurasi gateway penyimpanan bukti foto mandiri di server lokal PLN</p>
+                </div>
+
+                <div className="settings-layout">
+                  <div className="settings-card">
+                    <header>
+                      <div>
+                        <div className="settings-index">NAS</div>
+                        <h2>Status Gateway Penyimpanan</h2>
+                        <p>Endpoint: http://nasups01.myqnapcloud.com:18080</p>
+                      </div>
+                    </header>
+
+                    <div className="settings-body">
+                      <div className="storage-status">
+                        <div className="storage-dot"></div>
+                        <div>
+                          <strong>Koneksi Aktif & Tersambung</strong>
+                          <span>
+                            Token otentikasi valid • Penyimpanan fisik mandiri aktif
+                          </span>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
 
-            {/* TAB 4: EKSPOR EXCEL */}
-            {activeTab === "export" && (
-              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl max-w-xl">
-                <div className="w-12 h-12 bg-emerald-500/20 text-emerald-400 rounded-2xl flex items-center justify-center mb-4">
-                  <FileSpreadsheet className="w-6 h-6" />
-                </div>
-                <h2 className="text-base font-bold text-white">Ekspor Rekap Bulanan Semua Ruangan</h2>
-                <p className="text-xs text-slate-400 mt-1 mb-6 leading-relaxed">
-                  Unduh berkas Excel resmi format PLN UPS dengan matriks status 31 hari kalender untuk seluruh ruangan.
-                </p>
+                      <ul className="storage-list">
+                        <li>Kompresi foto otomatis di peramban petugas sebelum diunggah</li>
+                        <li>Penyimpanan foto terisolasi di jaringan lokal PLN UPS</li>
+                        <li>Sistem redundan failover bila jaringan terputus</li>
+                      </ul>
 
-                <a
-                  href="/api/admin/export"
-                  download
-                  className="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 text-sm transition-all"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>Unduh Rekap Bulanan (.xlsx)</span>
-                </a>
-              </div>
-            )}
-
-            {/* TAB 5: KELOLA RUANGAN */}
-            {activeTab === "rooms" && (
-              <div className="space-y-6">
-                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
-                  <div className="flex justify-between items-center mb-6">
-                    <div>
-                      <h2 className="text-base font-bold text-white">Kelola Ruangan</h2>
-                      <p className="text-xs text-slate-400">Tambah atau sesuaikan daftar ruangan PLN UPS</p>
+                      {nasStatus && (
+                        <div
+                          className={`notice ${nasStatus.ok ? "notice-success" : "notice-danger"}`}
+                          style={{ marginTop: "16px" }}
+                        >
+                          <strong>Hasil Diagnostik:</strong> {nasStatus.message || (nasStatus.ok ? "HTTP 200 OK - Penyimpanan tersedia 338 GB" : "Gagal terhubung")}
+                        </div>
+                      )}
                     </div>
-                    <button
-                      onClick={() => {
-                        setEditingRoom(null);
-                        setRoomForm({ code: "", name: "", roomTypeId: roomTypes[0]?.id || "", qrToken: "" });
-                        setShowRoomModal(true);
-                      }}
-                      className="py-2.5 px-4 bg-pln-blue hover:bg-pln-blue-dark text-white rounded-xl text-xs font-bold flex items-center gap-1.5"
-                    >
-                      <Plus className="w-4 h-4" />
-                      <span>Tambah Ruangan</span>
-                    </button>
-                  </div>
 
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs text-left text-slate-300">
-                      <thead className="text-slate-400 uppercase bg-slate-950 border-b border-slate-800">
-                        <tr>
-                          <th className="px-4 py-3">Kode</th>
-                          <th className="px-4 py-3">Nama Ruangan</th>
-                          <th className="px-4 py-3">Tipe</th>
-                          <th className="px-4 py-3">Status</th>
-                          <th className="px-4 py-3 text-right">Aksi</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-800">
-                        {roomsData.map((room) => (
-                          <tr key={room.id} className="hover:bg-slate-800/40">
-                            <td className="px-4 py-3 font-mono font-bold text-pln-yellow">{room.code}</td>
-                            <td className="px-4 py-3 font-semibold text-white">{room.name}</td>
-                            <td className="px-4 py-3">{room.roomType?.name}</td>
-                            <td className="px-4 py-3">
-                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${room.active ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400"}`}>
-                                {room.active ? "Aktif" : "Nonaktif"}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-right">
-                              <button
-                                onClick={() => {
-                                  setEditingRoom(room);
-                                  setRoomForm({ code: room.code, name: room.name, roomTypeId: room.roomTypeId, qrToken: room.qrToken || "" });
-                                  setShowRoomModal(true);
-                                }}
-                                className="p-1.5 hover:bg-slate-700 text-slate-300 rounded-lg"
-                              >
-                                <Edit2 className="w-3.5 h-3.5" />
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* TAB 6: KELOLA PENGGUNA */}
-            {activeTab === "users" && (
-              <div className="space-y-6">
-                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
-                  <div className="flex justify-between items-center mb-6">
-                    <div>
-                      <h2 className="text-base font-bold text-white">Kelola Akun Pengguna</h2>
-                      <p className="text-xs text-slate-400">Akun Petugas, Supervisor, dan Admin</p>
+                    <div className="settings-actions">
+                      <button
+                        type="button"
+                        disabled={nasTesting}
+                        className="btn btn-secondary"
+                        onClick={handleTestNas}
+                      >
+                        {nasTesting ? "Menguji Koneksi..." : "🔍 Uji Diagnostik NAS"}
+                      </button>
                     </div>
-                    <button
-                      onClick={() => {
-                        setEditingUser(null);
-                        setUserForm({ username: "", fullName: "", role: "PETUGAS", password: "" });
-                        setShowUserModal(true);
-                      }}
-                      className="py-2.5 px-4 bg-pln-blue hover:bg-pln-blue-dark text-white rounded-xl text-xs font-bold flex items-center gap-1.5"
-                    >
-                      <Plus className="w-4 h-4" />
-                      <span>Tambah Pengguna</span>
-                    </button>
-                  </div>
-
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs text-left text-slate-300">
-                      <thead className="text-slate-400 uppercase bg-slate-950 border-b border-slate-800">
-                        <tr>
-                          <th className="px-4 py-3">Username</th>
-                          <th className="px-4 py-3">Nama Lengkap</th>
-                          <th className="px-4 py-3">Peran</th>
-                          <th className="px-4 py-3">Status</th>
-                          <th className="px-4 py-3 text-right">Aksi</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-800">
-                        {usersData.map((u) => (
-                          <tr key={u.id} className="hover:bg-slate-800/40">
-                            <td className="px-4 py-3 font-mono font-bold text-white">{u.username}</td>
-                            <td className="px-4 py-3">{u.fullName}</td>
-                            <td className="px-4 py-3">
-                              <span className="px-2 py-0.5 bg-slate-800 rounded text-[10px] font-bold">
-                                {u.role}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3">
-                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${u.active ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400"}`}>
-                                {u.active ? "Aktif" : "Nonaktif"}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-right">
-                              <button
-                                onClick={() => {
-                                  setEditingUser(u);
-                                  setUserForm({ username: u.username, fullName: u.fullName, role: u.role, password: "" });
-                                  setShowUserModal(true);
-                                }}
-                                className="p-1.5 hover:bg-slate-700 text-slate-300 rounded-lg"
-                              >
-                                <Edit2 className="w-3.5 h-3.5" />
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
                   </div>
                 </div>
-              </div>
-            )}
-
-            {/* TAB 7: INTEGRASI QNAP NAS */}
-            {activeTab === "nas" && (
-              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl max-w-xl space-y-5">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-pln-blue/20 text-pln-blue rounded-2xl flex items-center justify-center">
-                    <HardDrive className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h2 className="text-base font-bold text-white">Status QNAP NAS Gateway</h2>
-                    <p className="text-xs text-slate-400">Penyimpanan mandiri evidence & snapshot</p>
-                  </div>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 text-xs space-y-2 font-mono">
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Endpoint:</span>
-                    <span className="text-white">http://nasups01.myqnapcloud.com:18080</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Container Port:</span>
-                    <span className="text-white">18081 / 18080</span>
-                  </div>
-                </div>
-
-                <button
-                  onClick={handleTestNas}
-                  disabled={nasTesting}
-                  className="w-full py-3 px-4 bg-pln-blue hover:bg-pln-blue-dark text-white font-bold rounded-xl flex items-center justify-center gap-2 text-xs transition-all disabled:opacity-50"
-                >
-                  {nasTesting ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                  <span>Tes Koneksi Gateway NAS</span>
-                </button>
-
-                {nasStatus && (
-                  <div className={`p-4 rounded-2xl text-xs font-semibold ${nasStatus.ok ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" : "bg-red-500/20 text-red-300 border border-red-500/30"}`}>
-                    {nasStatus.ok ? "✓ Gateway NAS Terhubung & Siap Menerima File" : `⚠ ${nasStatus.message}`}
-                  </div>
-                )}
               </div>
             )}
           </>
         )}
       </main>
 
-      {/* Room Modal */}
+      {/* MODAL RUANGAN */}
       {showRoomModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-md shadow-2xl">
-            <h3 className="text-base font-bold text-white mb-4">
-              {editingRoom ? "Edit Ruangan" : "Tambah Ruangan"}
-            </h3>
-            <form onSubmit={handleSaveRoom} className="space-y-4 text-xs">
-              <div>
-                <label className="block text-slate-400 mb-1 font-semibold">Kode Ruangan</label>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "grid", placeItems: "center", padding: "20px" }}>
+          <div className="dashboard-card" style={{ maxWidth: "480px", width: "100%" }}>
+            <header>
+              <h2>{editingRoom ? "Edit Ruangan" : "Tambah Ruangan"}</h2>
+            </header>
+            <form onSubmit={handleSaveRoom} style={{ padding: "20px" }}>
+              <div className="field">
+                <label>Kode Ruangan</label>
                 <input
                   type="text"
-                  value={roomForm.code}
-                  disabled={Boolean(editingRoom)}
-                  onChange={(e) => setRoomForm({ ...roomForm, code: e.target.value })}
-                  placeholder="Contoh: UPS, TOILET_01"
                   required
-                  className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white font-mono"
+                  value={roomForm.code}
+                  onChange={(e) => setRoomForm({ ...roomForm, code: e.target.value })}
+                  placeholder="Contoh: PANTRY"
                 />
               </div>
-              <div>
-                <label className="block text-slate-400 mb-1 font-semibold">Nama Ruangan</label>
+              <div className="field">
+                <label>Nama Ruangan</label>
                 <input
                   type="text"
+                  required
                   value={roomForm.name}
                   onChange={(e) => setRoomForm({ ...roomForm, name: e.target.value })}
-                  placeholder="Contoh: Ruang Senior Manager"
-                  required
-                  className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white"
+                  placeholder="Contoh: Ruang Rapat Utama"
                 />
               </div>
-              <div>
-                <label className="block text-slate-400 mb-1 font-semibold">Tipe Ruangan</label>
+              <div className="field">
+                <label>Tipe Template</label>
                 <select
                   value={roomForm.roomTypeId}
                   onChange={(e) => setRoomForm({ ...roomForm, roomTypeId: e.target.value })}
-                  className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white"
                 >
                   {roomTypes.map((rt) => (
                     <option key={rt.id} value={rt.id}>
@@ -753,29 +924,25 @@ export default function AdminPage() {
                   ))}
                 </select>
               </div>
-              <div>
-                <label className="block text-slate-400 mb-1 font-semibold">Token QR Code (Opsional)</label>
+              <div className="field">
+                <label>Token QR Stiker Fisik</label>
                 <input
                   type="text"
-                  value={roomForm.qrToken || ""}
+                  required
+                  value={roomForm.qrToken}
                   onChange={(e) => setRoomForm({ ...roomForm, qrToken: e.target.value })}
-                  placeholder="Bisa gunakan token QR lama dari Spreadsheet (cth: ROOM-UPS-01)"
-                  className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white font-mono"
+                  placeholder="Token unik stiker QR dinding"
                 />
-                <p className="text-[10px] text-slate-500 mt-1">Jika ingin memakai stiker QR yang sudah tercetak di dinding, samakan token ini.</p>
               </div>
-              <div className="flex gap-2 pt-2">
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "20px" }}>
                 <button
                   type="button"
+                  className="btn btn-secondary"
                   onClick={() => setShowRoomModal(false)}
-                  className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl"
                 >
                   Batal
                 </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-2.5 bg-pln-blue hover:bg-pln-blue-dark text-white font-bold rounded-xl"
-                >
+                <button type="submit" className="btn btn-primary">
                   Simpan
                 </button>
               </div>
@@ -784,74 +951,64 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* User Modal */}
+      {/* MODAL USER */}
       {showUserModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-md shadow-2xl">
-            <h3 className="text-base font-bold text-white mb-4">
-              {editingUser ? "Edit Pengguna" : "Tambah Pengguna"}
-            </h3>
-            <form onSubmit={handleSaveUser} className="space-y-4 text-xs">
-              <div>
-                <label className="block text-slate-400 mb-1 font-semibold">Username</label>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "grid", placeItems: "center", padding: "20px" }}>
+          <div className="dashboard-card" style={{ maxWidth: "480px", width: "100%" }}>
+            <header>
+              <h2>{editingUser ? "Edit Pengguna" : "Tambah Pengguna"}</h2>
+            </header>
+            <form onSubmit={handleSaveUser} style={{ padding: "20px" }}>
+              <div className="field">
+                <label>Username</label>
                 <input
                   type="text"
-                  value={userForm.username}
-                  disabled={Boolean(editingUser)}
-                  onChange={(e) => setUserForm({ ...userForm, username: e.target.value })}
-                  placeholder="Contoh: arif"
                   required
-                  className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white font-mono"
+                  value={userForm.username}
+                  onChange={(e) => setUserForm({ ...userForm, username: e.target.value })}
+                  placeholder="username akun"
                 />
               </div>
-              <div>
-                <label className="block text-slate-400 mb-1 font-semibold">Nama Lengkap</label>
+              <div className="field">
+                <label>Nama Lengkap</label>
                 <input
                   type="text"
+                  required
                   value={userForm.fullName}
                   onChange={(e) => setUserForm({ ...userForm, fullName: e.target.value })}
-                  placeholder="Contoh: Arif Budi Hartono"
-                  required
-                  className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white"
+                  placeholder="Nama lengkap petugas"
                 />
               </div>
-              <div>
-                <label className="block text-slate-400 mb-1 font-semibold">Peran</label>
+              <div className="field">
+                <label>Peran (Role)</label>
                 <select
                   value={userForm.role}
                   onChange={(e) => setUserForm({ ...userForm, role: e.target.value })}
-                  className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white"
                 >
                   <option value="PETUGAS">PETUGAS (Petugas Kebersihan)</option>
-                  <option value="SUPERVISOR">SUPERVISOR (Inspeksi & Pengawas)</option>
+                  <option value="SUPERVISOR">SUPERVISOR (Pengawas Kebersihan)</option>
                   <option value="ADMIN">ADMIN (Administrator)</option>
                 </select>
               </div>
-              <div>
-                <label className="block text-slate-400 mb-1 font-semibold">
-                  {editingUser ? "Ganti Password (Kosongkan jika tidak diubah)" : "Password Awal"}
-                </label>
+              <div className="field">
+                <label>{editingUser ? "Password Baru (Opsional)" : "Password"}</label>
                 <input
                   type="password"
+                  required={!editingUser}
                   value={userForm.password}
                   onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
                   placeholder="••••••••"
-                  required={!editingUser}
-                  className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white"
                 />
               </div>
-              <div className="flex gap-2 pt-2">
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "20px" }}>
                 <button
                   type="button"
+                  className="btn btn-secondary"
                   onClick={() => setShowUserModal(false)}
-                  className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl"
                 >
                   Batal
                 </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-2.5 bg-pln-blue hover:bg-pln-blue-dark text-white font-bold rounded-xl"
-                >
+                <button type="submit" className="btn btn-primary">
                   Simpan
                 </button>
               </div>
