@@ -1,0 +1,205 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String       @id @default(cuid())
+  username           String       @unique
+  fullName           String
+  role               String       // PETUGAS, SUPERVISOR, ADMIN
+  passwordHash       String
+  mustChangePassword Boolean      @default(false)
+  active             Boolean      @default(true)
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  inspections        Inspection[]
+  scanEvents         ScanEvent[]
+  auditLogs          AuditLog[]
+}
+
+model RoomType {
+  id            String       @id @default(cuid())
+  name          String
+  templateSheet String       // GENERAL, TOILET, PANTRY, CLASS, ARCHIVE
+  workDays      Int          @default(6) // 5 = Senin-Jumat, 6 = Senin-Sabtu, 7 = Tiap hari
+  active        Boolean      @default(true)
+  sortOrder     Int          @default(0)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  rooms         Room[]
+  activities    Activity[]
+  slots         Slot[]
+  aspects       EvaluationAspect[]
+}
+
+model Room {
+  id          String        @id @default(cuid())
+  code        String        @unique
+  name        String
+  roomTypeId  String
+  roomType    RoomType      @relation(fields: [roomTypeId], references: [id])
+  qrToken     String        @unique
+  active      Boolean       @default(true)
+  sortOrder   Int           @default(0)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  inspections Inspection[]
+  scanEvents  ScanEvent[]
+  evaluations Evaluation[]
+}
+
+model Activity {
+  id                 String             @id @default(cuid())
+  roomTypeId         String
+  roomType           RoomType           @relation(fields: [roomTypeId], references: [id])
+  name               String
+  standardCategory   String?
+  standardText       String?
+  qualityApplicable  Boolean            @default(true)
+  qualityPositive    String             @default("Bersih")
+  qualityNegative    String             @default("Kotor")
+  functionApplicable Boolean            @default(true)
+  functionPositive   String             @default("Berfungsi")
+  functionNegative   String             @default("Rusak")
+  exportRow          Int?
+  active             Boolean            @default(true)
+  sortOrder          Int                @default(0)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  inspectionDetails  InspectionDetail[]
+}
+
+model Slot {
+  id          String       @id @default(cuid())
+  roomTypeId  String
+  roomType    RoomType     @relation(fields: [roomTypeId], references: [id])
+  code        String       // PAGI, SIANG, SORE, INSP_1, INSP_2, INSP_3
+  name        String
+  role        String       // PETUGAS, SUPERVISOR
+  sortOrder   Int          @default(0)
+  active      Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  inspections Inspection[]
+}
+
+model ScanEvent {
+  id        String   @id @default(cuid())
+  roomId    String
+  room      Room     @relation(fields: [roomId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  scannedAt DateTime @default(now())
+  userAgent String?
+  qrPayload String?
+}
+
+model Inspection {
+  id              String             @id @default(cuid())
+  dateKey         String             // YYYY-MM-DD
+  weekStart       String             // YYYY-MM-DD
+  dayNumber       Int                // 1-7
+  roomId          String
+  room            Room               @relation(fields: [roomId], references: [id])
+  roomTypeId      String
+  slotId          String
+  slot            Slot               @relation(fields: [slotId], references: [id])
+  slotCode        String
+  userId          String
+  user            User               @relation(fields: [userId], references: [id])
+  scanId          String?
+  scannedAt       DateTime           @default(now())
+  submittedAt     DateTime           @default(now())
+  overallStatus   String             // BERSIH, ADA_TEMUAN
+  dirtyCount      Int                @default(0)
+  evidenceName    String?
+  state           String             @default("SUBMITTED") // SUBMITTED, REOPENED
+  backupStatus    String             @default("SYNCED")    // SYNCED, PENDING
+  reopenedAt      DateTime?
+  reopenedBy      String?
+  details         InspectionDetail[]
+  photos          InspectionPhoto[]
+
+  @@unique([roomId, slotId, dateKey])
+  @@index([dateKey])
+  @@index([roomId])
+}
+
+model InspectionDetail {
+  id             String     @id @default(cuid())
+  inspectionId   String
+  inspection     Inspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  activityId     String
+  activity       Activity   @relation(fields: [activityId], references: [id])
+  qualityResult  String     // POSITIVE, NEGATIVE, NA
+  qualityLabel   String?
+  functionResult String     // POSITIVE, NEGATIVE, NA
+  functionLabel  String?
+  note           String?
+  correctedAt    DateTime?
+  correctedBy    String?
+}
+
+model InspectionPhoto {
+  id           String     @id @default(cuid())
+  inspectionId String
+  inspection   Inspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  fileName     String
+  fileUrl      String     // Data URL / NAS URL / Public URL
+  sortOrder    Int        @default(1)
+  capturedAt   DateTime   @default(now())
+}
+
+model EvaluationAspect {
+  id         String   @id @default(cuid())
+  roomTypeId String
+  roomType   RoomType @relation(fields: [roomTypeId], references: [id])
+  code       String
+  label      String
+  active     Boolean  @default(true)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Evaluation {
+  id          String   @id @default(cuid())
+  roomId      String
+  room        Room     @relation(fields: [roomId], references: [id])
+  roomTypeId  String
+  rating      Int      // 1, 2, 3, 4
+  ratingLabel String
+  aspectCodes String   // JSON array string
+  comment     String?
+  dateKey     String   // YYYY-MM-DD
+  monthKey    String   // YYYY-MM
+  submittedAt DateTime @default(now())
+  userAgent   String?
+
+  @@index([dateKey])
+  @@index([roomId])
+}
+
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  action     String
+  entityType String
+  entityId   String
+  detail     String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+}

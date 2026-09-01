@@ -1,0 +1,16 @@
+{
+  "name": "Monitoring Kebersihan PLN UPS",
+  "short_name": "Kebersihan PLN",
+  "description": "Checklist Kebersihan Harian PLN UPS",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0076A8",
+  "theme_color": "#0076A8",
+  "icons": [
+    {
+      "src": "https://upload.wikimedia.org/wikipedia/commons/2/20/Logo_PLN.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}
