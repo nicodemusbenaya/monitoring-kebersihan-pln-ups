@@ -97,24 +97,40 @@ function createRedirectOutput_(targetUrl, message) {
     '<html><head>' +
     '<meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">' +
-    '<title>PLN UPS Monitoring Kebersihan</title>' +
-    '<meta http-equiv="refresh" content="0;url=' + targetUrl + '">' +
-    '<script>window.location.replace("' + targetUrl + '");</script>' +
+    '<title>Membuka Aplikasi Monitoring PLN UPS...</title>' +
+    '<script>' +
+    '  function breakout() {' +
+    '    try {' +
+    '      if (window.top && window.top !== window.self) {' +
+    '        window.top.location.href = "' + targetUrl + '";' +
+    '        return;' +
+    '      }' +
+    '    } catch (e) {}' +
+    '    var btn = document.getElementById("top-btn");' +
+    '    if (btn) btn.click();' +
+    '  }' +
+    '  breakout();' +
+    '  window.onload = breakout;' +
+    '</script>' +
     '<style>' +
-    'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #072d3f; color: #ffffff; text-align: center; padding: 20px; box-sizing: border-box; }' +
-    '.card { background: #0c364d; border: 1px solid #144b67; border-radius: 24px; padding: 36px 24px; max-width: 380px; width: 100%; box-shadow: 0 12px 30px rgba(0,0,0,0.35); }' +
-    '.spinner { width: 38px; height: 38px; border: 3px solid rgba(255,209,0,0.2); border-top-color: #ffd100; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }' +
-    '@keyframes spin { to { transform: rotate(360deg); } }' +
-    'h3 { margin: 0 0 8px; font-size: 17px; font-weight: 800; color: #ffd100; letter-spacing: 0.5px; }' +
-    'p { margin: 0 0 20px; font-size: 13px; color: #97b7c8; line-height: 1.5; }' +
-    'a { display: inline-block; padding: 12px 24px; background: #0076a8; color: #ffffff; text-decoration: none; border-radius: 14px; font-size: 12px; font-weight: bold; }' +
+    '  * { box-sizing: border-box; margin: 0; padding: 0; }' +
+    '  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #072d3f; color: #ffffff; text-align: center; padding: 20px; }' +
+    '  .card { background: #0c364d; border: 1px solid #144b67; border-radius: 24px; padding: 36px 24px; max-width: 400px; width: 100%; box-shadow: 0 16px 40px rgba(0,0,0,0.4); }' +
+    '  .spinner { width: 42px; height: 42px; border: 4px solid rgba(255,209,0,0.2); border-top-color: #ffd100; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 20px; }' +
+    '  @keyframes spin { to { transform: rotate(360deg); } }' +
+    '  h3 { margin-bottom: 10px; font-size: 18px; font-weight: 800; color: #ffd100; letter-spacing: 0.5px; }' +
+    '  p { margin-bottom: 24px; font-size: 13px; color: #97b7c8; line-height: 1.5; }' +
+    '  .btn { display: block; width: 100%; padding: 14px 20px; background: #ffd100; color: #072d3f; text-decoration: none; border-radius: 14px; font-size: 14px; font-weight: 800; box-shadow: 0 4px 14px rgba(255,209,0,0.3); transition: transform 0.1s; }' +
+    '  .btn:active { transform: scale(0.98); }' +
+    '  .hint { margin-top: 14px; font-size: 11px; color: #6b8a99; }' +
     '</style>' +
     '</head><body>' +
     '<div class="card">' +
     '<div class="spinner"></div>' +
     '<h3>PLN UPS MONITORING</h3>' +
-    '<p>' + (message || 'Mengarahkan...') + '</p>' +
-    '<a href="' + targetUrl + '">Buka Halaman Langsung &rarr;</a>' +
+    '<p>' + (message || 'Mengarahkan ke aplikasi...') + '</p>' +
+    '<a id="top-btn" href="' + targetUrl + '" target="_top" class="btn">Buka Aplikasi di Browser &rarr;</a>' +
+    '<p class="hint">Jika tidak berpindah otomatis, klik tombol di atas.</p>' +
     '</div>' +
     '</body></html>';
 
