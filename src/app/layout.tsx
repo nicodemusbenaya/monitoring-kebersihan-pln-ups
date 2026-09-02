@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { IframeBuster } from "@/components/IframeBuster";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -36,6 +37,7 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen bg-slate-50 text-slate-900 selection:bg-pln-blue selection:text-white" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+        <IframeBuster />
         {children}
       </body>
     </html>
