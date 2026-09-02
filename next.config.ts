@@ -8,7 +8,9 @@ const nextConfig: NextConfig = {
     "/**": [
       "./prisma/dev.db",
       "./prisma/seed_data.json",
+      "./Ceklis Ruangan UPS (1).xlsx",
       "./Ceklis Ruangan UPS (3).xlsx",
+      "./public/templates/**/*",
     ],
   },
   typescript: {
