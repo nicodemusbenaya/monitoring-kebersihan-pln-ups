@@ -58,9 +58,15 @@ function doGet(e) {
     return createRedirectOutput_(scanUrl, 'Mengarahkan ke Checklist Kebersihan Ruangan...');
   }
 
-  // 3. Redirect Admin / Akses Umum langsung ke Portal Admin Vercel
-  if (params.admin === '1' || (!params.room && !params.evaluate && !params.checklist && !params.evaluation)) {
-    return createRedirectOutput_('https://monitoring-kebersihan-pln-ups.vercel.app/admin', 'Mengarahkan ke Portal Monitoring Kebersihan...');
+  // 3. Redirect eksplisit ke Portal Admin (hanya jika ?admin=1)
+  if (params.admin === '1') {
+    return createRedirectOutput_('https://monitoring-kebersihan-pln-ups.vercel.app/admin', 'Mengarahkan ke Portal Admin...');
+  }
+
+  // 4. Fallback umum (akses tanpa parameter yang dikenali) → ke halaman Scanner, bukan Admin
+  //    Mencegah petugas kebersihan yang scan QR dengan param tidak terbaca masuk ke menu admin
+  if (!params.room && !params.evaluate && !params.checklist && !params.evaluation) {
+    return createRedirectOutput_('https://monitoring-kebersihan-pln-ups.vercel.app/scanner', 'Mengarahkan ke Aplikasi Monitoring Kebersihan...');
   }
 
   if (!isApplicationReady_()) {
@@ -292,15 +298,12 @@ function api(action, payload) {
       generateEvaluationPdf: generateEvaluationPdf_,
       previewWorkbook: previewMonitoringWorkbook_,
       exportWorkbook: exportMonitoringWorkbook_,
-      previewMonthlyWorkbook: previewMonthlyMonitoringWorkbook_,
-      exportMonthlyWorkbook: exportMonthlyMonitoringWorkbook_,
       getQrData: monitoringGetQrData_,
       retryNasBackup: retryNasBackup_,
       backupSpreadsheetNow: backupSpreadsheetNow_,
       testNasConnection: testNasConnection_,
       setNasConfiguration: setNasConfiguration_,
       setReportTemplate: setReportTemplate_,
-      setMonthlyReportTemplate: setMonthlyReportTemplate_,
       getOfficerPerformanceReport: getOfficerPerformanceReport_
     };
 
