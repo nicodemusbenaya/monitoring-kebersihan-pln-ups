@@ -246,6 +246,12 @@ export async function POST(request: Request) {
     });
   } catch (error: any) {
     console.error("Submit inspection error:", error);
+    if (error?.code === "P2002") {
+      return NextResponse.json(
+        { ok: false, message: "Pemeriksaan untuk slot ruangan ini sudah berhasil disimpan sebelumnya." },
+        { status: 409 }
+      );
+    }
     return NextResponse.json(
       { ok: false, message: error.message || "Gagal menyimpan pemeriksaan." },
       { status: 500 }

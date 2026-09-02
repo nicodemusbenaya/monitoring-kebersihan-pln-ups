@@ -31,12 +31,29 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     fetch("/api/auth/me")
-      .then((r) => r.json())
-      .then((res) => {
-        if (res.ok && res.user) setCurrentUser(res.user);
+      .then((r) => {
+        if (r.status === 401) {
+          router.replace(`/login?redirect=${encodeURIComponent(pathname)}`);
+          return null;
+        }
+        return r.json();
       })
-      .catch(() => {});
-  }, []);
+      .then((res) => {
+        if (!res) return;
+        if (res.ok && res.user) {
+          if (res.user.role !== "ADMIN") {
+            router.replace("/scanner");
+            return;
+          }
+          setCurrentUser(res.user);
+        } else {
+          router.replace(`/login?redirect=${encodeURIComponent(pathname)}`);
+        }
+      })
+      .catch(() => {
+        router.replace(`/login?redirect=${encodeURIComponent(pathname)}`);
+      });
+  }, [pathname, router]);
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });

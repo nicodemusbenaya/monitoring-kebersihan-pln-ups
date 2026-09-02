@@ -8,8 +8,8 @@ export default function ExportPage() {
   const [exportActiveTab, setExportActiveTab] = useState<"room" | "monthly" | "database">("room");
   const [roomsData, setRoomsData] = useState<any[]>([]);
   const [exportRoomId, setExportRoomId] = useState<string>("");
-  const [exportStartDate, setExportStartDate] = useState<string>("2026-09-01");
-  const [exportMonth, setExportMonth] = useState<string>(new Date().toISOString().slice(0, 7));
+  const [exportStartDate, setExportStartDate] = useState<string>(() => `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-01`);
+  const [exportMonth, setExportMonth] = useState<string>(() => `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`);
   const [exportPreviewData, setExportPreviewData] = useState<any>(null);
 
   const fetchExportPreview = async (roomId?: string, startDate?: string) => {

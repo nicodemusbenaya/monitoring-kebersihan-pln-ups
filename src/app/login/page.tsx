@@ -37,9 +37,11 @@ function LoginForm() {
       }
 
       if (data.user.role === "ADMIN") {
-        router.push("/admin");
+        const target = redirectUrl && redirectUrl !== "/" ? redirectUrl : "/admin";
+        router.push(target);
       } else {
-        router.push(redirectUrl === "/" ? "/scanner" : redirectUrl);
+        const safeRedirect = redirectUrl.startsWith("/admin") ? "/scanner" : redirectUrl;
+        router.push(safeRedirect === "/" ? "/scanner" : safeRedirect);
       }
       router.refresh();
     } catch (err: any) {

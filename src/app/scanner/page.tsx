@@ -23,10 +23,10 @@ export default function ScannerPage() {
         if (data.ok && data.user) {
           setCurrentUser(data.user);
         } else {
-          router.push("/login");
+          router.replace("/login?redirect=/scanner");
         }
       })
-      .catch(() => router.push("/login"));
+      .catch(() => router.replace("/login?redirect=/scanner"));
 
     return () => {
       if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
