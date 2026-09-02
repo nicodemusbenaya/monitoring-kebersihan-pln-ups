@@ -64,7 +64,7 @@ async function processScan(tokenRaw: string, sessionUser: any) {
       state: "SUBMITTED",
     },
     include: {
-      user: { select: { fullName: true } },
+      user: { select: { fullName: true, username: true } },
       slot: true,
       details: {
         include: {
@@ -72,6 +72,7 @@ async function processScan(tokenRaw: string, sessionUser: any) {
         },
       },
     },
+    orderBy: { submittedAt: "asc" },
   });
 
   const completedMap: Record<string, any> = {};
@@ -79,7 +80,7 @@ async function processScan(tokenRaw: string, sessionUser: any) {
     completedMap[insp.slotId] = {
       inspectionId: insp.id,
       slotName: insp.slot.name,
-      officerName: insp.user.fullName,
+      officerName: insp.user?.fullName || insp.user?.username || "Petugas Kebersihan",
       submittedAt: insp.submittedAt,
       displayTime: formatDisplayDate(insp.submittedAt),
       overallStatus: insp.overallStatus,

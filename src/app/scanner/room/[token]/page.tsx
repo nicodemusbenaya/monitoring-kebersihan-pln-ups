@@ -507,8 +507,8 @@ async function compressImageFile(file: File, maxWidth = 1280, quality = 0.75): P
                       <strong>{slot.name}</strong>
                       <small>
                         {done
-                          ? `Sudah diisi • ${slot.role}`
-                          : `Tersedia untuk ${slot.role}`}
+                          ? `Sudah diisi oleh ${slot.officerName || "Petugas"}${slot.completedAt ? ` (${slot.completedAt})` : ""}`
+                          : `Tersedia untuk ${slot.role === "PETUGAS" ? "Petugas Kebersihan" : slot.role}`}
                       </small>
                     </span>
                     <span className="slot-choice-end">
@@ -720,7 +720,9 @@ async function compressImageFile(file: File, maxWidth = 1280, quality = 0.75): P
               <p>
                 Sesi: <strong>{selectedSlot?.name || "-"}</strong> •{" "}
                 {selectedSlot?.completed ? (
-                  <span style={{ color: "#16a34a", fontWeight: "bold" }}>Sudah Selesai</span>
+                  <span style={{ color: "#16a34a", fontWeight: "bold" }}>
+                    Sudah Selesai {selectedSlot.officerName ? `(${selectedSlot.officerName})` : ""}
+                  </span>
                 ) : dirtyCount > 0 ? (
                   <span style={{ color: "#dc2626", fontWeight: "bold" }}>{dirtyCount} temuan kotor/rusak</span>
                 ) : (
