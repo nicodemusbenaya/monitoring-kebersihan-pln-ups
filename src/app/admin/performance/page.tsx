@@ -58,8 +58,8 @@ export default function PerformancePage() {
           <AppDateField label="Tanggal akhir" value={perfEndDate} onChange={setPerfEndDate} />
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-          <div className="flex flex-wrap gap-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
+          <div className="flex overflow-x-auto sm:flex-wrap gap-2 pb-1 sm:pb-0 scrollbar-none">
             {[
               { key: "hari_ini", label: "Hari ini" },
               { key: "7_hari", label: "7 hari" },
@@ -95,7 +95,7 @@ export default function PerformancePage() {
                   setPerfEndDate(e);
                   fetchPerformanceData(s, e);
                 }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                className={`shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
                   perfQuickTab === tab.key
                     ? "bg-[#0076a8] text-white shadow-sm"
                     : "bg-[#f1f5f9] text-[#647783] hover:bg-[#e2e8f0]"
@@ -109,7 +109,7 @@ export default function PerformancePage() {
           <button
             type="button"
             onClick={() => fetchPerformanceData(perfStartDate, perfEndDate)}
-            className="px-6 py-2.5 bg-[#0076a8] hover:bg-[#00577d] text-white text-xs font-bold rounded-xl shadow-md transition-all"
+            className="w-full sm:w-auto px-6 py-2.5 bg-[#0076a8] hover:bg-[#00577d] text-white text-xs font-bold rounded-xl shadow-md transition-all shrink-0"
           >
             Terapkan filter
           </button>

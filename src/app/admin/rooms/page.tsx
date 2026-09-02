@@ -120,7 +120,7 @@ export default function RoomsManagementPage() {
       </div>
 
       {/* Tabs */}
-      <div className="bg-[#eef6fb] border border-[#d8e3ea] rounded-2xl p-1.5 flex flex-wrap gap-1.5">
+      <div className="bg-[#eef6fb] border border-[#d8e3ea] rounded-2xl p-1.5 flex sm:flex-wrap overflow-x-auto gap-1.5 scrollbar-thin">
         {[
           { key: "RUANGAN" as TabKey, label: "Ruangan", count: visibleRooms.length },
           { key: "DISEMBUNYIKAN" as TabKey, label: "Disembunyikan", count: hiddenRooms.length },
@@ -133,7 +133,7 @@ export default function RoomsManagementPage() {
               key={tab.key}
               type="button"
               onClick={() => setActiveTab(tab.key)}
-              className={`flex-1 min-w-[120px] inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-all ${
+              className={`shrink-0 sm:flex-1 min-w-[110px] sm:min-w-[120px] inline-flex items-center justify-center gap-2 rounded-xl px-3.5 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-bold transition-all ${
                 isActive
                   ? "bg-white text-[#0f5a7f] shadow-sm border border-[#d8e3ea]"
                   : "text-[#5f7d8e] hover:text-[#17313d] hover:bg-white/60"
@@ -141,7 +141,7 @@ export default function RoomsManagementPage() {
             >
               <span>{tab.label}</span>
               <span
-                className={`min-w-[28px] h-6 px-1.5 inline-flex items-center justify-center rounded-full text-xs font-black ${
+                className={`min-w-[24px] sm:min-w-[28px] h-5 sm:h-6 px-1.5 inline-flex items-center justify-center rounded-full text-[11px] sm:text-xs font-black ${
                   isActive ? "bg-[#1a7daa] text-white" : "bg-[#e1ecf2] text-[#5f7d8e]"
                 }`}
               >
@@ -376,8 +376,8 @@ export default function RoomsManagementPage() {
 
       {/* Modal Room Form (shared for Ruangan tab) */}
       {showRoomModal && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white rounded-3xl p-5 sm:p-6 max-w-md w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-black text-[#17313d]">{editingRoom ? "Ubah Ruangan" : "Tambah Ruangan Baru"}</h3>
             <form onSubmit={handleSaveRoom} className="space-y-3 text-xs">
               <div>

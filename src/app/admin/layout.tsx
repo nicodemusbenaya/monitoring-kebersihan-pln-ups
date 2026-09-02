@@ -18,6 +18,8 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  Menu,
+  X,
 } from "lucide-react";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -25,9 +27,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const router = useRouter();
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isPresentationMode, setIsPresentationMode] = useState(false);
+
+  // Close mobile drawer on route change
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -80,12 +88,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#edf2f6] font-sans text-[#17313d] select-none">
-      {/* ────────────────── LEFT SIDEBAR (Hidden in Presentation Mode) ────────────────── */}
+      {/* Backdrop for Mobile Drawer */}
+      {!isPresentationMode && mobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden transition-opacity"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* ────────────────── LEFT SIDEBAR (Mobile Drawer + Desktop Static) ────────────────── */}
       {!isPresentationMode && (
         <aside
-          className={`${
-            sidebarCollapsed ? "w-[72px]" : "w-[260px]"
-          } shrink-0 bg-[#072d3f] text-white flex flex-col justify-between transition-all duration-300 z-30 h-screen shadow-xl border-r border-[#0e3b52] select-none`}
+          className={`fixed lg:static inset-y-0 left-0 z-50 h-screen shrink-0 bg-[#072d3f] text-white flex flex-col justify-between transition-all duration-300 shadow-2xl lg:shadow-xl border-r border-[#0e3b52] select-none ${
+            mobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+          } ${sidebarCollapsed ? "lg:w-[72px]" : "lg:w-[260px]"} w-[270px] max-w-[85vw]`}
         >
           <div>
             {/* Logo & Header */}
@@ -102,7 +118,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <button
                   type="button"
                   onClick={() => setSidebarCollapsed(false)}
-                  className="w-6 h-6 rounded-md bg-[#0e3a50] hover:bg-[#144b67] text-[#97b7c8] hover:text-white transition-colors flex items-center justify-center shadow-inner"
+                  className="w-6 h-6 rounded-md bg-[#0e3a50] hover:bg-[#144b67] text-[#97b7c8] hover:text-white transition-colors hidden lg:flex items-center justify-center shadow-inner"
                   title="Buka menu navigasi"
                 >
                   <ChevronRight className="w-3.5 h-3.5" />
@@ -127,14 +143,25 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setSidebarCollapsed(true)}
-                  className="w-7 h-7 rounded-lg bg-[#0e3a50] hover:bg-[#144b67] text-[#97b7c8] hover:text-white transition-colors flex items-center justify-center shrink-0"
-                  title="Ciutkan menu"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setSidebarCollapsed(true)}
+                    className="w-7 h-7 rounded-lg bg-[#0e3a50] hover:bg-[#144b67] text-[#97b7c8] hover:text-white transition-colors hidden lg:flex items-center justify-center shrink-0"
+                    title="Ciutkan menu"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="w-8 h-8 rounded-lg bg-[#0e3a50] hover:bg-[#144b67] text-[#97b7c8] hover:text-white transition-colors flex lg:hidden items-center justify-center shrink-0"
+                    title="Tutup menu"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             )}
 
@@ -151,6 +178,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   <Link
                     href="/admin"
                     title="Ringkasan"
+                    onClick={() => setMobileMenuOpen(false)}
                     className={
                       sidebarCollapsed
                         ? `w-10 h-10 mx-auto flex items-center justify-center rounded-xl transition-all ${
@@ -172,6 +200,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   <Link
                     href="/admin/performance"
                     title="Performa Petugas"
+                    onClick={() => setMobileMenuOpen(false)}
                     className={
                       sidebarCollapsed
                         ? `w-10 h-10 mx-auto flex items-center justify-center rounded-xl transition-all ${
@@ -193,6 +222,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   <Link
                     href="/admin/evaluations"
                     title="Kepuasan Pengguna"
+                    onClick={() => setMobileMenuOpen(false)}
                     className={
                       sidebarCollapsed
                         ? `w-10 h-10 mx-auto flex items-center justify-center rounded-xl transition-all ${
@@ -224,6 +254,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   <Link
                     href="/admin/qr"
                     title="QR Ruangan"
+                    onClick={() => setMobileMenuOpen(false)}
                     className={
                       sidebarCollapsed
                         ? `w-10 h-10 mx-auto flex items-center justify-center rounded-xl transition-all ${
@@ -245,6 +276,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   <Link
                     href="/admin/export"
                     title="Ekspor Excel"
+                    onClick={() => setMobileMenuOpen(false)}
                     className={
                       sidebarCollapsed
                         ? `w-10 h-10 mx-auto flex items-center justify-center rounded-xl transition-all ${
@@ -276,6 +308,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   <Link
                     href="/admin/users"
                     title="Pengguna"
+                    onClick={() => setMobileMenuOpen(false)}
                     className={
                       sidebarCollapsed
                         ? `w-10 h-10 mx-auto flex items-center justify-center rounded-xl transition-all ${
@@ -297,6 +330,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   <Link
                     href="/admin/rooms"
                     title="Pengelolaan Data"
+                    onClick={() => setMobileMenuOpen(false)}
                     className={
                       sidebarCollapsed
                         ? `w-10 h-10 mx-auto flex items-center justify-center rounded-xl transition-all ${
@@ -318,6 +352,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   <Link
                     href="/admin/config"
                     title="Konfigurasi"
+                    onClick={() => setMobileMenuOpen(false)}
                     className={
                       sidebarCollapsed
                         ? `w-10 h-10 mx-auto flex items-center justify-center rounded-xl transition-all ${
@@ -358,28 +393,42 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* ────────────────── MAIN CONTENT WRAPPER ────────────────── */}
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
         {/* Top Header Bar (Switches layout dynamically in Presentation Mode) */}
-        <header className="bg-white border-b border-[#d8e3ea] px-8 py-3.5 flex items-center justify-between sticky top-0 z-20 shadow-sm">
-          {/* Left Title */}
-          <div>
-            <span
-              className={`text-[10px] font-black uppercase tracking-widest block ${
-                isPresentationMode ? "text-[#0076a8]" : "text-[#718c99]"
-              }`}
-            >
-              {isPresentationMode ? "MODE PRESENTASI AKTIF" : "PORTAL ADMINISTRASI"}
-            </span>
-            <h1 className="text-xl font-black text-[#17313d] capitalize">
-              {isPresentationMode
-                ? pathname === "/admin/performance"
-                  ? "Performa Petugas"
-                  : "Dashboard Operasional"
-                : getPageTitle()}
-            </h1>
+        <header className="bg-white border-b border-[#d8e3ea] px-3.5 py-3 sm:px-8 sm:py-3.5 flex items-center justify-between sticky top-0 z-20 shadow-sm gap-2">
+          {/* Left Title & Mobile Hamburger */}
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            {!isPresentationMode && (
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(true)}
+                className="w-9 h-9 rounded-xl bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[#072d3f] lg:hidden flex items-center justify-center transition-colors shadow-sm shrink-0"
+                title="Buka menu navigasi"
+                aria-label="Buka menu navigasi"
+              >
+                <Menu className="w-5 h-5" />
+              </button>
+            )}
+
+            <div className="min-w-0">
+              <span
+                className={`text-[9px] sm:text-[10px] font-black uppercase tracking-widest block truncate ${
+                  isPresentationMode ? "text-[#0076a8]" : "text-[#718c99]"
+                }`}
+              >
+                {isPresentationMode ? "MODE PRESENTASI AKTIF" : "PORTAL ADMINISTRASI"}
+              </span>
+              <h1 className="text-base sm:text-xl font-black text-[#17313d] capitalize truncate">
+                {isPresentationMode
+                  ? pathname === "/admin/performance"
+                    ? "Performa Petugas"
+                    : "Dashboard Operasional"
+                  : getPageTitle()}
+              </h1>
+            </div>
           </div>
 
           {/* Center Tabs (Presentation Mode Only - Screenshots 1 & 2) */}
           {isPresentationMode && (
-            <div className="inline-flex p-1 bg-[#e2e8f0] rounded-2xl">
+            <div className="hidden md:inline-flex p-1 bg-[#e2e8f0] rounded-2xl">
               <Link
                 href="/admin"
                 className={`px-4 py-1.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${
@@ -406,9 +455,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           )}
 
           {/* Right Action Buttons */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
             {currentUser && (
-              <div className="text-right hidden sm:block">
+              <div className="text-right hidden md:block">
                 <strong className="text-xs font-black text-[#17313d] block">{currentUser.fullName}</strong>
                 <span className="text-[11px] text-[#718c99]">
                   {currentUser.role === "ADMIN" ? "Administrator" : currentUser.role}
@@ -416,24 +465,26 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </div>
             )}
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               {isPresentationMode ? (
                 <button
                   type="button"
                   onClick={() => setIsPresentationMode(false)}
-                  className="px-3.5 py-2 bg-[#fffdf5] border border-[#ffd100] hover:bg-[#fff9db] rounded-xl text-xs font-bold text-[#9a6500] shadow-sm flex items-center gap-1.5 transition-all"
+                  className="px-2.5 sm:px-3.5 py-2 bg-[#fffdf5] border border-[#ffd100] hover:bg-[#fff9db] rounded-xl text-xs font-bold text-[#9a6500] shadow-sm flex items-center gap-1.5 transition-all"
+                  title="Keluar presentasi"
                 >
                   <Tv className="w-3.5 h-3.5 text-[#ffd100]" />
-                  <span>Keluar presentasi</span>
+                  <span className="hidden sm:inline">Keluar presentasi</span>
                 </button>
               ) : (
                 <button
                   type="button"
                   onClick={() => setIsPresentationMode(true)}
-                  className="px-3.5 py-2 bg-white border border-[#b9cbd3] hover:border-[#0076a8] rounded-xl text-xs font-bold text-[#17313d] hover:text-[#0076a8] shadow-sm flex items-center gap-1.5 transition-all"
+                  className="px-2.5 sm:px-3.5 py-2 bg-white border border-[#b9cbd3] hover:border-[#0076a8] rounded-xl text-xs font-bold text-[#17313d] hover:text-[#0076a8] shadow-sm flex items-center gap-1.5 transition-all"
+                  title="Mode presentasi"
                 >
                   <Tv className="w-3.5 h-3.5" />
-                  <span>Mode presentasi</span>
+                  <span className="hidden sm:inline">Mode presentasi</span>
                 </button>
               )}
 
@@ -441,19 +492,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 type="button"
                 onClick={handleRefresh}
                 disabled={isRefreshing}
-                className="px-3.5 py-2 bg-white border border-[#b9cbd3] hover:border-[#0076a8] rounded-xl text-xs font-bold text-[#17313d] hover:text-[#0076a8] shadow-sm flex items-center gap-1.5 transition-all"
+                className="px-2.5 sm:px-3.5 py-2 bg-white border border-[#b9cbd3] hover:border-[#0076a8] rounded-xl text-xs font-bold text-[#17313d] hover:text-[#0076a8] shadow-sm flex items-center gap-1.5 transition-all"
+                title="Refresh"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
-                <span>Refresh</span>
+                <span className="hidden sm:inline">Refresh</span>
               </button>
 
               <button
                 type="button"
                 onClick={handleLogout}
-                className="px-3.5 py-2 bg-white border border-[#b9cbd3] hover:border-[#bd2d22] rounded-xl text-xs font-bold text-[#17313d] hover:text-[#bd2d22] shadow-sm flex items-center gap-1.5 transition-all"
+                className="px-2.5 sm:px-3.5 py-2 bg-white border border-[#b9cbd3] hover:border-[#bd2d22] rounded-xl text-xs font-bold text-[#17313d] hover:text-[#bd2d22] shadow-sm flex items-center gap-1.5 transition-all"
+                title="Keluar"
               >
                 <LogOut className="w-3.5 h-3.5" />
-                <span>Keluar</span>
+                <span className="hidden sm:inline">Keluar</span>
               </button>
             </div>
           </div>
@@ -462,7 +515,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {/* Dynamic Page Content */}
         <main
           className={`w-full mx-auto space-y-6 transition-all ${
-            isPresentationMode ? "p-8 max-w-[1700px]" : "p-8 max-w-[1500px]"
+            isPresentationMode ? "p-3.5 sm:p-6 lg:p-8 max-w-[1700px]" : "p-3.5 sm:p-6 lg:p-8 max-w-[1500px]"
           }`}
         >
           {children}

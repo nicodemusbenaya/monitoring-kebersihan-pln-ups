@@ -202,7 +202,7 @@ export default function DashboardSummaryPage() {
   return (
     <div className="space-y-6 pb-12">
       {/* 1. Large Hero Banner */}
-      <section className="relative overflow-hidden bg-gradient-to-r from-[#062c3e] via-[#09415b] to-[#0d5678] text-white rounded-3xl p-8 shadow-xl">
+      <section className="relative overflow-hidden bg-gradient-to-r from-[#062c3e] via-[#09415b] to-[#0d5678] text-white rounded-3xl p-5 sm:p-8 shadow-xl">
         <div className="absolute right-0 top-0 bottom-0 w-1/2 opacity-20 pointer-events-none bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-[#ffd100] via-transparent to-transparent"></div>
         <div className="absolute -right-16 -bottom-16 w-80 h-80 rounded-full border-[30px] border-white/10 pointer-events-none"></div>
 
@@ -210,7 +210,7 @@ export default function DashboardSummaryPage() {
           <span className="text-xs font-extrabold uppercase tracking-widest text-[#ffd100] block mb-2">
             OPERASIONAL HARI INI
           </span>
-          <h2 className="text-3xl sm:text-4xl font-black tracking-tight mb-4">
+          <h2 className="text-2xl sm:text-4xl font-black tracking-tight mb-3 sm:mb-4">
             Ringkasan operasional
           </h2>
 
