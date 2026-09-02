@@ -79,11 +79,14 @@ export async function GET(request: Request) {
         },
       });
 
-      // Load official PLN template "Ceklis Ruangan UPS (3).xlsx"
-      let templatePath = path.join(process.cwd(), "Ceklis Ruangan UPS (3).xlsx");
-      if (!fs.existsSync(templatePath)) {
-        templatePath = path.join(process.cwd(), "public/templates/Ceklis Ruangan UPS (3).xlsx");
-      }
+      // Load official PLN template "Ceklis Ruangan UPS (1).xlsx"
+      const templateCandidates = [
+        path.join(process.cwd(), "Ceklis Ruangan UPS (1).xlsx"),
+        path.join(process.cwd(), "public/templates/Ceklis Ruangan UPS (1).xlsx"),
+        path.join(process.cwd(), "Ceklis Ruangan UPS (3).xlsx"),
+        path.join(process.cwd(), "public/templates/Ceklis Ruangan UPS (3).xlsx"),
+      ];
+      const templatePath = templateCandidates.find((p) => fs.existsSync(p)) || templateCandidates[0];
 
       const workbook = new ExcelJS.Workbook();
       if (fs.existsSync(templatePath)) {
@@ -120,12 +123,23 @@ export async function GET(request: Request) {
       sheet.getCell("B4").value = ":";
       sheet.getCell("C4").value = `${days[0].dateFormatted} s.d. ${days[5].dateFormatted}`;
 
-      // Check which officers worked on Day 1
-      const day1Inspections = inspections.filter((i) => i.dateKey === startDate);
-      const arifPagi = day1Inspections.some((i) => (i.user?.username === "arif" || i.user?.fullName.toLowerCase().includes("arif")) && i.slot?.code?.includes("PAGI"));
-      const arifSore = day1Inspections.some((i) => (i.user?.username === "arif" || i.user?.fullName.toLowerCase().includes("arif")) && i.slot?.code?.includes("SORE"));
-      const sulaimanPagi = day1Inspections.some((i) => (i.user?.username === "sulaiman" || i.user?.fullName.toLowerCase().includes("sulaiman")) && i.slot?.code?.includes("PAGI"));
-      const sulaimanSore = day1Inspections.some((i) => (i.user?.username === "sulaiman" || i.user?.fullName.toLowerCase().includes("sulaiman")) && i.slot?.code?.includes("SORE"));
+      // Check which officers worked during the period
+      const hasPagi = inspections.some((i) => (i.slot?.code || i.slotCode || "").toUpperCase().includes("PAGI"));
+      const hasSore = inspections.some((i) => (i.slot?.code || i.slotCode || "").toUpperCase().includes("SORE"));
+
+      const sulaimanPagi = inspections.some(
+        (i) =>
+          (i.user?.username === "sulaiman" || i.user?.fullName?.toLowerCase().includes("sulaiman")) &&
+          (i.slot?.code || i.slotCode || "").toUpperCase().includes("PAGI")
+      );
+      const sulaimanSore = inspections.some(
+        (i) =>
+          (i.user?.username === "sulaiman" || i.user?.fullName?.toLowerCase().includes("sulaiman")) &&
+          (i.slot?.code || i.slotCode || "").toUpperCase().includes("SORE")
+      );
+
+      const arifPagi = sulaimanPagi ? false : hasPagi;
+      const arifSore = sulaimanSore ? false : hasSore;
 
       sheet.getCell("D5").value = arifPagi ? "[✓]" : "[   ]";
       sheet.getCell("H5").value = arifSore ? "[✓]" : "[   ]";
@@ -134,32 +148,58 @@ export async function GET(request: Request) {
 
       // ── Update Day Headers with Dates (Row 8) ──
       days.forEach((day, dIdx) => {
-        const colStart = isToilet ? 4 + dIdx * 16 : 4 + dIdx * 12;
+        const colStart = isToilet ? 4 + dIdx * 24 : 4 + dIdx * 12;
         sheet.getCell(8, colStart).value = `Hari ke ${day.dayIndex} (${day.dateKey})`;
       });
 
-      // ── Build Row Mapping for Activities Dynamically ──
-      // Look up where each activity name is located in the Excel sheet (Rows 12-35)
-      const activityRowMap = new Map<string, number>();
-      for (let r = 12; r <= 35; r++) {
-        const rawVal = sheet.getCell(r, 3).value || sheet.getCell(r, 2).value;
-        if (rawVal) {
-          const normText = String(rawVal).toUpperCase().replace(/[\s\/\-_()]/g, "");
-          room.roomType.activities.forEach((act) => {
-            const normAct = act.name.toUpperCase().replace(/[\s\/\-_()]/g, "");
-            if (normText === normAct || normText.includes(normAct) || normAct.includes(normText)) {
-              if (!activityRowMap.has(act.id)) {
-                activityRowMap.set(act.id, r);
-              }
-            }
-          });
+      // ── Populate Activity Rows in Column C ──
+      // For standard non-toilet/pantry/class sheets (like ARCHIVE or custom rooms), ensure activities match DB
+      const acts = room.roomType.activities;
+      if (!isToilet && !isPantry && !isClass) {
+        acts.forEach((act, idx) => {
+          const rowNum = 12 + idx;
+          sheet.getCell(rowNum, 1).value = idx + 1;
+          sheet.getCell(rowNum, 3).value = act.name;
+        });
+
+        // Clear excess rows in template
+        for (let r = 12 + acts.length; r <= 35; r++) {
+          sheet.getCell(r, 1).value = null;
+          sheet.getCell(r, 2).value = null;
+          sheet.getCell(r, 3).value = null;
+          for (let c = 4; c <= 76; c++) {
+            sheet.getCell(r, c).value = null;
+          }
         }
       }
 
+      // Dynamic Row Mapping for activities
+      const activityRowMap = new Map<string, number>();
+      acts.forEach((act, idx) => {
+        if (!isToilet && !isPantry && !isClass) {
+          activityRowMap.set(act.id, 12 + idx);
+        } else {
+          // Search matching row in template Col C
+          const normAct = act.name.toUpperCase().replace(/[\s\/\-_()]/g, "");
+          for (let r = 12; r <= 35; r++) {
+            const rawVal = sheet.getCell(r, 3).value || sheet.getCell(r, 2).value;
+            if (rawVal) {
+              const normText = String(rawVal).toUpperCase().replace(/[\s\/\-_()]/g, "");
+              if (normText === normAct || normText.includes(normAct) || normAct.includes(normText)) {
+                if (!activityRowMap.has(act.id)) {
+                  activityRowMap.set(act.id, r);
+                }
+              }
+            }
+          }
+          if (!activityRowMap.has(act.id)) {
+            activityRowMap.set(act.id, 12 + idx);
+          }
+        }
+      });
+
       // ── Populate Grid Matrix Rows ──
-      const totalActivities = room.roomType.activities.length;
-      for (let aIdx = 0; aIdx < totalActivities; aIdx++) {
-        const act = room.roomType.activities[aIdx];
+      acts.forEach((act, aIdx) => {
         const rowNum = activityRowMap.get(act.id) || (12 + aIdx);
 
         days.forEach((day, dIdx) => {
@@ -169,43 +209,37 @@ export async function GET(request: Request) {
             const detail = insp.details.find((d) => d.activityId === act.id);
             if (!detail) return;
 
-            const isClean = detail.qualityResult === "POSITIVE" || detail.qualityResult === "BERSIH";
-            const isDirty = detail.qualityResult === "NEGATIVE" || detail.qualityResult === "KOTOR";
-            const isNormal = detail.functionResult === "POSITIVE" || detail.functionResult === "NORMAL" || detail.functionResult === "BERFUNGSI";
-            const isBroken = detail.functionResult === "NEGATIVE" || detail.functionResult === "RUSAK";
+            const isClean = detail.qualityResult !== "NEGATIVE" && detail.qualityResult !== "KOTOR";
+            const isNormal = detail.functionResult !== "NEGATIVE" && detail.functionResult !== "RUSAK" && detail.functionResult !== "TIDAK";
 
             const sCode = (insp.slot?.code || insp.slotCode || "PAGI").toUpperCase();
 
             let slotOffset = 0;
             if (isToilet) {
               if (sCode.includes("PAGI")) slotOffset = 0;
-              else if (sCode.includes("SIANG")) slotOffset = 4;
-              else if (sCode.includes("SORE")) slotOffset = 8;
-              else if (sCode.includes("INSP")) slotOffset = 12;
+              else if (sCode.includes("INSP_1") || sCode.includes("INSP")) slotOffset = 4;
+              else if (sCode.includes("SIANG")) slotOffset = 8;
+              else if (sCode.includes("INSP_2")) slotOffset = 12;
+              else if (sCode.includes("SORE")) slotOffset = 16;
+              else if (sCode.includes("INSP_3")) slotOffset = 20;
             } else {
               if (sCode.includes("PAGI")) slotOffset = 0;
               else if (sCode.includes("SORE")) slotOffset = 4;
               else if (sCode.includes("INSP")) slotOffset = 8;
             }
 
-            const baseCol = isToilet ? 4 + dIdx * 16 + slotOffset : 4 + dIdx * 12 + slotOffset;
+            const baseCol = isToilet ? 4 + dIdx * 24 + slotOffset : 4 + dIdx * 12 + slotOffset;
 
-            // Aktv: Sudah (col + 0) or Belum (col + 1)
-            if (isClean) {
-              sheet.getCell(rowNum, baseCol + 0).value = "v";
-            } else if (isDirty) {
-              sheet.getCell(rowNum, baseCol + 1).value = "v";
-            }
+            // Aktv: Sudah (col + 0) or Belum (col + 1) - tidak boleh bolong
+            sheet.getCell(rowNum, baseCol + 0).value = isClean ? "v" : null;
+            sheet.getCell(rowNum, baseCol + 1).value = !isClean ? "v" : null;
 
-            // Fung: Normal/Ya (col + 2) or Rusak/Tidak (col + 3)
-            if (isNormal) {
-              sheet.getCell(rowNum, baseCol + 2).value = "v";
-            } else if (isBroken) {
-              sheet.getCell(rowNum, baseCol + 3).value = "v";
-            }
+            // Fung: Normal/Ya (col + 2) or Rusak/Tidak (col + 3) - tidak boleh bolong
+            sheet.getCell(rowNum, baseCol + 2).value = isNormal ? "v" : null;
+            sheet.getCell(rowNum, baseCol + 3).value = !isNormal ? "v" : null;
           });
         });
-      }
+      });
 
       // Safely remove other template sheets without mutating array during iteration
       const sheetsToRemove = workbook.worksheets.filter((ws) => ws.id !== sheet.id && !ws.name.startsWith("Standar"));

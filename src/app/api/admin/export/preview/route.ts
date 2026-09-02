@@ -84,28 +84,23 @@ export async function GET(request: Request) {
       totalResultsCount += i.details.length;
     });
 
-    // Check which officers worked on startDate
-    const day1Inspections = inspections.filter((i) => i.dateKey === startDate);
-    const arifPagi = day1Inspections.some(
+    // Check which officers worked during the period
+    const hasPagi = inspections.some((i) => (i.slot?.code || i.slotCode || "").toUpperCase().includes("PAGI"));
+    const hasSore = inspections.some((i) => (i.slot?.code || i.slotCode || "").toUpperCase().includes("SORE"));
+
+    const sulaimanPagi = inspections.some(
       (i) =>
-        (i.user?.username === "arif" || i.user?.fullName.toLowerCase().includes("arif")) &&
-        (i.slot?.code?.includes("PAGI") || i.slotCode?.includes("PAGI"))
+        (i.user?.username === "sulaiman" || i.user?.fullName?.toLowerCase().includes("sulaiman")) &&
+        (i.slot?.code || i.slotCode || "").toUpperCase().includes("PAGI")
     );
-    const arifSore = day1Inspections.some(
+    const sulaimanSore = inspections.some(
       (i) =>
-        (i.user?.username === "arif" || i.user?.fullName.toLowerCase().includes("arif")) &&
-        (i.slot?.code?.includes("SORE") || i.slotCode?.includes("SORE"))
+        (i.user?.username === "sulaiman" || i.user?.fullName?.toLowerCase().includes("sulaiman")) &&
+        (i.slot?.code || i.slotCode || "").toUpperCase().includes("SORE")
     );
-    const sulaimanPagi = day1Inspections.some(
-      (i) =>
-        (i.user?.username === "sulaiman" || i.user?.fullName.toLowerCase().includes("sulaiman")) &&
-        (i.slot?.code?.includes("PAGI") || i.slotCode?.includes("PAGI"))
-    );
-    const sulaimanSore = day1Inspections.some(
-      (i) =>
-        (i.user?.username === "sulaiman" || i.user?.fullName.toLowerCase().includes("sulaiman")) &&
-        (i.slot?.code?.includes("SORE") || i.slotCode?.includes("SORE"))
-    );
+
+    const arifPagi = sulaimanPagi ? false : hasPagi;
+    const arifSore = sulaimanSore ? false : hasSore;
 
     // Build matrix of results: [activityId][dateKey][slotCode] -> { S, B, Y, T, isClean, isNormal, note }
     const matrix: Record<string, Record<string, Record<string, any>>> = {};
@@ -117,25 +112,25 @@ export async function GET(request: Request) {
     });
 
     inspections.forEach((insp) => {
-      const sCode = insp.slot?.code || insp.slotCode || "PAGI";
+      const sCode = (insp.slot?.code || insp.slotCode || "PAGI").toUpperCase();
       insp.details.forEach((dt) => {
         if (matrix[dt.activityId] && matrix[dt.activityId][insp.dateKey]) {
-          const isClean = dt.qualityResult === "POSITIVE" || dt.qualityResult === "BERSIH";
+          const isClean = dt.qualityResult !== "NEGATIVE" && dt.qualityResult !== "KOTOR";
           const isNormal =
-            dt.functionResult === "POSITIVE" ||
-            dt.functionResult === "NORMAL" ||
-            dt.functionResult === "BERFUNGSI";
+            dt.functionResult !== "NEGATIVE" &&
+            dt.functionResult !== "RUSAK" &&
+            dt.functionResult !== "TIDAK";
 
           matrix[dt.activityId][insp.dateKey][sCode] = {
             qualityResult: dt.qualityResult,
             functionResult: dt.functionResult,
             isClean,
             isNormal,
-            // S: Sudah, B: Belum, Y: Ya/Normal, T: Tidak/Rusak
+            // S: Sudah, B: Belum, Y: Ya/Normal, T: Tidak/Rusak - pastikan terisi penuh
             S: isClean ? "v" : "",
-            B: !isClean && dt.qualityResult === "NEGATIVE" ? "v" : "",
+            B: !isClean ? "v" : "",
             Y: isNormal ? "v" : "",
-            T: !isNormal && dt.functionResult === "NEGATIVE" ? "v" : "",
+            T: !isNormal ? "v" : "",
             note: dt.note || null,
           };
         }
