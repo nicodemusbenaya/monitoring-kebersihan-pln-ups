@@ -82,6 +82,11 @@ export default function RoomInspectionPage({
     fetch(`/api/scan?token=${encodeURIComponent(token)}`)
       .then(async (res) => {
         const json = await res.json();
+        if (res.status === 401) {
+          // Belum login — redirect ke halaman login, lalu kembali ke room ini setelah berhasil login
+          router.replace(`/login?redirect=${encodeURIComponent(`/scanner/room/${token}`)}`);
+          return;
+        }
         if (!res.ok || !json.ok) {
           throw new Error(json.message || "Gagal memuat data ruangan.");
         }
