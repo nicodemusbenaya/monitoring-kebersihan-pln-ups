@@ -80,13 +80,15 @@ export async function GET(request: Request) {
       });
 
       // Load official PLN template "Ceklis Ruangan UPS (3).xlsx"
-      const templatePath = path.join(process.cwd(), "Ceklis Ruangan UPS (3).xlsx");
-      const workbook = new ExcelJS.Workbook();
+      let templatePath = path.join(process.cwd(), "Ceklis Ruangan UPS (3).xlsx");
+      if (!fs.existsSync(templatePath)) {
+        templatePath = path.join(process.cwd(), "public/templates/Ceklis Ruangan UPS (3).xlsx");
+      }
 
+      const workbook = new ExcelJS.Workbook();
       if (fs.existsSync(templatePath)) {
         await workbook.xlsx.readFile(templatePath);
       } else {
-        // Fallback: create fresh workbook if template file is missing
         workbook.addWorksheet("Ceklis Ruangan New");
       }
 
@@ -109,7 +111,6 @@ export async function GET(request: Request) {
       sheet.name = (room.code || "Ceklis").replace(/[:\\/?*\[\]]/g, "_").slice(0, 30);
 
       // ── Populate Header & Metadata ──
-      // Title
       sheet.getCell("A2").value = `CEKLIS KEBERSIHAN & KESIAPAN ${room.name.toUpperCase()}`;
       sheet.getCell("A3").value = "LOKASI";
       sheet.getCell("B3").value = ":";
@@ -133,16 +134,33 @@ export async function GET(request: Request) {
 
       // ── Update Day Headers with Dates (Row 8) ──
       days.forEach((day, dIdx) => {
-        const colStart = isToilet ? 4 + dIdx * 24 : 4 + dIdx * 12;
+        const colStart = isToilet ? 4 + dIdx * 16 : 4 + dIdx * 12;
         sheet.getCell(8, colStart).value = `Hari ke ${day.dayIndex} (${day.dateKey})`;
       });
 
+      // ── Build Row Mapping for Activities Dynamically ──
+      // Look up where each activity name is located in the Excel sheet (Rows 12-35)
+      const activityRowMap = new Map<string, number>();
+      for (let r = 12; r <= 35; r++) {
+        const rawVal = sheet.getCell(r, 3).value || sheet.getCell(r, 2).value;
+        if (rawVal) {
+          const normText = String(rawVal).toUpperCase().replace(/[\s\/\-_()]/g, "");
+          room.roomType.activities.forEach((act) => {
+            const normAct = act.name.toUpperCase().replace(/[\s\/\-_()]/g, "");
+            if (normText === normAct || normText.includes(normAct) || normAct.includes(normText)) {
+              if (!activityRowMap.has(act.id)) {
+                activityRowMap.set(act.id, r);
+              }
+            }
+          });
+        }
+      }
+
       // ── Populate Grid Matrix Rows ──
-      // Find activity rows in the sheet starting from Row 12
       const totalActivities = room.roomType.activities.length;
       for (let aIdx = 0; aIdx < totalActivities; aIdx++) {
         const act = room.roomType.activities[aIdx];
-        const rowNum = 12 + aIdx;
+        const rowNum = activityRowMap.get(act.id) || (12 + aIdx);
 
         days.forEach((day, dIdx) => {
           const dayInspections = inspections.filter((i) => i.dateKey === day.dateKey);
@@ -152,43 +170,46 @@ export async function GET(request: Request) {
             if (!detail) return;
 
             const isClean = detail.qualityResult === "POSITIVE" || detail.qualityResult === "BERSIH";
-            const sCode = insp.slot?.code || "PAGI";
+            const isDirty = detail.qualityResult === "NEGATIVE" || detail.qualityResult === "KOTOR";
+            const isNormal = detail.functionResult === "POSITIVE" || detail.functionResult === "NORMAL" || detail.functionResult === "BERFUNGSI";
+            const isBroken = detail.functionResult === "NEGATIVE" || detail.functionResult === "RUSAK";
+
+            const sCode = (insp.slot?.code || insp.slotCode || "PAGI").toUpperCase();
 
             let slotOffset = 0;
             if (isToilet) {
-              if (sCode === "PAGI") slotOffset = 0;
-              else if (sCode === "INSP_1" || sCode === "INSPEKSI 1") slotOffset = 4;
-              else if (sCode === "SIANG") slotOffset = 8;
-              else if (sCode === "INSP_2" || sCode === "INSPEKSI 2") slotOffset = 12;
-              else if (sCode === "SORE") slotOffset = 16;
-              else if (sCode === "INSP_3" || sCode === "INSPEKSI 3") slotOffset = 20;
+              if (sCode.includes("PAGI")) slotOffset = 0;
+              else if (sCode.includes("SIANG")) slotOffset = 4;
+              else if (sCode.includes("SORE")) slotOffset = 8;
+              else if (sCode.includes("INSP")) slotOffset = 12;
             } else {
               if (sCode.includes("PAGI")) slotOffset = 0;
               else if (sCode.includes("SORE")) slotOffset = 4;
               else if (sCode.includes("INSP")) slotOffset = 8;
             }
 
-            const baseCol = isToilet ? 4 + dIdx * 24 + slotOffset : 4 + dIdx * 12 + slotOffset;
+            const baseCol = isToilet ? 4 + dIdx * 16 + slotOffset : 4 + dIdx * 12 + slotOffset;
 
+            // Aktv: Sudah (col + 0) or Belum (col + 1)
             if (isClean) {
-              // Aktv Sudah (col + 0), Fung Normal/Ya (col + 2)
               sheet.getCell(rowNum, baseCol + 0).value = "v";
-              sheet.getCell(rowNum, baseCol + 2).value = "v";
-            } else {
-              // Aktv Belum (col + 1), Fung Rusak/Tidak (col + 3)
+            } else if (isDirty) {
               sheet.getCell(rowNum, baseCol + 1).value = "v";
+            }
+
+            // Fung: Normal/Ya (col + 2) or Rusak/Tidak (col + 3)
+            if (isNormal) {
+              sheet.getCell(rowNum, baseCol + 2).value = "v";
+            } else if (isBroken) {
               sheet.getCell(rowNum, baseCol + 3).value = "v";
             }
           });
         });
       }
 
-      // Remove other template sheets to leave only the active room sheet + standards
-      workbook.worksheets.forEach((ws) => {
-        if (ws.id !== sheet.id && !ws.name.startsWith("Standar")) {
-          workbook.removeWorksheet(ws.id);
-        }
-      });
+      // Safely remove other template sheets without mutating array during iteration
+      const sheetsToRemove = workbook.worksheets.filter((ws) => ws.id !== sheet.id && !ws.name.startsWith("Standar"));
+      sheetsToRemove.forEach((ws) => workbook.removeWorksheet(ws.id));
 
       // ── Sheet 2: EVIDENCE (Bukti Foto) ──
       const evidenceSheet = workbook.addWorksheet("EVIDENCE");

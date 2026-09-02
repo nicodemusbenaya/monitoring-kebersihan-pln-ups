@@ -151,7 +151,23 @@ export default function DashboardSummaryPage() {
     rangeKey = activeQuickRange
   ) => {
     setLoading(true);
-    const rangeInfo = getQuickRangeDates(rangeKey);
+    let rangeInfo = getQuickRangeDates(rangeKey);
+
+    // If a non-current month is explicitly selected in Cakupan Data (and quick filter is default HARI_INI),
+    // align rangeInfo to cover that entire month
+    if (month && month !== currentMonthKey && rangeKey === "HARI_INI") {
+      const [y, m] = month.split("-").map(Number);
+      const daysInMonth = new Date(y, m, 0).getDate();
+      rangeInfo = {
+        startDate: `${month}-01`,
+        endDate: `${month}-${String(daysInMonth).padStart(2, "0")}`,
+        daysCount: daysInMonth,
+        label: new Intl.DateTimeFormat("id-ID", { month: "long", year: "numeric" }).format(new Date(y, m - 1, 1)),
+        badgeText: "BULANAN",
+        displayDate: new Intl.DateTimeFormat("id-ID", { month: "long", year: "numeric" }).format(new Date(y, m - 1, 1)),
+      };
+    }
+
     try {
       const [dashRes, roomsRes] = await Promise.all([
         fetch(
@@ -556,7 +572,13 @@ export default function DashboardSummaryPage() {
             {[
               { id: "ALL", label: `Semua (${dashboardData?.roomSummaries?.length || 0})` },
               { id: "FINDINGS", label: `Temuan (${dashboardData?.summary?.findingCount || 0})` },
-              { id: "PARTIAL", label: `Belum lengkap (${(dashboardData?.summary?.yellowCount || 0) + (dashboardData?.summary?.redCount || 0)})` },
+              {
+                id: "PARTIAL",
+                label: `Belum lengkap (${Math.max(
+                  0,
+                  (dashboardData?.roomSummaries?.length || 0) - (dashboardData?.summary?.greenCount || 0)
+                )})`,
+              },
               { id: "COMPLETE", label: `Lengkap (${dashboardData?.summary?.greenCount || 0})` },
             ].map((tab) => (
               <button

@@ -206,15 +206,25 @@ export async function GET(request: Request) {
       if (totalFinished === 0) {
         status = "EMPTY";
         redCount++;
-      } else if (petugasTotal > 0 && petugasFinished < petugasTotal) {
-        status = "PARTIAL";
-        yellowCount++;
-      } else if (spvTotal > 0 && spvFinished < spvTotal) {
-        status = "WAITING_SPV";
-        purpleCount++;
+      } else if (daysCount === 1) {
+        if (petugasTotal > 0 && petugasFinished < petugasTotal) {
+          status = "PARTIAL";
+          yellowCount++;
+        } else if (spvTotal > 0 && spvFinished < spvTotal) {
+          status = "WAITING_SPV";
+          purpleCount++;
+        } else {
+          status = "COMPLETE";
+          greenCount++;
+        }
       } else {
-        status = "COMPLETE";
-        greenCount++;
+        if (totalFinished >= totalSlots) {
+          status = "COMPLETE";
+          greenCount++;
+        } else {
+          status = "PARTIAL";
+          yellowCount++;
+        }
       }
 
       return {

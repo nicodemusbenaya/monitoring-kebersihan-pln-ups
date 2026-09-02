@@ -241,7 +241,7 @@ export default function ExportPage() {
                         {(exportPreviewData?.days || []).map((day: any) => (
                           <th
                             key={day.dayIndex}
-                            colSpan={isToilet ? 24 : 12}
+                            colSpan={isToilet ? 16 : 12}
                             className="border border-[#94a3b8] p-1.5 bg-[#f1f5f9]"
                           >
                             <strong className="block text-[#17313d]">Hari ke {day.dayIndex}</strong>
@@ -256,11 +256,9 @@ export default function ExportPage() {
                           isToilet ? (
                             <Fragment key={dIdx}>
                               <th colSpan={4} className="border border-[#94a3b8] p-1 bg-[#e2e8f0] text-[#17313d] font-bold">PAGI</th>
-                              <th colSpan={4} className="border border-[#94a3b8] p-1 bg-[#fef08a] text-[#854d0e] font-bold">INSP 1</th>
                               <th colSpan={4} className="border border-[#94a3b8] p-1 bg-[#bae6fd] text-[#0369a1] font-bold">SIANG</th>
-                              <th colSpan={4} className="border border-[#94a3b8] p-1 bg-[#fef08a] text-[#854d0e] font-bold">INSP 2</th>
                               <th colSpan={4} className="border border-[#94a3b8] p-1 bg-[#bbf7d0] text-[#166534] font-bold">SORE</th>
-                              <th colSpan={4} className="border border-[#94a3b8] p-1 bg-[#fef08a] text-[#854d0e] font-bold">INSP 3</th>
+                              <th colSpan={4} className="border border-[#94a3b8] p-1 bg-[#fef08a] text-[#854d0e] font-bold">INSPEKSI</th>
                             </Fragment>
                           ) : (
                             <Fragment key={dIdx}>
@@ -275,7 +273,7 @@ export default function ExportPage() {
                       {/* Row 3: Subheaders (Aktv / Fung) */}
                       <tr className="bg-[#f8fafc] text-[9px] font-bold">
                         {(exportPreviewData?.days || []).map((_: any, dIdx: number) =>
-                          Array.from({ length: isToilet ? 6 : 3 }).map((_, sIdx) => (
+                          Array.from({ length: isToilet ? 4 : 3 }).map((_, sIdx) => (
                             <Fragment key={`${dIdx}-${sIdx}`}>
                               <th colSpan={2} className="border border-[#94a3b8] p-0.5">Aktv</th>
                               <th colSpan={2} className="border border-[#94a3b8] p-0.5">Fung</th>
@@ -287,7 +285,7 @@ export default function ExportPage() {
                       {/* Row 4: Indicator Subcolumns (S, B, Y, T) */}
                       <tr className="bg-[#f8fafc] text-[8px] font-bold">
                         {(exportPreviewData?.days || []).map((_: any, dIdx: number) =>
-                          Array.from({ length: isToilet ? 6 : 3 }).map((_, sIdx) => (
+                          Array.from({ length: isToilet ? 4 : 3 }).map((_, sIdx) => (
                             <Fragment key={`${dIdx}-${sIdx}`}>
                               <th className="border border-[#94a3b8] p-0.5 w-5">S</th>
                               <th className="border border-[#94a3b8] p-0.5 w-5">B</th>
@@ -322,20 +320,35 @@ export default function ExportPage() {
                               };
 
                               if (isToilet) {
-                                const slotQueries = ["PAGI", "INSP_1", "SIANG", "INSP_2", "SORE", "INSP_3"];
+                                const pagi = findSlotData("PAGI");
+                                const siang = findSlotData("SIANG");
+                                const sore = findSlotData("SORE");
+                                const insp = findSlotData("INSP") || findSlotData("SUPERVISOR");
                                 return (
                                   <Fragment key={dIdx}>
-                                    {slotQueries.map((q, qIdx) => {
-                                      const sd = findSlotData(q);
-                                      return (
-                                        <Fragment key={qIdx}>
-                                          <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black">{sd?.S || ""}</td>
-                                          <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black">{sd?.B || ""}</td>
-                                          <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black">{sd?.Y || ""}</td>
-                                          <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black">{sd?.T || ""}</td>
-                                        </Fragment>
-                                      );
-                                    })}
+                                    {/* PAGI */}
+                                    <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black">{pagi?.S || ""}</td>
+                                    <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black">{pagi?.B || ""}</td>
+                                    <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black">{pagi?.Y || ""}</td>
+                                    <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black">{pagi?.T || ""}</td>
+
+                                    {/* SIANG */}
+                                    <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black">{siang?.S || ""}</td>
+                                    <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black">{siang?.B || ""}</td>
+                                    <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black">{siang?.Y || ""}</td>
+                                    <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black">{siang?.T || ""}</td>
+
+                                    {/* SORE */}
+                                    <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black">{sore?.S || ""}</td>
+                                    <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black">{sore?.B || ""}</td>
+                                    <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black">{sore?.Y || ""}</td>
+                                    <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black">{sore?.T || ""}</td>
+
+                                    {/* INSPEKSI */}
+                                    <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black">{insp?.S || ""}</td>
+                                    <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black">{insp?.B || ""}</td>
+                                    <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black">{insp?.Y || ""}</td>
+                                    <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black">{insp?.T || ""}</td>
                                   </Fragment>
                                 );
                               }

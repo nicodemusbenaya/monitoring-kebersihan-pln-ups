@@ -440,17 +440,6 @@
       "updatedAt": "2026-09-01T02:03:05.515Z"
     },
     {
-      "id": "TOILET-INSPEKSI_1",
-      "roomTypeId": "TOILET",
-      "code": "INSPEKSI_1",
-      "name": "Inspeksi 1",
-      "role": "SUPERVISOR",
-      "sortOrder": 2,
-      "active": true,
-      "createdAt": "2026-09-01T02:03:05.519Z",
-      "updatedAt": "2026-09-01T02:03:05.519Z"
-    },
-    {
       "id": "ARCHIVE-SORE",
       "roomTypeId": "ARCHIVE",
       "code": "SORE",
@@ -500,7 +489,7 @@
       "code": "SIANG",
       "name": "Siang",
       "role": "PETUGAS",
-      "sortOrder": 3,
+      "sortOrder": 2,
       "active": true,
       "createdAt": "2026-09-01T02:03:05.539Z",
       "updatedAt": "2026-09-01T02:03:05.539Z"
@@ -528,37 +517,26 @@
       "updatedAt": "2026-09-01T02:03:05.564Z"
     },
     {
-      "id": "TOILET-INSPEKSI_2",
-      "roomTypeId": "TOILET",
-      "code": "INSPEKSI_2",
-      "name": "Inspeksi 2",
-      "role": "SUPERVISOR",
-      "sortOrder": 4,
-      "active": true,
-      "createdAt": "2026-09-01T02:03:05.524Z",
-      "updatedAt": "2026-09-01T02:03:05.524Z"
-    },
-    {
       "id": "TOILET-SORE",
       "roomTypeId": "TOILET",
       "code": "SORE",
       "name": "Sore",
       "role": "PETUGAS",
-      "sortOrder": 5,
+      "sortOrder": 3,
       "active": true,
       "createdAt": "2026-09-01T02:03:05.544Z",
       "updatedAt": "2026-09-01T02:03:05.544Z"
     },
     {
-      "id": "TOILET-INSPEKSI_3",
+      "id": "TOILET-INSPEKSI",
       "roomTypeId": "TOILET",
-      "code": "INSPEKSI_3",
-      "name": "Inspeksi 3",
+      "code": "INSP",
+      "name": "Inspeksi",
       "role": "SUPERVISOR",
-      "sortOrder": 6,
+      "sortOrder": 4,
       "active": true,
-      "createdAt": "2026-09-01T02:03:05.529Z",
-      "updatedAt": "2026-09-01T02:03:05.529Z"
+      "createdAt": "2026-09-02T08:34:44.156Z",
+      "updatedAt": "2026-09-02T08:34:44.158Z"
     }
   ],
   "activities": [
