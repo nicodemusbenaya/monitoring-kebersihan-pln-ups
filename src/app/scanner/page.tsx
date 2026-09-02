@@ -251,38 +251,23 @@ export default function ScannerPage() {
           </div>
         )}
 
-        {/* Alternative Methods Panel (Upload Foto & Input Manual) - Desktop Only */}
-        <section className="hidden md:block bg-white border border-[#d8e3ea] rounded-3xl p-6 shadow-sm space-y-5">
+        {/* Alternative Methods Panel (Upload Foto & Input Manual) - Available on Mobile & Desktop */}
+        <section className="bg-white border border-[#d8e3ea] rounded-3xl p-6 shadow-sm space-y-5">
           <div>
-            <h4 className="text-sm font-extrabold text-[#17313d]">Pilihan Pemindaian Alternatif (Desktop)</h4>
+            <h4 className="text-sm font-extrabold text-[#17313d]">Pilihan Cadangan (Ketik Kode / Galeri)</h4>
             <p className="text-xs text-[#647783] mt-0.5">
-              Gunakan galeri foto jika kamera langsung tidak tersedia atau ketik kode ruangan secara manual.
+              Gunakan jika kamera HP buram, izin ditolak, atau ruangan gelap. Anda dapat mengetik kode ruangan langsung.
             </p>
           </div>
 
           <div className="space-y-4 pt-2">
-            {/* Native Photo File Upload */}
-            <div>
-              <label className="w-full py-3 px-4 bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#cbd5e1] rounded-2xl text-xs font-bold text-[#17313d] flex items-center justify-center gap-2 cursor-pointer transition-all shadow-sm">
-                <Upload className="w-4 h-4 text-[#0076a8]" />
-                <span>Pilih Foto QR dari Galeri / Kamera HP</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  className="hidden"
-                  onChange={handleFileUpload}
-                />
-              </label>
-            </div>
-
             {/* Manual Code Input Form */}
             <form onSubmit={handleManualSubmit} className="flex gap-2">
               <input
                 type="text"
                 value={manualToken}
                 onChange={(e) => setManualToken(e.target.value)}
-                placeholder="Ketik kode ruangan (contoh: PANTRY / RAPAT)"
+                placeholder="Ketik kode ruangan (contoh: PANTRY / RAPAT / ADMIN)"
                 className="flex-1 px-4 py-2.5 bg-[#f8fafc] border border-[#cbd5e1] rounded-2xl text-xs font-bold text-[#17313d] placeholder:text-[#94a3b8] focus:outline-none focus:border-[#0076a8]"
               />
               <button
@@ -293,8 +278,31 @@ export default function ScannerPage() {
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </form>
+
+            {/* Native Photo File Upload */}
+            <div>
+              <label className="w-full py-3 px-4 bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#cbd5e1] rounded-2xl text-xs font-bold text-[#17313d] flex items-center justify-center gap-2 cursor-pointer transition-all shadow-sm">
+                <Upload className="w-4 h-4 text-[#0076a8]" />
+                <span>Pilih Foto QR dari Galeri / Kamera</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleFileUpload}
+                />
+              </label>
+            </div>
           </div>
         </section>
+
+        {/* PWA / Shortcut Tips Banner */}
+        <div className="p-4 bg-[#f8fafc] border border-[#cbd5e1] rounded-2xl flex items-start gap-3 text-xs text-[#475569]">
+          <span className="text-base leading-none mt-0.5">💡</span>
+          <div>
+            <strong className="text-[#17313d] block font-bold">Tips Operasional Petugas:</strong>
+            Agar sesi login tetap aktif dan tidak perlu login berulang kali, buka web ini di Google Chrome, tekan menu titik tiga di kanan atas, lalu pilih <strong>&quot;Tambahkan ke Layar Utama&quot; (Add to Home Screen)</strong>.
+          </div>
+        </div>
       </main>
     </div>
   );

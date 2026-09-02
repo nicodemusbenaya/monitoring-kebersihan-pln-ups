@@ -229,6 +229,26 @@ async function compressImageFile(file: File, maxWidth = 1280, quality = 0.75): P
     e.preventDefault();
     if (!data || !selectedSlotId) return;
 
+    const currentSlot = data.slots.find((s) => s.id === selectedSlotId);
+    if (currentSlot?.completed) {
+      setError(`Slot pemeriksaan "${currentSlot.name}" sudah selesai diisi untuk hari ini. Silakan pilih slot lain.`);
+      return;
+    }
+
+    // Client-side validation: if dirty/broken items exist, notes must be filled
+    for (const act of data.activities) {
+      const state = checklist[act.id];
+      const isDirty = state?.quality === "NEGATIVE" || state?.function === "NEGATIVE";
+      if (isDirty && (!state?.note || !state.note.trim())) {
+        setError(`Catatan temuan wajib diisi untuk: "${act.name}". Silakan tuliskan deskripsi singkat temuan kotor/rusak.`);
+        const el = document.querySelector(`[data-activity-id="${act.id}"]`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+        return;
+      }
+    }
+
     setSubmitting(true);
     setError("");
 
@@ -444,6 +464,28 @@ async function compressImageFile(file: File, maxWidth = 1280, quality = 0.75): P
             <h2>Pilih slot waktu</h2>
           </div>
           <div className="panel-body">
+            {selectedSlot?.completed && (
+              <div
+                className="notice notice-success"
+                style={{
+                  marginBottom: "16px",
+                  background: "#f0fdf4",
+                  borderColor: "#86efac",
+                  color: "#166534",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                }}
+              >
+                <span>✓</span>
+                <span>
+                  <strong>Slot {selectedSlot.name} sudah selesai diisi untuk hari ini</strong>
+                  {selectedSlot.officerName ? ` oleh ${selectedSlot.officerName}` : ""}
+                  {selectedSlot.completedAt ? ` (${selectedSlot.completedAt})` : ""}.
+                  Pilih slot waktu lain jika ingin melakukan pemeriksaan sesi lainnya.
+                </span>
+              </div>
+            )}
             <div className="slot-choice-list">
               {data.slots.map((slot) => {
                 const isSelected = slot.id === selectedSlotId;
@@ -583,11 +625,19 @@ async function compressImageFile(file: File, maxWidth = 1280, quality = 0.75): P
                   {/* Finding Note (GAS style finding-fields) */}
                   <div className="finding-fields">
                     <div className="field" style={{ gridColumn: "1 / -1", margin: 0 }}>
-                      <label>Catatan temuan</label>
+                      <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
+                        <span>Catatan temuan</span>
+                        {isDirty && (
+                          <span style={{ color: "#dc2626", fontWeight: "bold", fontSize: "11px" }}>
+                            * Wajib diisi karena ada temuan kotor/rusak
+                          </span>
+                        )}
+                      </label>
                       <textarea
                         value={state.note}
                         onChange={(e) => handleNoteChange(act.id, e.target.value)}
-                        placeholder="Deskripsikan temuan agar segera ditindaklanjuti..."
+                        placeholder={isDirty ? "Wajib diisi: Deskripsikan temuan kotor/rusak agar segera ditindaklanjuti..." : "Deskripsikan temuan agar segera ditindaklanjuti..."}
+                        style={isDirty && !state.note.trim() ? { borderColor: "#dc2626", background: "#fff5f5" } : {}}
                       />
                     </div>
                   </div>
@@ -669,20 +719,27 @@ async function compressImageFile(file: File, maxWidth = 1280, quality = 0.75): P
             <div>
               <p>
                 Sesi: <strong>{selectedSlot?.name || "-"}</strong> •{" "}
-                {dirtyCount > 0 ? `${dirtyCount} temuan kotor/rusak` : "Semua bersih"}
+                {selectedSlot?.completed ? (
+                  <span style={{ color: "#16a34a", fontWeight: "bold" }}>Sudah Selesai</span>
+                ) : dirtyCount > 0 ? (
+                  <span style={{ color: "#dc2626", fontWeight: "bold" }}>{dirtyCount} temuan kotor/rusak</span>
+                ) : (
+                  "Semua bersih"
+                )}
               </p>
               <small style={{ color: "var(--muted)", fontSize: "11px" }}>
-                Semua foto otomatis tersimpan aman di NAS PLN
+                {selectedSlot?.completed ? "Pilih slot lain yang masih tersedia untuk mengisi" : "Semua foto otomatis tersimpan aman di NAS PLN"}
               </small>
             </div>
 
             <button
               id="submit-button"
               type="submit"
-              disabled={submitting}
+              disabled={submitting || Boolean(selectedSlot?.completed)}
               className="btn btn-primary"
+              style={selectedSlot?.completed ? { opacity: 0.5, cursor: "not-allowed", filter: "grayscale(1)" } : {}}
             >
-              {submitting ? "Menyimpan..." : "Simpan Pemeriksaan"}
+              {submitting ? "Menyimpan..." : selectedSlot?.completed ? "Slot Sudah Selesai" : "Simpan Pemeriksaan"}
             </button>
           </div>
         </form>

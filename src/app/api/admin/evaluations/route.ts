@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { monthKey } from "@/lib/utils";
+import { monthKey, monthEndKey } from "@/lib/utils";
 
 export async function GET(request: Request) {
   try {
@@ -10,7 +10,7 @@ export async function GET(request: Request) {
     const currentMonth = monthKey();
 
     const startDate = searchParams.get("startDate") || `${currentMonth}-01`;
-    const endDate = searchParams.get("endDate") || `${currentMonth}-31`;
+    const endDate = searchParams.get("endDate") || monthEndKey(currentMonth);
     const roomId = searchParams.get("roomId");
 
     const hiddenIds = (await prisma.room.findMany({ where: { hidden: true }, select: { id: true } })).map((r) => r.id);
@@ -95,28 +95,35 @@ export async function GET(request: Request) {
       lowRatingsPercentage: attentionCount > 0 ? Math.round((data.lowRating / attentionCount) * 100) : 0,
     }));
 
-    // Find last officer for each evaluation
-    const history = await Promise.all(
-      evaluations.map(async (ev) => {
-        let aspectList: string[] = [];
-        try {
-          if (ev.aspectCodes) {
-            const parsed = JSON.parse(ev.aspectCodes);
-            if (Array.isArray(parsed)) aspectList = parsed;
-          }
-        } catch (e) {}
-
-        const lastInsp = await prisma.inspection.findFirst({
+    // Find last officer for each evaluation in batch (eliminating N+1 database queries)
+    const evalRoomIds = Array.from(new Set(evaluations.map((e) => e.roomId)));
+    const recentInspections = evalRoomIds.length > 0
+      ? await prisma.inspection.findMany({
           where: {
-            roomId: ev.roomId,
-            submittedAt: { lte: ev.submittedAt },
+            roomId: { in: evalRoomIds },
             state: "SUBMITTED",
           },
-          include: { user: true },
+          include: { user: { select: { fullName: true } } },
           orderBy: { submittedAt: "desc" },
-        });
+        })
+      : [];
 
-        const formattedTime = new Intl.DateTimeFormat("id-ID", {
+    const history = evaluations.map((ev) => {
+      let aspectList: string[] = [];
+      try {
+        if (ev.aspectCodes) {
+          const parsed = JSON.parse(ev.aspectCodes);
+          if (Array.isArray(parsed)) aspectList = parsed;
+        }
+      } catch (e) {}
+
+      const evTime = new Date(ev.submittedAt).getTime();
+      const lastInsp =
+        recentInspections.find((i) => i.roomId === ev.roomId && new Date(i.submittedAt).getTime() <= evTime) ||
+        recentInspections.find((i) => i.roomId === ev.roomId);
+
+      const formattedTime =
+        new Intl.DateTimeFormat("id-ID", {
           day: "numeric",
           month: "short",
           year: "numeric",
@@ -124,18 +131,17 @@ export async function GET(request: Request) {
           minute: "2-digit",
         }).format(new Date(ev.submittedAt)) + " WIB";
 
-        return {
-          id: ev.id,
-          createdAt: ev.submittedAt,
-          timeFormatted: formattedTime,
-          roomName: ev.room?.name || "Ruangan",
-          rating: ev.rating,
-          aspects: aspectList,
-          comment: ev.comment || "—",
-          lastOfficer: lastInsp?.user?.fullName || "Petugas Kebersihan",
-        };
-      })
-    );
+      return {
+        id: ev.id,
+        createdAt: ev.submittedAt,
+        timeFormatted: formattedTime,
+        roomName: ev.room?.name || "Ruangan",
+        rating: ev.rating,
+        aspects: aspectList,
+        comment: ev.comment || "—",
+        lastOfficer: lastInsp?.user?.fullName || "Petugas Kebersihan",
+      };
+    });
 
     return NextResponse.json({
       ok: true,

@@ -118,54 +118,58 @@ export async function POST(request: Request) {
     const evidenceBaseName = `${room.code}-${today}-${slot.code}-${Date.now()}`;
 
     // Process photo uploads (converting File objects or base64 data to NAS evidence)
-    const photoRecords: { fileName: string; fileUrl: string; sortOrder: number }[] = [];
+    // Process photo uploads concurrently (converting File objects or base64 data to NAS evidence)
+    const photoRecords = await Promise.all(
+      rawPhotos.map(async (item, i) => {
+        const photoName = `${evidenceBaseName}-${i + 1}.jpg`;
+        let base64 = "";
+        let photoContentType = "image/jpeg";
 
-    for (let i = 0; i < rawPhotos.length; i++) {
-      const item = rawPhotos[i];
-      const photoName = `${evidenceBaseName}-${i + 1}.jpg`;
-      let base64 = "";
-      let photoContentType = "image/jpeg";
-
-      if (typeof item === "object" && item !== null && "arrayBuffer" in item) {
-        // It's a File / Blob
-        const fileObj = item as File;
-        photoContentType = fileObj.type || "image/jpeg";
-        const buffer = Buffer.from(await fileObj.arrayBuffer());
-        base64 = buffer.toString("base64");
-      } else if (typeof item === "string") {
-        if (item.startsWith("data:")) {
-          const match = item.match(/^data:([^;]+);base64,(.+)$/);
-          if (match) {
-            photoContentType = match[1];
-            base64 = match[2];
+        if (typeof item === "object" && item !== null && "arrayBuffer" in item) {
+          // It's a File / Blob
+          const fileObj = item as File;
+          photoContentType = fileObj.type || "image/jpeg";
+          const buffer = Buffer.from(await fileObj.arrayBuffer());
+          base64 = buffer.toString("base64");
+        } else if (typeof item === "string") {
+          if (item.startsWith("data:")) {
+            const match = item.match(/^data:([^;]+);base64,(.+)$/);
+            if (match) {
+              photoContentType = match[1];
+              base64 = match[2];
+            } else {
+              base64 = item;
+            }
           } else {
             base64 = item;
           }
-        } else {
-          base64 = item;
         }
-      }
 
-      let storedPath = `EVIDENCE/${today.replace(/-/g, "/")}/${photoName}`;
+        let storedPath = `EVIDENCE/${today.replace(/-/g, "/")}/${photoName}`;
 
-      if (base64) {
-        const nasRes = await uploadEvidenceToNas({
+        if (base64) {
+          try {
+            const nasRes = await uploadEvidenceToNas({
+              fileName: photoName,
+              contentType: photoContentType,
+              base64,
+            });
+
+            if (nasRes.ok && nasRes.path) {
+              storedPath = nasRes.path;
+            }
+          } catch (nasErr) {
+            console.warn("NAS upload failed in submit route, fallback to default path:", nasErr);
+          }
+        }
+
+        return {
           fileName: photoName,
-          contentType: photoContentType,
-          base64,
-        });
-
-        if (nasRes.ok && nasRes.path) {
-          storedPath = nasRes.path;
-        }
-      }
-
-      photoRecords.push({
-        fileName: photoName,
-        fileUrl: storedPath,
-        sortOrder: i + 1,
-      });
-    }
+          fileUrl: storedPath,
+          sortOrder: i + 1,
+        };
+      })
+    );
 
     // Execute atomic transaction in Database
     const result = await prisma.$transaction(async (tx) => {

@@ -27,6 +27,7 @@ export async function uploadEvidenceToNas(payload: NasEvidencePayload): Promise<
         createdAt: new Date().toISOString(),
         base64: payload.base64,
       }),
+      signal: AbortSignal.timeout(4000),
     });
 
     const data = await res.json();
@@ -35,7 +36,7 @@ export async function uploadEvidenceToNas(payload: NasEvidencePayload): Promise<
     }
     return { ok: false, message: data.message || "Gagal mengunggah ke gateway NAS." };
   } catch (err: any) {
-    console.warn("Upload evidence to NAS failed:", err?.message || err);
+    console.warn("Upload evidence to NAS failed or timed out:", err?.message || err);
     return { ok: false, message: err?.message || "Koneksi ke NAS gagal" };
   }
 }
@@ -52,6 +53,7 @@ export async function checkNasHealth(): Promise<{ ok: boolean; message?: string;
     const res = await fetch(`${gatewayUrl}/api/kebersihan/status`, {
       headers: { Authorization: `Bearer ${gatewayToken}` },
       cache: "no-store",
+      signal: AbortSignal.timeout(4000),
     });
     const data = await res.json();
     if (res.ok && data.ok) {

@@ -54,6 +54,12 @@ function LoginForm() {
       <h2>Masuk ke aplikasi</h2>
       <p>Gunakan username dan password yang diberikan administrator.</p>
 
+      {redirectUrl !== "/" && (
+        <div style={{ background: "#e8f5fa", border: "1px solid #bae6fd", borderRadius: "12px", padding: "10px 12px", fontSize: "12px", color: "#0369a1", marginBottom: "16px", fontWeight: 600 }}>
+          ℹ️ Silakan masuk. Pemeriksaan ruangan Anda akan langsung dilanjutkan setelah login.
+        </div>
+      )}
+
       {error && <div className="form-error">{error}</div>}
 
       <form onSubmit={handleSubmit}>
@@ -92,6 +98,10 @@ function LoginForm() {
         >
           {loading ? "Memverifikasi..." : "Masuk"}
         </button>
+
+        <p style={{ marginTop: "16px", fontSize: "11px", color: "var(--muted)", textAlign: "center", lineHeight: "1.4" }}>
+          💡 Sesi Anda tersimpan otomatis. Gunakan menu <strong>&quot;Tambahkan ke Layar Utama&quot;</strong> di Chrome agar tidak perlu login ulang.
+        </p>
       </form>
     </div>
   );

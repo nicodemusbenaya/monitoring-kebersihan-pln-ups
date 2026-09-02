@@ -20,6 +20,14 @@ export function monthKey(): string {
   return `${year}-${month}`;
 }
 
+export function monthEndKey(monthKeyStr?: string): string {
+  const [yearStr, monthStr] = (monthKeyStr || monthKey()).split("-");
+  const year = parseInt(yearStr, 10) || new Date().getFullYear();
+  const month = parseInt(monthStr, 10) || (new Date().getMonth() + 1);
+  const lastDay = new Date(year, month, 0).getDate();
+  return `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+}
+
 export function formatDisplayDate(dateStr: string | Date | null | undefined): string {
   if (!dateStr) return "-";
   const d = new Date(dateStr);

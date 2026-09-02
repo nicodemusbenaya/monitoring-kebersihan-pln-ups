@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { todayKey, monthKey } from "@/lib/utils";
+import { todayKey, monthKey, monthEndKey } from "@/lib/utils";
 
 export async function GET(request: Request) {
   try {
@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     const currentMonth = monthKey();
 
     const startDate = searchParams.get("startDate") || `${currentMonth}-01`;
-    const endDate = searchParams.get("endDate") || `${currentMonth}-31`;
+    const endDate = searchParams.get("endDate") || monthEndKey(currentMonth);
 
     const hiddenIds = (await prisma.room.findMany({ where: { hidden: true }, select: { id: true } })).map((r) => r.id);
     const hiddenFilter = hiddenIds.length > 0 ? { roomId: { notIn: hiddenIds } } : {};
@@ -52,7 +52,9 @@ export async function GET(request: Request) {
     // Calculate total days in the selected period
     const dStart = new Date(startDate);
     const dEnd = new Date(endDate);
-    const diffTime = Math.abs(dEnd.getTime() - dStart.getTime());
+    const validStartTime = isNaN(dStart.getTime()) ? Date.now() : dStart.getTime();
+    const validEndTime = isNaN(dEnd.getTime()) ? Date.now() : dEnd.getTime();
+    const diffTime = Math.abs(validEndTime - validStartTime);
     const totalDaysInPeriod = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1);
 
     const cleanInspections = inspections.filter((i) => i.overallStatus === "BERSIH").length;
