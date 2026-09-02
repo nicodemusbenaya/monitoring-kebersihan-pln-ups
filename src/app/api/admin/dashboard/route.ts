@@ -10,6 +10,9 @@ export async function GET(request: Request) {
     const selectedMonth = searchParams.get("month") || monthKey();
     const selectedRoomId = searchParams.get("roomId");
     const today = todayKey();
+    const startDate = searchParams.get("startDate") || today;
+    const endDate = searchParams.get("endDate") || today;
+    const daysCount = Math.max(1, parseInt(searchParams.get("daysCount") || "1", 10) || 1);
 
     const roomWhere: any = selectedRoomId && selectedRoomId !== "ALL" ? { id: selectedRoomId, active: true, hidden: false } : { active: true, hidden: false };
 
@@ -29,10 +32,15 @@ export async function GET(request: Request) {
       orderBy: { sortOrder: "asc" },
     });
 
-    // 2. Today's submitted inspections (exclude hidden rooms)
+    // 2. Submitted inspections for the requested period (exclude hidden rooms)
+    const dateFilter =
+      startDate === endDate
+        ? { dateKey: startDate }
+        : { dateKey: { gte: startDate, lte: endDate } };
+
     const todayInspections = await prisma.inspection.findMany({
       where: {
-        dateKey: today,
+        ...dateFilter,
         state: "SUBMITTED",
         ...(hiddenFilter as any),
         ...(selectedRoomId && selectedRoomId !== "ALL" ? { roomId: selectedRoomId } : {}),
@@ -168,13 +176,13 @@ export async function GET(request: Request) {
       photos: i.photos.map((p) => p.fileUrl),
     }));
 
-    // 7. Total expected sessions across all active rooms
+    // 7. Total expected sessions across all active rooms for the selected period
     let totalExpectedSessions = 0;
     rooms.forEach((r) => {
-      totalExpectedSessions += r.roomType.slots.length;
+      totalExpectedSessions += r.roomType.slots.length * daysCount;
     });
 
-    // 8. Room completion matrix for today
+    // 8. Room completion matrix
     let greenCount = 0;
     let purpleCount = 0;
     let yellowCount = 0;
@@ -188,7 +196,9 @@ export async function GET(request: Request) {
       const petugasFinished = roomInsps.filter((i) => i.slot.role === "PETUGAS").length;
       const spvFinished = roomInsps.filter((i) => i.slot.role === "SUPERVISOR").length;
       const totalFinished = roomInsps.length;
-      const totalSlots = room.roomType.slots.length;
+      const totalSlots = room.roomType.slots.length * daysCount;
+      const petugasTotal = petugasSlots.length * daysCount;
+      const spvTotal = spvSlots.length * daysCount;
       const dirtyCount = roomInsps.reduce((acc, curr) => acc + curr.dirtyCount, 0);
       const hasFindings = roomInsps.some((i) => i.overallStatus === "ADA_TEMUAN");
 
@@ -196,10 +206,10 @@ export async function GET(request: Request) {
       if (totalFinished === 0) {
         status = "EMPTY";
         redCount++;
-      } else if (petugasSlots.length > 0 && petugasFinished < petugasSlots.length) {
+      } else if (petugasTotal > 0 && petugasFinished < petugasTotal) {
         status = "PARTIAL";
         yellowCount++;
-      } else if (spvSlots.length > 0 && spvFinished < spvSlots.length) {
+      } else if (spvTotal > 0 && spvFinished < spvTotal) {
         status = "WAITING_SPV";
         purpleCount++;
       } else {
@@ -222,9 +232,9 @@ export async function GET(request: Request) {
         completedCount: totalFinished,
         completedSlots: totalFinished,
         petugasFinished,
-        petugasTotal: petugasSlots.length,
+        petugasTotal,
         spvFinished,
-        spvTotal: spvSlots.length,
+        spvTotal,
         dirtyCount,
         hasFindings,
         status,
@@ -233,7 +243,7 @@ export async function GET(request: Request) {
 
     const completionRate =
       totalExpectedSessions > 0
-        ? Math.round((todayInspections.length / totalExpectedSessions) * 100)
+        ? Math.min(100, Math.round((todayInspections.length / totalExpectedSessions) * 100))
         : 0;
 
     return NextResponse.json({
@@ -241,6 +251,9 @@ export async function GET(request: Request) {
       data: {
         today,
         dateKey: today,
+        startDate,
+        endDate,
+        daysCount,
         selectedMonth,
         summary: {
           completionRate,
@@ -252,6 +265,9 @@ export async function GET(request: Request) {
           purpleCount,
           yellowCount,
           redCount,
+          startDate,
+          endDate,
+          daysCount,
         },
         metrics: {
           totalRooms,

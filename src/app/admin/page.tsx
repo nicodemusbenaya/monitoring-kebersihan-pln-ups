@@ -16,10 +16,100 @@ import {
 } from "lucide-react";
 import { AppDropdown, MonthDropdown } from "@/components/AppDropdown";
 
+type QuickRangeKey = "HARI_INI" | "KEMARIN" | "1_MINGGU" | "1_BULAN" | "SEMESTER";
+
+function getQuickRangeDates(key: QuickRangeKey) {
+  const now = new Date();
+  const formatYMD = (d: Date) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const todayStr = formatYMD(now);
+
+  if (key === "KEMARIN") {
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yStr = formatYMD(yesterday);
+    return {
+      startDate: yStr,
+      endDate: yStr,
+      label: "Kemarin",
+      badgeText: "KEMARIN",
+      displayDate: new Intl.DateTimeFormat("id-ID", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      }).format(yesterday),
+      daysCount: 1,
+    };
+  }
+
+  if (key === "1_MINGGU") {
+    const weekAgo = new Date(now);
+    weekAgo.setDate(weekAgo.getDate() - 6);
+    return {
+      startDate: formatYMD(weekAgo),
+      endDate: todayStr,
+      label: "1 minggu",
+      badgeText: "1 MINGGU",
+      displayDate: `${new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short" }).format(weekAgo)} - ${new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric" }).format(now)}`,
+      daysCount: 7,
+    };
+  }
+
+  if (key === "1_BULAN") {
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    return {
+      startDate: formatYMD(monthStart),
+      endDate: todayStr,
+      label: "1 bulan",
+      badgeText: "1 BULAN",
+      displayDate: new Intl.DateTimeFormat("id-ID", { month: "long", year: "numeric" }).format(now),
+      daysCount: Math.max(1, now.getDate()),
+    };
+  }
+
+  if (key === "SEMESTER") {
+    const semStart = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+    const diffDays = Math.max(1, Math.ceil((now.getTime() - semStart.getTime()) / (1000 * 60 * 60 * 24)));
+    return {
+      startDate: formatYMD(semStart),
+      endDate: todayStr,
+      label: "Semester",
+      badgeText: "SEMESTER",
+      displayDate: `${new Intl.DateTimeFormat("id-ID", { month: "short" }).format(semStart)} - ${new Intl.DateTimeFormat("id-ID", { month: "short", year: "numeric" }).format(now)}`,
+      daysCount: diffDays,
+    };
+  }
+
+  // Default: HARI_INI
+  return {
+    startDate: todayStr,
+    endDate: todayStr,
+    label: "Hari ini",
+    badgeText: "HARI INI",
+    displayDate: new Intl.DateTimeFormat("id-ID", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }).format(now),
+    daysCount: 1,
+  };
+}
+
 export default function DashboardSummaryPage() {
   const [loading, setLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [roomsData, setRoomsData] = useState<any[]>([]);
+
+  // Quick range state (Hari ini, Kemarin, 1 minggu, 1 bulan, Semester)
+  const [activeQuickRange, setActiveQuickRange] = useState<QuickRangeKey>("HARI_INI");
+  const currentQuickInfo = useMemo(() => getQuickRangeDates(activeQuickRange), [activeQuickRange]);
 
   // Filters state - pending vs applied to make Terapkan meaningful
   const currentMonthKey = new Date().toISOString().slice(0, 7);
@@ -45,25 +135,30 @@ export default function DashboardSummaryPage() {
     return [{ value: "ALL", label: "Semua ruangan" }, ...visible.map((r: any) => ({ value: r.id, label: r.name }))];
   }, [roomsData]);
 
-  // KPI untuk waktu filter: kalau periode beda bulan, hitung dari data bulanan agar angka jelas berbeda dengan hari ini
   const filteredKpi = useMemo(() => {
-    if (!dashboardData) return { rate: 0, completed: 0, total: 0, isFiltered: false };
-    if (!isMonthFiltered) return { rate: dashboardData.summary.completionRate, completed: dashboardData.summary.completedSessions, total: dashboardData.summary.totalExpectedSessions, isFiltered: hasFilterActive };
-    const y = Number(appliedPeriod.split("-")[0]);
-    const m = Number(appliedPeriod.split("-")[1]);
-    const days = new Date(y, m, 0).getDate();
-    const dailyExpected = dashboardData.summary.totalExpectedSessions || 0;
-    const expectedMonthly = dailyExpected * days;
-    const monthlyDone = dashboardData.metrics?.monthlyInspectionsCount ?? 0;
-    const rate = expectedMonthly > 0 ? Math.round((monthlyDone / expectedMonthly) * 100) : 0;
-    return { rate: Math.min(100, rate), completed: monthlyDone, total: expectedMonthly, isFiltered: true };
-  }, [dashboardData, isMonthFiltered, appliedPeriod, hasFilterActive]);
+    if (!dashboardData?.summary) return { rate: 0, completed: 0, total: 0, isFiltered: false };
+    return {
+      rate: dashboardData.summary.completionRate ?? 0,
+      completed: dashboardData.summary.completedSessions ?? 0,
+      total: dashboardData.summary.totalExpectedSessions ?? 0,
+      isFiltered: activeQuickRange !== "HARI_INI" || hasFilterActive,
+    };
+  }, [dashboardData, activeQuickRange, hasFilterActive]);
 
-  const loadData = async (roomId = appliedRoomFilter, month = appliedPeriod) => {
+  const loadData = async (
+    roomId = appliedRoomFilter,
+    month = appliedPeriod,
+    rangeKey = activeQuickRange
+  ) => {
     setLoading(true);
+    const rangeInfo = getQuickRangeDates(rangeKey);
     try {
       const [dashRes, roomsRes] = await Promise.all([
-        fetch(`/api/admin/dashboard?month=${month}${roomId !== "ALL" ? `&roomId=${roomId}` : ""}`).then((r) => r.json()),
+        fetch(
+          `/api/admin/dashboard?month=${month}&startDate=${rangeInfo.startDate}&endDate=${rangeInfo.endDate}&daysCount=${rangeInfo.daysCount}${
+            roomId !== "ALL" ? `&roomId=${roomId}` : ""
+          }`
+        ).then((r) => r.json()),
         fetch("/api/admin/rooms").then((r) => r.json()),
       ]);
       if (dashRes.ok) setDashboardData(dashRes.data);
@@ -75,10 +170,15 @@ export default function DashboardSummaryPage() {
     }
   };
 
+  const handleQuickRangeChange = async (key: QuickRangeKey) => {
+    setActiveQuickRange(key);
+    await loadData(appliedRoomFilter, appliedPeriod, key);
+  };
+
   const handleApplyFilter = async () => {
     setAppliedRoomFilter(pendingRoomFilter);
     setAppliedPeriod(pendingPeriod);
-    await loadData(pendingRoomFilter, pendingPeriod);
+    await loadData(pendingRoomFilter, pendingPeriod, activeQuickRange);
   };
 
   const pendingIsDirty = pendingRoomFilter !== appliedRoomFilter || pendingPeriod !== appliedPeriod;
@@ -201,31 +301,70 @@ export default function DashboardSummaryPage() {
 
   return (
     <div className="space-y-6 pb-12">
-      {/* 1. Large Hero Banner */}
-      <section className="relative overflow-hidden bg-gradient-to-r from-[#062c3e] via-[#09415b] to-[#0d5678] text-white rounded-3xl p-5 sm:p-8 shadow-xl">
+      {/* 1. Large Hero Banner with Quick Filter */}
+      <section className="relative overflow-hidden bg-gradient-to-r from-[#062c3e] via-[#09415b] to-[#0d5678] text-white rounded-3xl p-5 sm:p-7 shadow-xl">
         <div className="absolute right-0 top-0 bottom-0 w-1/2 opacity-20 pointer-events-none bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-[#ffd100] via-transparent to-transparent"></div>
         <div className="absolute -right-16 -bottom-16 w-80 h-80 rounded-full border-[30px] border-white/10 pointer-events-none"></div>
 
-        <div className="relative z-10">
-          <span className="text-xs font-extrabold uppercase tracking-widest text-[#ffd100] block mb-2">
-            OPERASIONAL HARI INI
-          </span>
-          <h2 className="text-2xl sm:text-4xl font-black tracking-tight mb-3 sm:mb-4">
-            Ringkasan operasional
-          </h2>
-
-          <div className="inline-flex items-center gap-3 px-4 py-2 bg-black/30 backdrop-blur-md rounded-2xl border border-white/15">
-            <span className="px-2 py-0.5 bg-[#ffd100] text-[#072d3f] text-xs font-black rounded-lg uppercase tracking-wide">
-              HARI INI
+        <div className="relative z-10 space-y-4">
+          <div>
+            <span className="text-xs font-extrabold uppercase tracking-widest text-[#ffd100] block mb-1">
+              OPERASIONAL & PEMANTAUAN
             </span>
-            <span className="text-xs font-bold text-white">{todayFormatted}</span>
+            <h2 className="text-2xl sm:text-4xl font-black tracking-tight mb-2">
+              Ringkasan operasional
+            </h2>
+            <p className="text-xs sm:text-sm text-white/80 max-w-xl">
+              Pantau kepatuhan jadwal, checklist kebersihan, dan kondisi ruangan secara langsung berdasarkan periode pilihan.
+            </p>
           </div>
 
-          <div className="flex items-center gap-2 mt-4 text-[11px] text-white/80 font-medium">
-            {loading && !dashboardData ? (
+          {/* Quick Filter Bar inside Hero Card */}
+          <div className="p-2.5 sm:p-3 bg-black/25 backdrop-blur-md rounded-2xl border border-white/15 flex flex-col md:flex-row md:items-center justify-between gap-3">
+            {/* Active Range Badge & Display Date */}
+            <div className="flex items-center gap-2.5 px-1.5">
+              <span className="px-2.5 py-1 bg-[#ffd100] text-[#072d3f] text-[11px] font-black rounded-lg uppercase tracking-wide shrink-0 shadow-sm">
+                {currentQuickInfo.badgeText}
+              </span>
+              <span className="text-xs sm:text-sm font-extrabold text-white truncate">
+                {currentQuickInfo.displayDate}
+              </span>
+            </div>
+
+            {/* 5 Quick Filter Buttons: hari ini, kemarin, 1 minggu, 1 bulan, semester */}
+            <div className="flex overflow-x-auto gap-1.5 p-1 bg-black/30 rounded-xl border border-white/10 scrollbar-none">
+              {[
+                { key: "HARI_INI" as QuickRangeKey, label: "Hari ini" },
+                { key: "KEMARIN" as QuickRangeKey, label: "Kemarin" },
+                { key: "1_MINGGU" as QuickRangeKey, label: "1 minggu" },
+                { key: "1_BULAN" as QuickRangeKey, label: "1 bulan" },
+                { key: "SEMESTER" as QuickRangeKey, label: "Semester" },
+              ].map((tab) => {
+                const isActive = activeQuickRange === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => handleQuickRangeChange(tab.key)}
+                    disabled={loading}
+                    className={`shrink-0 px-3.5 py-1.5 rounded-lg text-xs font-black transition-all ${
+                      isActive
+                        ? "bg-[#ffd100] text-[#072d3f] shadow-md shadow-[#ffd100]/25 scale-100"
+                        : "text-white/80 hover:text-white hover:bg-white/15 disabled:opacity-50"
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 text-[11px] text-white/80 font-medium pt-0.5">
+            {loading ? (
               <>
                 <span className="w-2 h-2 rounded-full bg-[#ffd100] animate-ping"></span>
-                <span className="text-[#ffd100] font-bold">Menghubungkan ke database & memuat data...</span>
+                <span className="text-[#ffd100] font-bold">Memuat data periode {currentQuickInfo.label.toLowerCase()}...</span>
               </>
             ) : (
               <>
@@ -286,10 +425,14 @@ export default function DashboardSummaryPage() {
 
       {/* 3. Four Metric KPI Cards - skeletal when loading, first card label reacts to filter */}
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className={`relative overflow-hidden bg-white border rounded-2xl p-5 shadow-sm flex flex-col justify-between min-h-[140px] transition-all ${loading ? "border-[#ffd100]/50" : "border-[#d8e3ea]"} ${hasFilterActive ? "ring-1 ring-[#ffd100]/20" : ""}`}>
+        <div className={`relative overflow-hidden bg-white border rounded-2xl p-5 shadow-sm flex flex-col justify-between min-h-[140px] transition-all ${loading ? "border-[#ffd100]/50" : "border-[#d8e3ea]"} ${hasFilterActive || activeQuickRange !== "HARI_INI" ? "ring-1 ring-[#ffd100]/20" : ""}`}>
           <span className="text-xs font-bold text-[#647783] flex items-center gap-1.5">
-            {isMonthFiltered ? `Penyelesaian jadwal • ${filterPeriodLabel}` : hasFilterActive ? "Penyelesaian jadwal waktu filter" : "Penyelesaian jadwal hari ini"}
-            {hasFilterActive && <span className="px-1.5 py-0.5 bg-[#fff6a1] border border-[#ffd100] rounded-md text-[9px] font-black tracking-wide text-[#92400e]">FILTER AKTIF</span>}
+            {`Penyelesaian jadwal • ${currentQuickInfo.label}`}
+            {(activeQuickRange !== "HARI_INI" || hasFilterActive) && (
+              <span className="px-1.5 py-0.5 bg-[#fff6a1] border border-[#ffd100] rounded-md text-[9px] font-black tracking-wide text-[#92400e]">
+                {currentQuickInfo.badgeText}
+              </span>
+            )}
           </span>
           <div className="my-2">
             {loading ? (
@@ -306,11 +449,7 @@ export default function DashboardSummaryPage() {
             <div className="flex items-center gap-1.5 text-[11px] text-[#647783]">
               <span className="w-2 h-2 rounded-full bg-[#ffd100]"></span>
               <span>
-                {filteredKpi.isFiltered
-                  ? isMonthFiltered
-                    ? `${filteredKpi.completed} dari ${filteredKpi.total} jadwal bulan ini • ${filterPeriodLabel}`
-                    : `${filteredKpi.completed} dari ${filteredKpi.total} jadwal • Filter ruangan`
-                  : `${filteredKpi.completed} dari ${filteredKpi.total} jadwal harian`}
+                {`${filteredKpi.completed} dari ${filteredKpi.total} jadwal (${currentQuickInfo.label.toLowerCase()})`}
               </span>
             </div>
           )}
