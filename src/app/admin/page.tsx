@@ -123,6 +123,8 @@ export default function DashboardSummaryPage() {
   const [reopenId, setReopenId] = useState<string | null>(null);
   const [selectedDetailRoom, setSelectedDetailRoom] = useState<any | null>(null);
   const [photoPreviewModal, setPhotoPreviewModal] = useState<string | null>(null);
+  const [photoLoading, setPhotoLoading] = useState(true);
+  const [photoError, setPhotoError] = useState(false);
 
   const hasFilterActive = appliedRoomFilter !== "ALL" || appliedPeriod !== currentMonthKey;
   const isMonthFiltered = appliedPeriod !== currentMonthKey;
@@ -1220,8 +1222,12 @@ export default function DashboardSummaryPage() {
                                 <button
                                   key={pIdx}
                                   type="button"
-                                  onClick={() => setPhotoPreviewModal(p.fileUrl)}
-                                  className="w-14 h-14 rounded-xl border border-[#cbd5e1] overflow-hidden hover:opacity-80 transition-opacity relative group bg-black/5"
+                                  onClick={() => {
+                                    setPhotoPreviewModal(p.fileUrl);
+                                    setPhotoLoading(true);
+                                    setPhotoError(false);
+                                  }}
+                                  className="w-16 h-16 rounded-xl border border-[#cbd5e1] overflow-hidden hover:opacity-80 transition-opacity relative group bg-[#f1f5f9] flex items-center justify-center shrink-0"
                                 >
                                   <img
                                     src={p.fileUrl.startsWith("http") ? p.fileUrl : `/api/kebersihan/evidence?path=${encodeURIComponent(p.fileUrl)}`}
@@ -1231,7 +1237,7 @@ export default function DashboardSummaryPage() {
                                       e.target.style.display = 'none';
                                     }}
                                   />
-                                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-[9px] font-bold">
+                                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-[10px] font-bold">
                                     Lihat
                                   </div>
                                 </button>
@@ -1271,25 +1277,66 @@ export default function DashboardSummaryPage() {
       {/* PHOTO PREVIEW MODAL */}
       {photoPreviewModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
+          className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200"
           onClick={() => setPhotoPreviewModal(null)}
         >
           <div
-            className="relative max-w-3xl max-h-[85vh] bg-white rounded-2xl overflow-hidden shadow-2xl p-2"
+            className="relative max-w-3xl w-full min-h-[300px] max-h-[90vh] bg-white rounded-3xl overflow-hidden shadow-2xl p-4 flex flex-col items-center justify-center"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Close Button */}
             <button
               type="button"
               onClick={() => setPhotoPreviewModal(null)}
-              className="absolute top-4 right-4 z-10 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black transition-colors"
+              className="absolute top-4 right-4 z-20 w-9 h-9 rounded-full bg-black/70 hover:bg-black text-white flex items-center justify-center transition-all shadow-lg"
             >
-              <X className="w-4 h-4" />
+              <X className="w-5 h-5" />
             </button>
-            <img
-              src={photoPreviewModal.startsWith("http") ? photoPreviewModal : `/api/kebersihan/evidence?path=${encodeURIComponent(photoPreviewModal)}`}
-              alt="Bukti Foto"
-              className="max-h-[80vh] w-auto object-contain rounded-xl"
-            />
+
+            {/* Loading Indicator */}
+            {photoLoading && !photoError && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/95 z-10">
+                <div className="w-9 h-9 border-3 border-[#0076a8] border-t-transparent rounded-full animate-spin"></div>
+                <span className="text-xs font-bold text-[#647783]">Mengambil foto dari server NAS...</span>
+              </div>
+            )}
+
+            {/* Error State */}
+            {photoError ? (
+              <div className="p-8 text-center space-y-3 max-w-md">
+                <div className="w-12 h-12 rounded-2xl bg-[#fee2e2] text-[#b91c1c] flex items-center justify-center mx-auto shadow-inner">
+                  <AlertTriangle className="w-6 h-6" />
+                </div>
+                <h4 className="text-sm font-black text-[#17313d]">Foto Tidak Ditemukan di NAS</h4>
+                <p className="text-xs text-[#647783]">
+                  Foto bukti untuk sesi ini tidak ditemukan pada penyimpanan NAS kantor.
+                </p>
+                <div className="text-[10px] font-mono bg-[#f8fafc] p-2 rounded-xl text-[#94a3b8] break-all border border-[#e2e8f0]">
+                  {photoPreviewModal}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPhotoPreviewModal(null)}
+                  className="px-4 py-2 bg-[#072d3f] text-white rounded-xl text-xs font-bold shadow-sm"
+                >
+                  Tutup
+                </button>
+              </div>
+            ) : (
+              <img
+                src={photoPreviewModal.startsWith("http") ? photoPreviewModal : `/api/kebersihan/evidence?path=${encodeURIComponent(photoPreviewModal)}`}
+                alt="Bukti Foto"
+                className={`max-h-[82vh] w-auto max-w-full object-contain rounded-2xl transition-opacity duration-300 ${photoLoading ? "opacity-0" : "opacity-100"}`}
+                onLoad={() => {
+                  setPhotoLoading(false);
+                  setPhotoError(false);
+                }}
+                onError={() => {
+                  setPhotoLoading(false);
+                  setPhotoError(true);
+                }}
+              />
+            )}
           </div>
         </div>
       )}
