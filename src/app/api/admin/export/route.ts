@@ -51,10 +51,20 @@ export async function GET(request: Request) {
         return NextResponse.json({ ok: false, message: "Ruangan tidak ditemukan." }, { status: 404 });
       }
 
-      // Generate 6 Days
+      // Determine the matching sheet name based on room type
+      let targetSheetName = "Ceklis Ruangan New";
+      const isToilet = room.roomType?.id === "TOILET" || room.roomType?.name.toLowerCase().includes("toilet");
+      const isPantry = room.roomType?.id === "PANTRY" || room.roomType?.name.toLowerCase().includes("pantry");
+      const isClass = room.roomType?.id === "CLASS" || room.roomType?.name.toLowerCase().includes("kelas") || room.roomType?.name.toLowerCase().includes("tuk");
+      const isArchive = room.roomType?.id === "ARCHIVE" || room.roomType?.name.toLowerCase().includes("arsip");
+
+      // Work days: Toilet is 5 days (120 cols), others are 6 days (72 cols)
+      const workDays = room.roomType?.workDays || (isToilet ? 5 : 6);
+
+      // Generate Days
       const days: { dayIndex: number; dateKey: string; dateFormatted: string }[] = [];
       const baseDate = new Date(startDate);
-      for (let i = 0; i < 6; i++) {
+      for (let i = 0; i < workDays; i++) {
         const d = new Date(baseDate);
         d.setDate(d.getDate() + i);
         days.push({
@@ -95,12 +105,6 @@ export async function GET(request: Request) {
         workbook.addWorksheet("Ceklis Ruangan New");
       }
 
-      // Determine the matching sheet name based on room type
-      let targetSheetName = "Ceklis Ruangan New";
-      const isToilet = room.roomType?.id === "TOILET" || room.roomType?.name.toLowerCase().includes("toilet");
-      const isPantry = room.roomType?.id === "PANTRY" || room.roomType?.name.toLowerCase().includes("pantry");
-      const isClass = room.roomType?.id === "CLASS" || room.roomType?.name.toLowerCase().includes("kelas") || room.roomType?.name.toLowerCase().includes("tuk");
-
       if (isToilet) targetSheetName = "Ceklis Toilet New";
       else if (isPantry) targetSheetName = "Ceklis Pantry";
       else if (isClass) targetSheetName = "Ceklis Ruang Kelas";
@@ -121,7 +125,7 @@ export async function GET(request: Request) {
 
       sheet.getCell("A4").value = "PERIODE";
       sheet.getCell("B4").value = ":";
-      sheet.getCell("C4").value = `${days[0].dateFormatted} s.d. ${days[5].dateFormatted}`;
+      sheet.getCell("C4").value = `${days[0].dateFormatted} s.d. ${days[days.length - 1].dateFormatted}`;
 
       // Check which officers worked during the period
       const hasPagi = inspections.some((i) => (i.slot?.code || i.slotCode || "").toUpperCase().includes("PAGI"));
@@ -138,22 +142,39 @@ export async function GET(request: Request) {
           (i.slot?.code || i.slotCode || "").toUpperCase().includes("SORE")
       );
 
-      const arifPagi = sulaimanPagi ? false : hasPagi;
-      const arifSore = sulaimanSore ? false : hasSore;
+      const arifPagi = inspections.some(
+        (i) =>
+          (i.user?.username === "arif" || i.user?.fullName?.toLowerCase().includes("arif")) &&
+          (i.slot?.code || i.slotCode || "").toUpperCase().includes("PAGI")
+      ) || (!sulaimanPagi && hasPagi);
+
+      const arifSore = inspections.some(
+        (i) =>
+          (i.user?.username === "arif" || i.user?.fullName?.toLowerCase().includes("arif")) &&
+          (i.slot?.code || i.slotCode || "").toUpperCase().includes("SORE")
+      ) || (!sulaimanSore && hasSore);
 
       sheet.getCell("D5").value = arifPagi ? "[✓]" : "[   ]";
       sheet.getCell("H5").value = arifSore ? "[✓]" : "[   ]";
       sheet.getCell("D6").value = sulaimanPagi ? "[✓]" : "[   ]";
       sheet.getCell("H6").value = sulaimanSore ? "[✓]" : "[   ]";
 
-      // ── Update Day Headers with Dates (Row 8) ──
+      // Populate supervisor name if available in inspections
+      const spvUser = inspections.find((i) => i.user?.role === "SUPERVISOR")?.user;
+      if (spvUser?.fullName) {
+        sheet.getCell("C7").value = spvUser.fullName;
+      }
+
+      // ── Update Day Headers with Dates (Row 8 & Row 25 for toilet) ──
       days.forEach((day, dIdx) => {
         const colStart = isToilet ? 4 + dIdx * 24 : 4 + dIdx * 12;
         sheet.getCell(8, colStart).value = `Hari ke ${day.dayIndex} (${day.dateKey})`;
+        if (isToilet) {
+          sheet.getCell(25, colStart).value = `Hari ke ${day.dayIndex} (${day.dateKey})`;
+        }
       });
 
       // ── Populate Activity Rows in Column C ──
-      // For standard non-toilet/pantry/class sheets (like ARCHIVE or custom rooms), ensure activities match DB
       const acts = room.roomType.activities;
       if (!isToilet && !isPantry && !isClass) {
         acts.forEach((act, idx) => {
@@ -162,8 +183,8 @@ export async function GET(request: Request) {
           sheet.getCell(rowNum, 3).value = act.name;
         });
 
-        // Clear excess rows in template
-        for (let r = 12 + acts.length; r <= 35; r++) {
+        // Clear excess rows between 12 + acts.length and 29 without wiping out footer Keterangan (row 30-35)
+        for (let r = 12 + acts.length; r <= 29; r++) {
           sheet.getCell(r, 1).value = null;
           sheet.getCell(r, 2).value = null;
           sheet.getCell(r, 3).value = null;
@@ -176,7 +197,9 @@ export async function GET(request: Request) {
       // Dynamic Row Mapping for activities
       const activityRowMap = new Map<string, number>();
       acts.forEach((act, idx) => {
-        if (!isToilet && !isPantry && !isClass) {
+        if (act.exportRow) {
+          activityRowMap.set(act.id, act.exportRow);
+        } else if (!isToilet && !isPantry && !isClass) {
           activityRowMap.set(act.id, 12 + idx);
         } else {
           // Search matching row in template Col C
@@ -217,26 +240,43 @@ export async function GET(request: Request) {
             let slotOffset = 0;
             if (isToilet) {
               if (sCode.includes("PAGI")) slotOffset = 0;
-              else if (sCode.includes("INSP_1") || sCode.includes("INSP")) slotOffset = 4;
-              else if (sCode.includes("SIANG")) slotOffset = 8;
-              else if (sCode.includes("INSP_2")) slotOffset = 12;
-              else if (sCode.includes("SORE")) slotOffset = 16;
               else if (sCode.includes("INSP_3")) slotOffset = 20;
+              else if (sCode.includes("INSP_2")) slotOffset = 12;
+              else if (sCode.includes("INSP_1") || sCode.includes("INSP") || sCode.includes("SUPERVISOR")) slotOffset = 4;
+              else if (sCode.includes("SIANG")) slotOffset = 8;
+              else if (sCode.includes("SORE")) slotOffset = 16;
             } else {
               if (sCode.includes("PAGI")) slotOffset = 0;
               else if (sCode.includes("SORE")) slotOffset = 4;
-              else if (sCode.includes("INSP")) slotOffset = 8;
+              else if (sCode.includes("INSP") || sCode.includes("SUPERVISOR")) slotOffset = 8;
             }
 
             const baseCol = isToilet ? 4 + dIdx * 24 + slotOffset : 4 + dIdx * 12 + slotOffset;
 
-            // Aktv: Sudah (col + 0) or Belum (col + 1) - tidak boleh bolong
-            sheet.getCell(rowNum, baseCol + 0).value = isClean ? "v" : null;
-            sheet.getCell(rowNum, baseCol + 1).value = !isClean ? "v" : null;
+            // Specific handling for Toilet special rows
+            if (isToilet && (rowNum === 28 || rowNum === 29)) {
+              // SABUN (28) & DRYER/TISU (29): Template format "Ada" (col + 0) / "Tidak" (col + 2)
+              // Only applicable for PAGI (0), INSP 1 (4), SORE (16), INSP 3 (20)
+              if (slotOffset === 0 || slotOffset === 4 || slotOffset === 16 || slotOffset === 20) {
+                sheet.getCell(rowNum, baseCol + 0).value = isNormal ? "v" : null;
+                sheet.getCell(rowNum, baseCol + 1).value = null;
+                sheet.getCell(rowNum, baseCol + 2).value = !isNormal ? "v" : null;
+                sheet.getCell(rowNum, baseCol + 3).value = null;
+              }
+            } else if (isToilet && (rowNum === 22 || rowNum === 23)) {
+              // PINTU (22) & LAMPU (23): Aktv has "X" in template, only fill Fung: Normal (col + 2) / Rusak (col + 3)
+              sheet.getCell(rowNum, baseCol + 2).value = isNormal ? "v" : null;
+              sheet.getCell(rowNum, baseCol + 3).value = !isNormal ? "v" : null;
+            } else {
+              // Standard rows
+              // Aktv: Sudah (col + 0) or Belum (col + 1)
+              sheet.getCell(rowNum, baseCol + 0).value = isClean ? "v" : null;
+              sheet.getCell(rowNum, baseCol + 1).value = !isClean ? "v" : null;
 
-            // Fung: Normal/Ya (col + 2) or Rusak/Tidak (col + 3) - tidak boleh bolong
-            sheet.getCell(rowNum, baseCol + 2).value = isNormal ? "v" : null;
-            sheet.getCell(rowNum, baseCol + 3).value = !isNormal ? "v" : null;
+              // Fung: Normal/Ya (col + 2) or Rusak/Tidak (col + 3)
+              sheet.getCell(rowNum, baseCol + 2).value = isNormal ? "v" : null;
+              sheet.getCell(rowNum, baseCol + 3).value = !isNormal ? "v" : null;
+            }
           });
         });
       });

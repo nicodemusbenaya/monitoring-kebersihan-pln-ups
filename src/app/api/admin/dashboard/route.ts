@@ -45,7 +45,13 @@ export async function GET(request: Request) {
         ...(hiddenFilter as any),
         ...(selectedRoomId && selectedRoomId !== "ALL" ? { roomId: selectedRoomId } : {}),
       },
-      include: { room: true, slot: true, user: true, photos: true },
+      include: {
+        room: true,
+        slot: true,
+        user: true,
+        photos: true,
+        details: { include: { activity: true } },
+      },
       orderBy: { submittedAt: "desc" },
     });
 
@@ -227,6 +233,43 @@ export async function GET(request: Request) {
         }
       }
 
+      const slotsDetail = room.roomType.slots.map((s) => {
+        const insp = roomInsps.find((i) => i.slotId === s.id || i.slotCode === s.code);
+        return {
+          id: s.id,
+          code: s.code,
+          name: s.name,
+          role: s.role,
+          completed: !!insp,
+          inspection: insp
+            ? {
+                id: insp.id,
+                submittedAt: insp.submittedAt,
+                displayTime: formatDisplayDate(insp.submittedAt),
+                inspectorName: insp.user?.fullName || "Petugas",
+                inspectorRole: insp.user?.role || s.role,
+                overallStatus: insp.overallStatus,
+                dirtyCount: insp.dirtyCount,
+                findings: (insp.details || [])
+                  .filter((d: any) => d.qualityResult === "NEGATIVE" || d.functionResult === "NEGATIVE")
+                  .map((d: any) => ({
+                    id: d.id,
+                    activityName: d.activity?.name || "Aktivitas",
+                    qualityResult: d.qualityResult,
+                    qualityLabel: d.qualityLabel,
+                    functionResult: d.functionResult,
+                    functionLabel: d.functionLabel,
+                    note: d.note,
+                  })),
+                photos: (insp.photos || []).map((p: any) => ({
+                  fileName: p.fileName,
+                  fileUrl: p.fileUrl,
+                })),
+              }
+            : null,
+        };
+      });
+
       return {
         id: room.id,
         code: room.code,
@@ -248,6 +291,7 @@ export async function GET(request: Request) {
         dirtyCount,
         hasFindings,
         status,
+        slots: slotsDetail,
       };
     });
 

@@ -121,6 +121,8 @@ export default function DashboardSummaryPage() {
   const [roomSearchQuery, setRoomSearchQuery] = useState("");
   const [actionItemFilter, setActionItemFilter] = useState<"ALL" | "FINDINGS" | "PENDING">("ALL");
   const [reopenId, setReopenId] = useState<string | null>(null);
+  const [selectedDetailRoom, setSelectedDetailRoom] = useState<any | null>(null);
+  const [photoPreviewModal, setPhotoPreviewModal] = useState<string | null>(null);
 
   const hasFilterActive = appliedRoomFilter !== "ALL" || appliedPeriod !== currentMonthKey;
   const isMonthFiltered = appliedPeriod !== currentMonthKey;
@@ -634,7 +636,8 @@ export default function DashboardSummaryPage() {
                 return (
                   <div
                     key={room.id}
-                    className={`p-4 rounded-2xl border ${borderColor} flex flex-col justify-between transition-all hover:shadow-md`}
+                    onClick={() => setSelectedDetailRoom(room)}
+                    className={`p-4 rounded-2xl border ${borderColor} flex flex-col justify-between transition-all hover:shadow-md cursor-pointer hover:border-[#0076a8] group`}
                   >
                     <div>
                       <div className="flex items-center justify-between gap-1 mb-1.5">
@@ -645,16 +648,22 @@ export default function DashboardSummaryPage() {
                           {statusText}
                         </span>
                       </div>
-                      <h5 className="text-xs font-black text-[#17313d] line-clamp-1">{room.name}</h5>
+                      <h5 className="text-xs font-black text-[#17313d] line-clamp-1 group-hover:text-[#0076a8] transition-colors">
+                        {room.name}
+                      </h5>
                     </div>
 
                     <div className="mt-4 pt-3 border-t border-black/5 flex items-center justify-between text-[11px]">
                       <span className="text-[#647783] font-bold">
                         {room.completedSlots}/{room.totalSlots} Sesi
                       </span>
-                      {room.dirtyCount > 0 && (
+                      {room.dirtyCount > 0 ? (
                         <span className="text-[#b91c1c] font-black flex items-center gap-1">
                           <AlertTriangle className="w-3 h-3" /> {room.dirtyCount} Temuan
+                        </span>
+                      ) : (
+                        <span className="text-[#0076a8] font-bold text-[10px] opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
+                          Lihat Detail <ChevronRight className="w-3 h-3" />
                         </span>
                       )}
                     </div>
@@ -875,31 +884,38 @@ export default function DashboardSummaryPage() {
                 return (
                   <div
                     key={item.day}
-                    className="flex-1 min-w-[8px] flex flex-col items-center gap-1 group relative h-full justify-end"
+                    className="flex-1 min-w-[8px] flex flex-col items-center h-full group relative"
                   >
-                    {/* Tooltip on hover - anti-kepotong di tepi */}
-                    <div
-                      className={`opacity-0 group-hover:opacity-100 transition-opacity absolute bottom-full mb-2 bg-[#072d3f] text-white text-[10px] font-bold py-1.5 px-2.5 rounded-lg shadow-xl pointer-events-none whitespace-nowrap z-30 ${
-                        isLeftEdge ? "left-0 -translate-x-0" : isRightEdge ? "right-0 left-auto translate-x-0" : "left-1/2 -translate-x-1/2"
-                      }`}
-                    >
-                      <div>Tgl {item.day}: {count} Sesi</div>
-                      {findings > 0 && <div className="text-[#ffd100] font-black">{findings} Temuan</div>}
+                    {/* Bar track - always fills remaining height and aligns bar to bottom */}
+                    <div className="w-full flex-1 flex items-end justify-center relative">
+                      {/* Tooltip on hover - anti-kepotong di tepi */}
+                      <div
+                        className={`opacity-0 group-hover:opacity-100 transition-opacity absolute bottom-full mb-2 bg-[#072d3f] text-white text-[10px] font-bold py-1.5 px-2.5 rounded-lg shadow-xl pointer-events-none whitespace-nowrap z-30 ${
+                          isLeftEdge ? "left-0 -translate-x-0" : isRightEdge ? "right-0 left-auto translate-x-0" : "left-1/2 -translate-x-1/2"
+                        }`}
+                      >
+                        <div>Tgl {item.day}: {count} Sesi</div>
+                        {findings > 0 && <div className="text-[#ffd100] font-black">{findings} Temuan</div>}
+                      </div>
+
+                      <div
+                        className={`w-full rounded-t-sm transition-all duration-300 ${
+                          findings > 0
+                            ? "bg-[#eab308] group-hover:bg-[#ca8a04]"
+                            : count > 0
+                            ? "bg-[#0076a8] group-hover:bg-[#00577d]"
+                            : "bg-[#f1f5f9]"
+                        }`}
+                        style={{ height: `${heightPct}%` }}
+                      ></div>
                     </div>
 
-                    <div
-                      className={`w-full rounded-t-sm transition-all duration-300 ${
-                        findings > 0
-                          ? "bg-[#eab308] group-hover:bg-[#ca8a04]"
-                          : count > 0
-                          ? "bg-[#0076a8] group-hover:bg-[#00577d]"
-                          : "bg-[#f1f5f9]"
-                      }`}
-                      style={{ height: `${heightPct}%` }}
-                    ></div>
-                    <span className="text-[8px] text-[#94a3b8] font-bold">
-                      {item.day % 4 === 1 ? item.day : ""}
-                    </span>
+                    {/* Date label - fixed height of 16px (h-4) for every single day */}
+                    <div className="h-4 flex items-center justify-center pt-1 w-full">
+                      <span className="text-[8px] text-[#94a3b8] font-bold leading-none block">
+                        {item.day % 4 === 1 ? item.day : ""}
+                      </span>
+                    </div>
                   </div>
                 );
               })}
@@ -1017,7 +1033,266 @@ export default function DashboardSummaryPage() {
         </div>
       </section>
 
+      {/* MODAL DETAIL RUANGAN HARI INI */}
+      {selectedDetailRoom && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          onClick={() => setSelectedDetailRoom(null)}
+        >
+          <div
+            className="bg-white rounded-3xl border border-[#d8e3ea] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="p-6 pb-4 border-b border-[#f1f5f9] flex items-start justify-between gap-4 bg-gradient-to-r from-[#f8fafc] to-white">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#0076a8]/10 text-[#0076a8]">
+                    {selectedDetailRoom.roomTypeName}
+                  </span>
+                  <span className="text-xs font-mono font-bold text-[#94a3b8]">
+                    {selectedDetailRoom.code}
+                  </span>
+                  {(() => {
+                    const isGreen = selectedDetailRoom.status === "COMPLETE";
+                    const isPurple = selectedDetailRoom.status === "WAITING_SPV";
+                    const isYellow = selectedDetailRoom.status === "PARTIAL";
+                    if (isGreen) return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-[#dcfce7] text-[#15803d]">Lengkap</span>;
+                    if (isPurple) return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-[#f3e8ff] text-[#7e22ce]">Menunggu SPV</span>;
+                    if (isYellow) return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-[#fef3c7] text-[#b45309]">Sebagian</span>;
+                    return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-[#f1f5f9] text-[#647783]">Belum Ada Data</span>;
+                  })()}
+                </div>
+                <h3 className="text-xl font-black text-[#17313d]">{selectedDetailRoom.name}</h3>
+                <p className="text-xs text-[#647783]">
+                  Detail status pemeriksaan dan temuan hari ini ({currentQuickInfo.displayDate})
+                </p>
+              </div>
 
+              <button
+                type="button"
+                onClick={() => setSelectedDetailRoom(null)}
+                className="w-9 h-9 rounded-2xl bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[#647783] hover:text-[#17313d] flex items-center justify-center transition-all"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto space-y-6">
+              {/* Summary Stats */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="p-3.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0]">
+                  <span className="text-[10px] font-bold text-[#647783] block uppercase tracking-wider">Pemeriksaan</span>
+                  <div className="text-lg font-black text-[#17313d] mt-0.5">
+                    {selectedDetailRoom.completedSlots} / {selectedDetailRoom.totalSlots}
+                    <span className="text-xs font-semibold text-[#94a3b8] ml-1">Sesi</span>
+                  </div>
+                </div>
+                <div className="p-3.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0]">
+                  <span className="text-[10px] font-bold text-[#647783] block uppercase tracking-wider">Temuan Kotor / Rusak</span>
+                  <div className={`text-lg font-black mt-0.5 ${selectedDetailRoom.dirtyCount > 0 ? "text-[#b91c1c]" : "text-[#157a55]"}`}>
+                    {selectedDetailRoom.dirtyCount}
+                    <span className="text-xs font-semibold text-[#94a3b8] ml-1">Item</span>
+                  </div>
+                </div>
+                <div className="p-3.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0]">
+                  <span className="text-[10px] font-bold text-[#647783] block uppercase tracking-wider">Peran Selesai</span>
+                  <div className="text-xs font-black text-[#17313d] mt-1.5 space-y-0.5">
+                    <div>Petugas: <span className="font-bold text-[#0076a8]">{selectedDetailRoom.petugasFinished}/{selectedDetailRoom.petugasTotal}</span></div>
+                    <div>Supervisor: <span className="font-bold text-[#7e22ce]">{selectedDetailRoom.spvFinished}/{selectedDetailRoom.spvTotal}</span></div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Slot List */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-black uppercase tracking-wider text-[#718c99]">
+                  Jadwal & Sesi Pemeriksaan Hari Ini
+                </h4>
+
+                <div className="space-y-2.5">
+                  {(selectedDetailRoom.slots || []).map((slot: any) => {
+                    const isDone = slot.completed;
+                    const insp = slot.inspection;
+
+                    return (
+                      <div
+                        key={slot.id}
+                        className={`p-4 rounded-2xl border transition-all ${
+                          isDone
+                            ? insp?.overallStatus === "ADA_TEMUAN"
+                              ? "bg-[#fffbeb] border-[#f59e0b]/40"
+                              : "bg-[#f0fdf4] border-[#10b981]/40"
+                            : "bg-[#f8fafc] border-[#e2e8f0]"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2.5">
+                            <div
+                              className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                                isDone
+                                  ? insp?.overallStatus === "ADA_TEMUAN"
+                                    ? "bg-[#f59e0b]/15 text-[#b45309]"
+                                    : "bg-[#10b981]/15 text-[#15803d]"
+                                  : "bg-[#94a3b8]/15 text-[#94a3b8]"
+                              }`}
+                            >
+                              {isDone ? (
+                                <CheckCircle2 className="w-4 h-4" />
+                              ) : (
+                                <Clock className="w-4 h-4" />
+                              )}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <strong className="text-sm font-black text-[#17313d]">
+                                  {slot.name} ({slot.code})
+                                </strong>
+                                <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-[#e2e8f0] text-[#475569]">
+                                  {slot.role}
+                                </span>
+                              </div>
+                              {isDone && insp ? (
+                                <div className="text-[11px] text-[#647783] flex items-center gap-2 mt-0.5">
+                                  <span>Oleh: <strong className="text-[#17313d]">{insp.inspectorName}</strong></span>
+                                  <span>•</span>
+                                  <span>{insp.displayTime}</span>
+                                </div>
+                              ) : (
+                                <div className="text-[11px] text-[#94a3b8] mt-0.5 font-medium">
+                                  Belum diisi oleh {slot.role.toLowerCase()}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {isDone && insp && (
+                            <span
+                              className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase ${
+                                insp.overallStatus === "ADA_TEMUAN"
+                                  ? "bg-[#fef3c7] text-[#b45309]"
+                                  : "bg-[#dcfce7] text-[#15803d]"
+                              }`}
+                            >
+                              {insp.overallStatus === "ADA_TEMUAN" ? `${insp.dirtyCount} Temuan` : "Bersih"}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Findings list if any */}
+                        {isDone && insp?.findings && insp.findings.length > 0 && (
+                          <div className="mt-3 pt-3 border-t border-black/5 space-y-1.5">
+                            <span className="text-[10px] font-black uppercase text-[#b91c1c] block tracking-wider">
+                              Daftar Temuan:
+                            </span>
+                            <div className="space-y-1">
+                              {insp.findings.map((f: any, fIdx: number) => (
+                                <div
+                                  key={fIdx}
+                                  className="text-xs bg-white/80 p-2 rounded-xl border border-[#f59e0b]/30 flex flex-col gap-0.5 text-[#17313d]"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-bold">{f.activityName}</span>
+                                    <span className="text-[10px] font-bold text-[#b91c1c]">
+                                      {f.qualityLabel || f.functionLabel || "Kotor/Rusak"}
+                                    </span>
+                                  </div>
+                                  {f.note && (
+                                    <p className="text-[11px] text-[#647783] italic">
+                                      &ldquo;{f.note}&rdquo;
+                                    </p>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Photos if any */}
+                        {isDone && insp?.photos && insp.photos.length > 0 && (
+                          <div className="mt-3 pt-3 border-t border-black/5">
+                            <span className="text-[10px] font-black uppercase text-[#647783] block tracking-wider mb-1.5">
+                              Bukti Foto ({insp.photos.length}):
+                            </span>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {insp.photos.map((p: any, pIdx: number) => (
+                                <button
+                                  key={pIdx}
+                                  type="button"
+                                  onClick={() => setPhotoPreviewModal(p.fileUrl)}
+                                  className="w-14 h-14 rounded-xl border border-[#cbd5e1] overflow-hidden hover:opacity-80 transition-opacity relative group bg-black/5"
+                                >
+                                  <img
+                                    src={p.fileUrl.startsWith("http") ? p.fileUrl : `/api/kebersihan/evidence?path=${encodeURIComponent(p.fileUrl)}`}
+                                    alt={p.fileName}
+                                    className="w-full h-full object-cover"
+                                    onError={(e: any) => {
+                                      e.target.style.display = 'none';
+                                    }}
+                                  />
+                                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-[9px] font-bold">
+                                    Lihat
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 px-6 border-t border-[#f1f5f9] bg-[#f8fafc] flex items-center justify-between gap-3">
+              <a
+                href={`/admin/export?roomId=${selectedDetailRoom.id}`}
+                className="px-4 py-2 bg-white border border-[#d8e3ea] hover:bg-[#f1f5f9] text-[#0076a8] rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                Ekspor Ceklis Excel Ruangan Ini
+              </a>
+
+              <button
+                type="button"
+                onClick={() => setSelectedDetailRoom(null)}
+                className="px-5 py-2 bg-[#072d3f] hover:bg-[#0076a8] text-white rounded-xl text-xs font-bold transition-all shadow-sm"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PHOTO PREVIEW MODAL */}
+      {photoPreviewModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => setPhotoPreviewModal(null)}
+        >
+          <div
+            className="relative max-w-3xl max-h-[85vh] bg-white rounded-2xl overflow-hidden shadow-2xl p-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setPhotoPreviewModal(null)}
+              className="absolute top-4 right-4 z-10 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <img
+              src={photoPreviewModal.startsWith("http") ? photoPreviewModal : `/api/kebersihan/evidence?path=${encodeURIComponent(photoPreviewModal)}`}
+              alt="Bukti Foto"
+              className="max-h-[80vh] w-auto object-contain rounded-xl"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -326,6 +326,85 @@ export default function ExportPage() {
                                 const siang = findSlotData("SIANG");
                                 const sore = findSlotData("SORE");
                                 const insp = findSlotData("INSP") || findSlotData("SUPERVISOR");
+
+                                const isSabunTisu = act.exportRow === 28 || act.exportRow === 29 || act.name.includes("SABUN") || act.name.includes("DRYER") || act.name.includes("TISU");
+                                const isPintuLampu = act.exportRow === 22 || act.exportRow === 23 || act.name === "PINTU" || act.name === "LAMPU";
+
+                                if (isSabunTisu) {
+                                  return (
+                                    <Fragment key={dIdx}>
+                                      {/* PAGI (Ada / Tidak) */}
+                                      <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black">{pagi ? (pagi.isNormal ? "v" : "") : ""}</td>
+                                      <td className="border border-[#94a3b8] p-0.5 bg-[#f8fafc]"></td>
+                                      <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black">{pagi ? (!pagi.isNormal ? "v" : "") : ""}</td>
+                                      <td className="border border-[#94a3b8] p-0.5 bg-[#f8fafc]"></td>
+
+                                      {/* INSP 1 (Ada / Tidak) */}
+                                      <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black">{insp ? (insp.isNormal ? "v" : "") : ""}</td>
+                                      <td className="border border-[#94a3b8] p-0.5 bg-[#f8fafc]"></td>
+                                      <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black">{insp ? (!insp.isNormal ? "v" : "") : ""}</td>
+                                      <td className="border border-[#94a3b8] p-0.5 bg-[#f8fafc]"></td>
+
+                                      {/* SIANG (N/A in template) */}
+                                      <td colSpan={4} className="border border-[#94a3b8] p-0.5 bg-[#f1f5f9] text-[#94a3b8] text-[9px]">-</td>
+
+                                      {/* INSP 2 */}
+                                      <td colSpan={4} className="border border-[#94a3b8] p-0.5 bg-[#f1f5f9] text-[#94a3b8] text-[9px]">-</td>
+
+                                      {/* SORE (Ada / Tidak) */}
+                                      <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black">{sore ? (sore.isNormal ? "v" : "") : ""}</td>
+                                      <td className="border border-[#94a3b8] p-0.5 bg-[#f8fafc]"></td>
+                                      <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black">{sore ? (!sore.isNormal ? "v" : "") : ""}</td>
+                                      <td className="border border-[#94a3b8] p-0.5 bg-[#f8fafc]"></td>
+
+                                      {/* INSP 3 */}
+                                      <td colSpan={4} className="border border-[#94a3b8] p-0.5 bg-[#f1f5f9] text-[#94a3b8] text-[9px]">-</td>
+                                    </Fragment>
+                                  );
+                                }
+
+                                if (isPintuLampu) {
+                                  return (
+                                    <Fragment key={dIdx}>
+                                      {/* PAGI */}
+                                      <td className="border border-[#94a3b8] p-0.5 text-[#94a3b8] font-bold">X</td>
+                                      <td className="border border-[#94a3b8] p-0.5 text-[#94a3b8] font-bold">X</td>
+                                      <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black">{pagi?.Y || ""}</td>
+                                      <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black">{pagi?.T || ""}</td>
+
+                                      {/* INSP 1 */}
+                                      <td className="border border-[#94a3b8] p-0.5 text-[#94a3b8] font-bold">X</td>
+                                      <td className="border border-[#94a3b8] p-0.5 text-[#94a3b8] font-bold">X</td>
+                                      <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black">{insp?.Y || ""}</td>
+                                      <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black">{insp?.T || ""}</td>
+
+                                      {/* SIANG */}
+                                      <td className="border border-[#94a3b8] p-0.5 text-[#94a3b8] font-bold">X</td>
+                                      <td className="border border-[#94a3b8] p-0.5 text-[#94a3b8] font-bold">X</td>
+                                      <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black">{siang?.Y || ""}</td>
+                                      <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black">{siang?.T || ""}</td>
+
+                                      {/* INSP 2 */}
+                                      <td className="border border-[#94a3b8] p-0.5 text-[#94a3b8] font-bold">X</td>
+                                      <td className="border border-[#94a3b8] p-0.5 text-[#94a3b8] font-bold">X</td>
+                                      <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black"></td>
+                                      <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black"></td>
+
+                                      {/* SORE */}
+                                      <td className="border border-[#94a3b8] p-0.5 text-[#94a3b8] font-bold">X</td>
+                                      <td className="border border-[#94a3b8] p-0.5 text-[#94a3b8] font-bold">X</td>
+                                      <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black">{sore?.Y || ""}</td>
+                                      <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black">{sore?.T || ""}</td>
+
+                                      {/* INSP 3 */}
+                                      <td className="border border-[#94a3b8] p-0.5 text-[#94a3b8] font-bold">X</td>
+                                      <td className="border border-[#94a3b8] p-0.5 text-[#94a3b8] font-bold">X</td>
+                                      <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black"></td>
+                                      <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black"></td>
+                                    </Fragment>
+                                  );
+                                }
+
                                 return (
                                   <Fragment key={dIdx}>
                                     {/* PAGI */}

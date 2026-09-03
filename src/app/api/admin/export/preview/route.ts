@@ -40,11 +40,14 @@ export async function GET(request: Request) {
       return NextResponse.json({ ok: false, message: "Ruangan tidak ditemukan." }, { status: 404 });
     }
 
-    // Generate 6 days from startDate
+    const isToilet = room.roomType?.id === "TOILET" || room.roomType?.templateSheet === "TOILET" || room.roomType?.name.toLowerCase().includes("toilet");
+    const numDays = room.roomType?.workDays || (isToilet ? 5 : 6);
+
+    // Generate days from startDate
     const days: { dayIndex: number; dateKey: string; dateFormatted: string }[] = [];
     const baseDate = new Date(startDate);
 
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < numDays; i++) {
       const d = new Date(baseDate);
       d.setDate(d.getDate() + i);
       const dateKey = d.toISOString().slice(0, 10);
@@ -99,8 +102,19 @@ export async function GET(request: Request) {
         (i.slot?.code || i.slotCode || "").toUpperCase().includes("SORE")
     );
 
-    const arifPagi = sulaimanPagi ? false : hasPagi;
-    const arifSore = sulaimanSore ? false : hasSore;
+    const arifPagi = inspections.some(
+      (i) =>
+        (i.user?.username === "arif" || i.user?.fullName?.toLowerCase().includes("arif")) &&
+        (i.slot?.code || i.slotCode || "").toUpperCase().includes("PAGI")
+    ) || (!sulaimanPagi && hasPagi);
+
+    const arifSore = inspections.some(
+      (i) =>
+        (i.user?.username === "arif" || i.user?.fullName?.toLowerCase().includes("arif")) &&
+        (i.slot?.code || i.slotCode || "").toUpperCase().includes("SORE")
+    ) || (!sulaimanSore && hasSore);
+
+    const spvUser = inspections.find((i) => i.user?.role === "SUPERVISOR")?.user;
 
     // Build matrix of results: [activityId][dateKey][slotCode] -> { S, B, Y, T, isClean, isNormal, note }
     const matrix: Record<string, Record<string, Record<string, any>>> = {};
@@ -145,7 +159,8 @@ export async function GET(request: Request) {
           name: room.name,
           code: room.code,
           typeName: room.roomType?.name,
-          isToilet: room.roomType?.id === "TOILET" || room.roomType?.templateSheet === "TOILET",
+          isToilet,
+          workDays: numDays,
         },
         startDate,
         endDate: days[days.length - 1].dateKey,
@@ -155,7 +170,7 @@ export async function GET(request: Request) {
         officersStatus: {
           arif: { pagi: arifPagi, sore: arifSore },
           sulaiman: { pagi: sulaimanPagi, sore: sulaimanSore },
-          supervisor: "Ipal Hapidz",
+          supervisor: spvUser?.fullName || "Ipal Hapidz",
         },
         matrix,
         totalInspections: inspections.length,
