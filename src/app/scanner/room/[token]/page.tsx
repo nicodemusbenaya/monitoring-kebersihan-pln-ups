@@ -249,6 +249,16 @@ async function compressImageFile(file: File, maxWidth = 1280, quality = 0.75): P
       }
     }
 
+    // Client-side validation: Photo is strictly mandatory for all submissions
+    if (!photos || photos.length === 0) {
+      setError("Foto bukti pemeriksaan wajib dilampirkan minimal 1 foto (baik kondisi bersih maupun ada temuan).");
+      const photoEl = document.getElementById("photo-evidence-section");
+      if (photoEl) {
+        photoEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      return;
+    }
+
     setSubmitting(true);
     setError("");
 
@@ -647,12 +657,62 @@ async function compressImageFile(file: File, maxWidth = 1280, quality = 0.75): P
           </div>
 
           {/* Photo Evidence Panel (GAS style) */}
-          <section className="panel" style={{ marginTop: "24px" }}>
+          {/* Photo Evidence Panel (GAS style) */}
+          <section
+            id="photo-evidence-section"
+            className="panel"
+            style={{
+              marginTop: "24px",
+              border: photos.length === 0 ? "2px solid #ef4444" : "1px solid var(--line)",
+              background: photos.length === 0 ? "#fffbfb" : undefined,
+              transition: "all 0.3s ease",
+            }}
+          >
             <div className="panel-head">
-              <h2>Foto bukti pemeriksaan</h2>
-              <span className="badge badge-neutral">{photos.length} Foto</span>
+              <div>
+                <h2>
+                  Foto bukti pemeriksaan <span style={{ color: "#dc2626" }}>*</span>
+                </h2>
+                <small
+                  style={{
+                    display: "block",
+                    color: photos.length === 0 ? "#dc2626" : "#16a34a",
+                    fontWeight: photos.length === 0 ? "bold" : "normal",
+                    fontSize: "11px",
+                    marginTop: "2px",
+                  }}
+                >
+                  {photos.length === 0
+                    ? "* Wajib melampirkan minimal 1 foto (kondisi bersih maupun ada temuan)"
+                    : "✓ Foto bukti pemeriksaan telah dilampirkan"}
+                </small>
+              </div>
+              <span className={`badge ${photos.length === 0 ? "badge-dirty" : "badge-clean"}`}>
+                {photos.length === 0 ? "Wajib Foto" : `${photos.length} Foto Siap`}
+              </span>
             </div>
             <div className="panel-body">
+              {photos.length === 0 && (
+                <div
+                  style={{
+                    padding: "12px 14px",
+                    marginBottom: "14px",
+                    borderRadius: "8px",
+                    background: "#fef2f2",
+                    border: "1px dashed #f87171",
+                    color: "#991b1b",
+                    fontSize: "12px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                >
+                  <span style={{ fontSize: "16px" }}>📷</span>
+                  <span>
+                    <strong>Belum ada foto.</strong> Silakan ambil atau unggah minimal 1 foto bukti kebersihan/kondisi ruangan untuk dapat menyimpan pemeriksaan.
+                  </span>
+                </div>
+              )}
               <div style={{ display: "flex", flexWrap: "wrap", gap: "12px", marginBottom: "16px" }}>
                 {photos.map((photo, i) => (
                   <div
@@ -696,10 +756,10 @@ async function compressImageFile(file: File, maxWidth = 1280, quality = 0.75): P
 
               <button
                 type="button"
-                className="btn btn-secondary btn-sm"
+                className={`btn ${photos.length === 0 ? "btn-primary" : "btn-secondary"} btn-sm`}
                 onClick={() => fileInputRef.current?.click()}
               >
-                📷 Tambah Foto Evidence
+                📷 {photos.length === 0 ? "Ambil / Unggah Foto Bukti (Wajib)" : "Tambah Foto Evidence Lainnya"}
               </button>
 
               <input
@@ -729,8 +789,18 @@ async function compressImageFile(file: File, maxWidth = 1280, quality = 0.75): P
                   "Semua bersih"
                 )}
               </p>
-              <small style={{ color: "var(--muted)", fontSize: "11px" }}>
-                {selectedSlot?.completed ? "Pilih slot lain yang masih tersedia untuk mengisi" : "Semua foto otomatis tersimpan aman di NAS PLN"}
+              <small
+                style={{
+                  color: photos.length === 0 ? "#dc2626" : "var(--muted)",
+                  fontSize: "11px",
+                  fontWeight: photos.length === 0 ? "bold" : "normal",
+                }}
+              >
+                {selectedSlot?.completed
+                  ? "Pilih slot lain yang masih tersedia untuk mengisi"
+                  : photos.length === 0
+                  ? "⚠️ Wajib lampirkan minimal 1 foto sebelum simpan"
+                  : "Semua foto otomatis tersimpan aman di NAS PLN"}
               </small>
             </div>
 

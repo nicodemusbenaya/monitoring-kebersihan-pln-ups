@@ -52,6 +52,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, message: "Data pemeriksaan / checklist tidak lengkap." }, { status: 400 });
     }
 
+    if (!rawPhotos || rawPhotos.length === 0) {
+      return NextResponse.json(
+        { ok: false, message: "Foto bukti pemeriksaan wajib dilampirkan minimal 1 foto (baik kondisi bersih maupun ada temuan)." },
+        { status: 400 }
+      );
+    }
+
     const slot = await prisma.slot.findUnique({
       where: { id: slotId },
       include: { roomType: true },
