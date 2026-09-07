@@ -409,6 +409,15 @@ export async function GET(request: Request) {
       const cellStyles: { colIndex: number; fill: string; fontColor: string; symbol: string }[] = [];
 
       let fullDaysCompleted = 0;
+      const workDays = room.roomType?.workDays || (room.roomType?.name?.toLowerCase().includes("toilet") ? 5 : 6);
+
+      // Count scheduled days in this month for this room
+      let scheduledDaysInMonth = 0;
+      for (let dayIdx = 1; dayIdx <= daysInMonth; dayIdx++) {
+        const dow = new Date(year, monthNum - 1, dayIdx).getDay();
+        const isNonSched = (workDays === 5 && (dow === 0 || dow === 6)) || (workDays === 6 && dow === 0);
+        if (!isNonSched) scheduledDaysInMonth++;
+      }
 
       for (let d = 1; d <= daysInMonth; d++) {
         const dateKey = `${year}-${String(monthNum).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
@@ -419,15 +428,26 @@ export async function GET(request: Request) {
         const totalFinished = dayInsps.length;
 
         const colIndex = 4 + d; // 1-indexed
+        const cellDate = new Date(year, monthNum - 1, d);
+        const dayOfWeek = cellDate.getDay(); // 0 = Minggu (Sunday), 6 = Sabtu (Saturday)
+        const isWeekendNonSchedule = (workDays === 5 && (dayOfWeek === 0 || dayOfWeek === 6)) || (workDays === 6 && dayOfWeek === 0);
 
-        // 4 COLOR RULES:
-        // 1. Merah: Tidak ada sesi yang disubmit
-        // 2. Kuning: Ada sesi disubmit tapi sesi petugas belum lengkap
-        // 3. Ungu: Sesi petugas sudah lengkap tapi belum ada/lengkap inspeksi SPV
-        // 4. Hijau: Sesi petugas lengkap DAN sesi SPV lengkap (semuanya lengkap)
+        // STATUS RULES:
+        // 1. Jika 0 sesi disubmit:
+        //    - Hari Non-Jadwal / Weekend: Silang Abu-abu (FFF1F5F9, FF94A3B8)
+        //    - Hari Jadwal Kerja: Silang Merah (FFFEE2E2, FFDC2626)
+        // 2. Walaupun hari non-jadwal, jika diisi data tetap diproses normal:
+        //    - Kuning: Ada sesi disubmit tapi sesi petugas belum lengkap
+        //    - Ungu: Sesi petugas sudah lengkap tapi belum ada/lengkap inspeksi SPV
+        //    - Hijau: Sesi petugas lengkap DAN sesi SPV lengkap (semuanya lengkap)
         if (totalFinished === 0) {
-          rowValues.push("✕");
-          cellStyles.push({ colIndex, fill: "FFFEE2E2", fontColor: "FFDC2626", symbol: "✕" }); // Merah
+          if (isWeekendNonSchedule) {
+            rowValues.push("✕");
+            cellStyles.push({ colIndex, fill: "FFF1F5F9", fontColor: "FF94A3B8", symbol: "✕" }); // Silang Abu-abu (Non-Jadwal)
+          } else {
+            rowValues.push("✕");
+            cellStyles.push({ colIndex, fill: "FFFEE2E2", fontColor: "FFDC2626", symbol: "✕" }); // Merah (Jadwal tidak terisi)
+          }
         } else if (petugasFinished < petugasSlots.length) {
           rowValues.push("◐");
           cellStyles.push({ colIndex, fill: "FFFEF3C7", fontColor: "FFD97706", symbol: "◐" }); // Kuning
@@ -441,8 +461,9 @@ export async function GET(request: Request) {
         }
       }
 
-      const percentage = daysInMonth > 0 ? Math.round((fullDaysCompleted / daysInMonth) * 100) : 0;
-      rowValues.push(`${fullDaysCompleted} / ${daysInMonth}`);
+      const baseDenominator = scheduledDaysInMonth > 0 ? scheduledDaysInMonth : daysInMonth;
+      const percentage = Math.min(100, Math.round((fullDaysCompleted / baseDenominator) * 100));
+      rowValues.push(`${fullDaysCompleted} / ${baseDenominator}`);
       rowValues.push(`${percentage}%`);
 
       const addedRow = sheet.addRow(rowValues);
@@ -465,12 +486,44 @@ export async function GET(request: Request) {
         }
       });
 
-      // Apply specific cell fills based on 4-color status rules
+      // Apply specific cell fills based on status rules
       cellStyles.forEach(({ colIndex, fill, fontColor }) => {
         const targetCell = addedRow.getCell(colIndex);
         targetCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: fill } };
         targetCell.font = { name: "Arial", size: 10, bold: true, color: { argb: fontColor } };
       });
+    });
+
+    // ── Append Legend / Keterangan di Bawah Tabel ──
+    sheet.addRow([]);
+    const legendHeader = sheet.addRow(["", "KETERANGAN STATUS MONITORING:"]);
+    legendHeader.font = { name: "Arial", size: 10, bold: true, color: { argb: "FF17313D" } };
+
+    const legendItems = [
+      { sym: "●", text: "Hijau: Seluruh sesi pemeriksaan (Petugas & SPV) telah selesai lengkap", fill: "FFDCFCE7", font: "FF15803D" },
+      { sym: "◈", text: "Ungu: Sesi petugas sudah lengkap, tetapi belum diinspeksi SPV", fill: "FFF3E8FF", font: "FF7E22CE" },
+      { sym: "◐", text: "Kuning: Ada sesi disubmit tapi sesi petugas belum lengkap", fill: "FFFEF3C7", font: "FFD97706" },
+      { sym: "✕", text: "Merah: Hari jadwal operasional aktif tetapi belum ada pemeriksaan", fill: "FFFEE2E2", font: "FFDC2626" },
+      { sym: "✕", text: "Abu-abu: Hari non-jadwal / libur weekend (tetap dapat diisi data jika ada piket/kegiatan)", fill: "FFF1F5F9", font: "FF94A3B8" },
+    ];
+
+    legendItems.forEach((item) => {
+      const legRow = sheet.addRow(["", item.sym, item.text]);
+      legRow.height = 18;
+      const symCell = legRow.getCell(2);
+      symCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: item.fill } };
+      symCell.font = { name: "Arial", size: 10, bold: true, color: { argb: item.font } };
+      symCell.alignment = { horizontal: "center", vertical: "middle" };
+      symCell.border = {
+        top: { style: "thin", color: { argb: "FFE2E8F0" } },
+        left: { style: "thin", color: { argb: "FFE2E8F0" } },
+        bottom: { style: "thin", color: { argb: "FFE2E8F0" } },
+        right: { style: "thin", color: { argb: "FFE2E8F0" } },
+      };
+
+      const textCell = legRow.getCell(3);
+      textCell.font = { name: "Arial", size: 9, color: { argb: "FF475569" } };
+      textCell.alignment = { vertical: "middle" };
     });
 
     // Auto-fit column widths

@@ -505,22 +505,26 @@ export default function ExportPage() {
             <MonthDropdown label="Pilih Periode Bulan" value={exportMonth} onChange={setExportMonth} />
 
             <div className="p-4 bg-[#f8fafc] border-l-4 border-[#0076a8] rounded-r-xl text-xs text-[#475569] space-y-1.5">
-              <strong className="text-[#0076a8] block mb-1">Standar Rekapitulasi 4 Warna:</strong>
+              <strong className="text-[#0076a8] block mb-1">Standar Rekapitulasi Status Monitoring:</strong>
               <p className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#dc2626]"></span>
-                <span>🔴 <strong>Merah (✕)</strong>: Tidak ada sesi yang disubmit pada tanggal tersebut</span>
-              </p>
-              <p className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#d97706]"></span>
-                <span>🟡 <strong>Kuning (◐)</strong>: Ada sesi disubmit tapi sesi petugas belum lengkap</span>
+                <span className="w-2.5 h-2.5 rounded-full bg-[#15803d]"></span>
+                <span>🟢 <strong>Hijau (●)</strong>: Seluruh sesi (petugas & SPV) telah selesai lengkap</span>
               </p>
               <p className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-[#7e22ce]"></span>
                 <span>🟣 <strong>Ungu (◈)</strong>: Sesi petugas sudah lengkap, tetapi belum diinspeksi SPV</span>
               </p>
               <p className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#15803d]"></span>
-                <span>🟢 <strong>Hijau (●)</strong>: Seluruh sesi (petugas & SPV) telah selesai lengkap</span>
+                <span className="w-2.5 h-2.5 rounded-full bg-[#d97706]"></span>
+                <span>🟡 <strong>Kuning (◐)</strong>: Ada sesi disubmit tapi sesi petugas belum lengkap</span>
+              </p>
+              <p className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#dc2626]"></span>
+                <span>🔴 <strong>Merah (✕)</strong>: Hari kerja aktif tetapi belum ada pemeriksaan</span>
+              </p>
+              <p className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#94a3b8]"></span>
+                <span>⚪ <strong>Abu-abu (✕)</strong>: Hari non-jadwal / weekend (tetap dapat diisi data jika ada kegiatan)</span>
               </p>
             </div>
 

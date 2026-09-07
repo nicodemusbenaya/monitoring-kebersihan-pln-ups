@@ -138,6 +138,8 @@ export async function GET(request: Request) {
       .map((i) => ({
         id: i.id,
         inspectionId: i.id,
+        roomId: i.roomId,
+        roomCode: i.room.code,
         roomName: i.room.name,
         slotName: i.slot.name,
         officerName: i.user.fullName,
@@ -147,6 +149,14 @@ export async function GET(request: Request) {
         time: new Date(i.submittedAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }),
         submittedAt: i.submittedAt,
         photos: i.photos.map((p) => p.fileUrl),
+        findingDetails: (i.details || [])
+          .filter((d) => d.qualityResult === "NEGATIVE" || d.functionResult === "NEGATIVE")
+          .map((d) => ({
+            activityName: d.activity?.name || "Pemeriksaan",
+            qualityLabel: d.qualityLabel,
+            functionLabel: d.functionLabel,
+            note: d.note,
+          })),
       }));
 
     // 6. Recent Activity Feed (Latest 20 inspections in system, exclude hidden)

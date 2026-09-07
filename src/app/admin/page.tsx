@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import {
   Search,
   Clock,
@@ -13,6 +14,7 @@ import {
   ChevronRight,
   Sparkles,
   RotateCcw,
+  Camera,
 } from "lucide-react";
 import { AppDropdown, MonthDropdown } from "@/components/AppDropdown";
 
@@ -103,9 +105,11 @@ function getQuickRangeDates(key: QuickRangeKey) {
 }
 
 export default function DashboardSummaryPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [roomsData, setRoomsData] = useState<any[]>([]);
+  const [showFindingsModal, setShowFindingsModal] = useState(false);
 
   // Quick range state (Hari ini, Kemarin, 1 minggu, 1 bulan, Semester)
   const [activeQuickRange, setActiveQuickRange] = useState<QuickRangeKey>("HARI_INI");
@@ -261,9 +265,14 @@ export default function DashboardSummaryPage() {
     });
   }, [dashboardData, roomSearchQuery, statusRoomFilter]);
 
-  // Action items
-  const actionItems = useMemo(() => {
-    if (!dashboardData?.roomSummaries) return [];
+  // Action items (unfiltered list, counts, and active filtered list)
+  const { actionCounts, filteredActionItems } = useMemo(() => {
+    if (!dashboardData?.roomSummaries) {
+      return {
+        actionCounts: { all: 0, findings: 0, pending: 0 },
+        filteredActionItems: [],
+      };
+    }
     const list: any[] = [];
 
     dashboardData.roomSummaries.forEach((r: any) => {
@@ -304,9 +313,18 @@ export default function DashboardSummaryPage() {
       });
     }
 
-    if (actionItemFilter === "FINDINGS") return list.filter((i) => i.type === "FINDINGS");
-    if (actionItemFilter === "PENDING") return list.filter((i) => i.type === "PENDING");
-    return list;
+    const all = list.length;
+    const findings = list.filter((i) => i.type === "FINDINGS").length;
+    const pending = list.filter((i) => i.type === "PENDING").length;
+
+    let filtered = list;
+    if (actionItemFilter === "FINDINGS") filtered = list.filter((i) => i.type === "FINDINGS");
+    else if (actionItemFilter === "PENDING") filtered = list.filter((i) => i.type === "PENDING");
+
+    return {
+      actionCounts: { all, findings, pending },
+      filteredActionItems: filtered,
+    };
   }, [dashboardData, actionItemFilter]);
 
   // Max daily trend value for chart scaling
@@ -440,17 +458,30 @@ export default function DashboardSummaryPage() {
         </div>
       </section>
 
-      {/* 3. Four Metric KPI Cards - skeletal when loading, first card label reacts to filter */}
+      {/* 3. Four Metric KPI Cards - interactive with hover feedback & quick actions */}
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className={`relative overflow-hidden bg-white border rounded-2xl p-5 shadow-sm flex flex-col justify-between min-h-[140px] transition-all ${loading ? "border-[#ffd100]/50" : "border-[#d8e3ea]"} ${hasFilterActive || activeQuickRange !== "HARI_INI" ? "ring-1 ring-[#ffd100]/20" : ""}`}>
-          <span className="text-xs font-bold text-[#647783] flex items-center gap-1.5">
-            {`Penyelesaian jadwal • ${currentQuickInfo.label}`}
-            {(activeQuickRange !== "HARI_INI" || hasFilterActive) && (
-              <span className="px-1.5 py-0.5 bg-[#fff6a1] border border-[#ffd100] rounded-md text-[9px] font-black tracking-wide text-[#92400e]">
-                {currentQuickInfo.badgeText}
-              </span>
-            )}
-          </span>
+        {/* KPI 1: Penyelesaian Jadwal */}
+        <div
+          onClick={() => {
+            setStatusRoomFilter("PARTIAL");
+            document.getElementById("rooms-matrix-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }}
+          className={`relative overflow-hidden bg-white border rounded-2xl p-5 shadow-sm flex flex-col justify-between min-h-[140px] transition-all cursor-pointer hover:shadow-md hover:border-[#ffd100] group ${loading ? "border-[#ffd100]/50" : "border-[#d8e3ea]"} ${hasFilterActive || activeQuickRange !== "HARI_INI" ? "ring-1 ring-[#ffd100]/20" : ""}`}
+          title="Klik untuk filter ruangan yang jadwalnya belum lengkap"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-[#647783] flex items-center gap-1.5">
+              {`Penyelesaian jadwal • ${currentQuickInfo.label}`}
+              {(activeQuickRange !== "HARI_INI" || hasFilterActive) && (
+                <span className="px-1.5 py-0.5 bg-[#fff6a1] border border-[#ffd100] rounded-md text-[9px] font-black tracking-wide text-[#92400e]">
+                  {currentQuickInfo.badgeText}
+                </span>
+              )}
+            </span>
+            <span className="text-[10px] font-bold text-[#0076a8] opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
+              Filter <ChevronRight className="w-3 h-3" />
+            </span>
+          </div>
           <div className="my-2">
             {loading ? (
               <div className="h-9 w-24 bg-gradient-to-r from-[#f1f5f9] via-[#e2e8f0] to-[#f1f5f9] animate-pulse rounded-xl"></div>
@@ -474,8 +505,21 @@ export default function DashboardSummaryPage() {
           {loading && <div className="absolute inset-0 bg-white/40 backdrop-blur-[1px] rounded-2xl pointer-events-none" />}
         </div>
 
-        <div className={`relative overflow-hidden bg-white border border-[#d8e3ea] rounded-2xl p-5 shadow-sm flex flex-col justify-between min-h-[140px] ${loading ? "opacity-70" : ""}`}>
-          <span className="text-xs font-bold text-[#647783]">Ruangan lengkap</span>
+        {/* KPI 2: Ruangan Lengkap */}
+        <div
+          onClick={() => {
+            setStatusRoomFilter("COMPLETE");
+            document.getElementById("rooms-matrix-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }}
+          className={`relative overflow-hidden bg-white border border-[#d8e3ea] rounded-2xl p-5 shadow-sm flex flex-col justify-between min-h-[140px] transition-all cursor-pointer hover:shadow-md hover:border-[#0076a8] group ${loading ? "opacity-70" : ""}`}
+          title="Klik untuk filter ruangan yang sudah lengkap semua sesi"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-[#647783]">Ruangan lengkap</span>
+            <span className="text-[10px] font-bold text-[#0076a8] opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
+              Lihat <ChevronRight className="w-3 h-3" />
+            </span>
+          </div>
           <div className="my-2">
             {loading ? (
               <div className="h-9 w-24 bg-gradient-to-r from-[#f1f5f9] via-[#e2e8f0] to-[#f1f5f9] animate-pulse rounded-xl"></div>
@@ -497,8 +541,18 @@ export default function DashboardSummaryPage() {
           <div className="absolute -bottom-6 -right-6 w-20 h-20 rounded-full bg-[#0076a8]/15 pointer-events-none"></div>
         </div>
 
-        <div className={`relative overflow-hidden bg-white border border-[#d8e3ea] rounded-2xl p-5 shadow-sm flex flex-col justify-between min-h-[140px] ${loading ? "opacity-70" : ""}`}>
-          <span className="text-xs font-bold text-[#647783]">Pemeriksaan dengan temuan</span>
+        {/* KPI 3: Pemeriksaan dengan Temuan */}
+        <div
+          onClick={() => setShowFindingsModal(true)}
+          className={`relative overflow-hidden bg-white border border-[#d8e3ea] rounded-2xl p-5 shadow-sm flex flex-col justify-between min-h-[140px] transition-all cursor-pointer hover:shadow-md hover:border-[#bd2d22] group ${loading ? "opacity-70" : ""}`}
+          title="Klik untuk membuka modal daftar rincian temuan & foto bukti hari ini"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-[#647783]">Pemeriksaan dengan temuan</span>
+            <span className="text-[10px] font-bold text-[#bd2d22] opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
+              Rincian foto <ChevronRight className="w-3 h-3" />
+            </span>
+          </div>
           <div className="my-2">
             {loading ? (
               <div className="h-9 w-24 bg-gradient-to-r from-[#f1f5f9] via-[#e2e8f0] to-[#f1f5f9] animate-pulse rounded-xl"></div>
@@ -512,15 +566,25 @@ export default function DashboardSummaryPage() {
             <div className="h-3.5 w-36 bg-[#f1f5f9] animate-pulse rounded-md"></div>
           ) : (
             <div className="flex items-center gap-1.5 text-[11px] text-[#647783]">
-              <span className="w-2 h-2 rounded-full bg-[#10b981]"></span>
+              <span className="w-2 h-2 rounded-full bg-[#bd2d22]"></span>
               <span>{dashboardData?.summary?.findingCount ?? 0} indikator perlu ditinjau</span>
             </div>
           )}
           <div className="absolute -bottom-6 -right-6 w-20 h-20 rounded-full bg-[#bd2d22]/15 pointer-events-none"></div>
         </div>
 
-        <div className={`relative overflow-hidden bg-white border border-[#d8e3ea] rounded-2xl p-5 shadow-sm flex flex-col justify-between min-h-[140px] ${loading ? "opacity-70" : ""}`}>
-          <span className="text-xs font-bold text-[#647783]">Kepuasan pengguna</span>
+        {/* KPI 4: Kepuasan Pengguna */}
+        <div
+          onClick={() => router.push("/admin/evaluations")}
+          className={`relative overflow-hidden bg-white border border-[#d8e3ea] rounded-2xl p-5 shadow-sm flex flex-col justify-between min-h-[140px] transition-all cursor-pointer hover:shadow-md hover:border-[#157a55] group ${loading ? "opacity-70" : ""}`}
+          title="Klik untuk melihat detail evaluasi kepuasan pengunjung"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-[#647783]">Kepuasan pengguna</span>
+            <span className="text-[10px] font-bold text-[#157a55] opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
+              Buka ulasan <ChevronRight className="w-3 h-3" />
+            </span>
+          </div>
           <div className="my-2">
             {loading ? (
               <div className="h-9 w-24 bg-gradient-to-r from-[#f1f5f9] via-[#e2e8f0] to-[#f1f5f9] animate-pulse rounded-xl"></div>
@@ -543,7 +607,7 @@ export default function DashboardSummaryPage() {
       </section>
 
       {/* 4. Ruangan Hari Ini & Item Perhatian Grid */}
-      <section className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <section id="rooms-matrix-section" className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left: Matriks Ruangan */}
         <div className="lg:col-span-8 bg-white border border-[#d8e3ea] rounded-2xl p-6 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#f1f5f9]">
@@ -674,7 +738,7 @@ export default function DashboardSummaryPage() {
         </div>
 
         {/* Right: Item Perhatian */}
-        <div className="lg:col-span-4 bg-white border border-[#d8e3ea] rounded-2xl p-6 shadow-sm flex flex-col justify-between space-y-4">
+        <div className="lg:col-span-4 bg-white border border-[#d8e3ea] rounded-2xl p-6 shadow-sm flex flex-col space-y-4">
           <div>
             <span className="text-[10px] font-black uppercase tracking-widest text-[#718c99] block">
               TINDAK LANJUT
@@ -689,33 +753,33 @@ export default function DashboardSummaryPage() {
             <button
               type="button"
               onClick={() => setActionItemFilter("ALL")}
-              className={`px-3 py-1 rounded-lg text-xs font-bold ${
-                actionItemFilter === "ALL" ? "bg-[#072d3f] text-white" : "bg-[#f1f5f9] text-[#647783]"
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${
+                actionItemFilter === "ALL" ? "bg-[#072d3f] text-white shadow-sm" : "bg-[#f1f5f9] text-[#647783] hover:bg-[#e2e8f0]"
               }`}
             >
-              Semua {actionItems.length}
+              Semua {actionCounts.all}
             </button>
             <button
               type="button"
               onClick={() => setActionItemFilter("FINDINGS")}
-              className={`px-3 py-1 rounded-lg text-xs font-bold ${
-                actionItemFilter === "FINDINGS" ? "bg-[#072d3f] text-white" : "bg-[#f1f5f9] text-[#647783]"
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${
+                actionItemFilter === "FINDINGS" ? "bg-[#072d3f] text-white shadow-sm" : "bg-[#f1f5f9] text-[#647783] hover:bg-[#e2e8f0]"
               }`}
             >
-              Temuan {dashboardData?.summary?.findingCount ?? 0}
+              Temuan {actionCounts.findings}
             </button>
             <button
               type="button"
               onClick={() => setActionItemFilter("PENDING")}
-              className={`px-3 py-1 rounded-lg text-xs font-bold ${
-                actionItemFilter === "PENDING" ? "bg-[#072d3f] text-white" : "bg-[#f1f5f9] text-[#647783]"
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${
+                actionItemFilter === "PENDING" ? "bg-[#072d3f] text-white shadow-sm" : "bg-[#f1f5f9] text-[#647783] hover:bg-[#e2e8f0]"
               }`}
             >
-              Belum selesai {actionItems.length - (dashboardData?.summary?.findingCount ?? 0)}
+              Belum selesai {actionCounts.pending}
             </button>
           </div>
 
-          <div className={`space-y-3 max-h-[440px] overflow-y-auto pr-1 ${loading ? "opacity-60" : ""}`}>
+          <div className={`flex-1 space-y-3 max-h-[440px] overflow-y-auto pr-1 ${loading ? "opacity-60" : ""}`}>
             {loading ? (
               Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="p-3.5 rounded-xl border border-gray-100 bg-gray-50 flex items-start gap-3 animate-pulse">
@@ -726,8 +790,26 @@ export default function DashboardSummaryPage() {
                   </div>
                 </div>
               ))
+            ) : filteredActionItems.length === 0 ? (
+              <div className="h-full min-h-[220px] flex flex-col items-center justify-center text-center p-6 bg-[#f8fafc] border border-dashed border-[#cbd5e1] rounded-2xl">
+                <div className="w-10 h-10 rounded-xl bg-[#dcfce7] text-[#15803d] flex items-center justify-center mb-2.5">
+                  <CheckCircle2 className="w-5 h-5" />
+                </div>
+                <h6 className="text-xs font-black text-[#17313d]">
+                  {actionItemFilter === "FINDINGS"
+                    ? "Tidak Ada Temuan Rusak/Kotor"
+                    : actionItemFilter === "PENDING"
+                    ? "Semua Jadwal Selesai"
+                    : "Tidak Ada Item Perhatian"}
+                </h6>
+                <p className="text-[11px] text-[#647783] mt-1 max-w-[220px]">
+                  {actionItemFilter === "FINDINGS"
+                    ? "Seluruh ruangan yang telah diinspeksi hari ini dalam kondisi bersih & berfungsi normal."
+                    : "Semua ruangan sudah selesai diperiksa oleh petugas & pengawas."}
+                </p>
+              </div>
             ) : (
-              actionItems.slice(0, 10).map((item, idx) => (
+              filteredActionItems.slice(0, 10).map((item, idx) => (
                 <div
                   key={item.id || idx}
                   className="p-3.5 rounded-xl border border-[#ffd100]/60 bg-[#fffdf5] flex items-start gap-3"
@@ -1228,6 +1310,185 @@ export default function DashboardSummaryPage() {
               <button
                 type="button"
                 onClick={() => setSelectedDetailRoom(null)}
+                className="px-5 py-2 bg-[#072d3f] hover:bg-[#0076a8] text-white rounded-xl text-xs font-bold transition-all shadow-sm"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Findings Detail Modal */}
+      {showFindingsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white border border-[#d8e3ea] rounded-3xl w-full max-w-2xl max-h-[85vh] shadow-2xl flex flex-col overflow-hidden animate-scaleUp">
+            {/* Modal Header */}
+            <div className="p-6 border-b border-[#f1f5f9] flex items-center justify-between gap-4 bg-gradient-to-r from-[#fff5f5] via-white to-white">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-[#fee2e2] text-[#dc2626] flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-black text-[#17313d]">
+                      Daftar Temuan Rusak & Kotor Hari Ini
+                    </h3>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-[#fee2e2] text-[#dc2626]">
+                      {dashboardData?.findings?.length || 0} Temuan
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#647783] mt-0.5">
+                    Pemeriksaan yang memiliki indikator catatan kotor atau rusak untuk segera ditindaklanjuti.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowFindingsModal(false)}
+                className="w-9 h-9 rounded-2xl bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[#647783] hover:text-[#17313d] flex items-center justify-center transition-all shrink-0"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto space-y-4">
+              {!dashboardData?.findings || dashboardData.findings.length === 0 ? (
+                <div className="py-12 flex flex-col items-center justify-center text-center bg-[#f0fdf4] border border-dashed border-[#86efac] rounded-2xl p-6">
+                  <div className="w-12 h-12 rounded-2xl bg-[#dcfce7] text-[#15803d] flex items-center justify-center mb-3 shadow-sm">
+                    <CheckCircle2 className="w-6 h-6" />
+                  </div>
+                  <h4 className="text-sm font-black text-[#17313d]">Semua Fasilitas Terpantau Bersih</h4>
+                  <p className="text-xs text-[#647783] mt-1 max-w-sm">
+                    Tidak ada catatan temuan kotor atau rusak pada seluruh pemeriksaan yang telah disubmit hari ini.
+                  </p>
+                </div>
+              ) : (
+                dashboardData.findings.map((finding: any, idx: number) => {
+                  return (
+                    <div
+                      key={finding.id || idx}
+                      className="p-5 rounded-2xl border border-[#fca5a5]/60 bg-[#fffdfd] space-y-3.5 shadow-sm hover:shadow-md transition-shadow"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-black/5">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-sm font-black text-[#17313d]">
+                              {finding.roomName}
+                            </h4>
+                            <span className="px-2 py-0.5 rounded text-[10px] font-extrabold uppercase bg-[#fef2f2] text-[#dc2626] border border-[#fecaca]">
+                              Sesi {finding.slotName}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-[#647783] flex items-center gap-2 mt-1">
+                            <span>Petugas: <strong className="text-[#17313d]">{finding.officerName || "Petugas"}</strong></span>
+                            <span>•</span>
+                            <span>Pukul {finding.time || "-"} WIB</span>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowFindingsModal(false);
+                            const room = roomsData.find((r) => r.id === finding.roomId || r.name === finding.roomName);
+                            if (room) setSelectedDetailRoom(room);
+                          }}
+                          className="px-3 py-1.5 bg-white hover:bg-[#f1f5f9] text-[#0076a8] border border-[#cbd5e1] rounded-xl text-xs font-bold transition-all flex items-center gap-1 shrink-0 self-start sm:self-auto shadow-sm"
+                        >
+                          Lihat Ruangan <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      {/* Finding details breakdown */}
+                      <div className="space-y-2">
+                        {finding.findingDetails && finding.findingDetails.length > 0 ? (
+                          finding.findingDetails.map((det: any, dIdx: number) => (
+                            <div
+                              key={dIdx}
+                              className="p-3 bg-white rounded-xl border border-[#fee2e2] flex flex-col gap-1 text-xs"
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="font-extrabold text-[#17313d]">{det.activityName}</span>
+                                <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-[#fee2e2] text-[#b91c1c]">
+                                  {det.qualityLabel || det.functionLabel || "Kotor/Rusak"}
+                                </span>
+                              </div>
+                              {det.note && (
+                                <p className="text-[11px] text-[#475569] bg-[#fff5f5] p-2 rounded-lg border border-[#fecaca]/50 mt-1">
+                                  <strong>Catatan Temuan:</strong> {det.note}
+                                </p>
+                              )}
+                            </div>
+                          ))
+                        ) : (
+                          <div className="p-3 bg-white rounded-xl border border-[#fee2e2] text-xs text-[#475569]">
+                            {finding.note || "Terdapat temuan kotor/rusak pada pemeriksaan ini."}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Photo evidence gallery */}
+                      <div>
+                        <span className="text-[10px] font-extrabold uppercase text-[#718c99] tracking-wider block mb-2">
+                          Foto Bukti Pemeriksaan:
+                        </span>
+                        {finding.photos && finding.photos.length > 0 ? (
+                          <div className="flex flex-wrap gap-2.5">
+                            {finding.photos.map((photoUrl: string, pIdx: number) => (
+                              <a
+                                key={pIdx}
+                                href={photoUrl.startsWith("http") ? photoUrl : `/api/kebersihan/evidence?path=${encodeURIComponent(photoUrl)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="group/photo relative w-20 h-20 rounded-xl overflow-hidden border border-[#d8e3ea] bg-[#f1f5f9] hover:border-[#0076a8] hover:shadow-md transition-all block"
+                                title="Klik untuk membuka foto ukuran penuh"
+                              >
+                                <img
+                                  src={photoUrl.startsWith("http") ? photoUrl : `/api/kebersihan/evidence?path=${encodeURIComponent(photoUrl)}`}
+                                  alt={`Evidence ${pIdx + 1}`}
+                                  className="w-full h-full object-cover group-hover/photo:scale-105 transition-transform"
+                                  onError={(e) => {
+                                    (e.target as HTMLElement).style.display = "none";
+                                  }}
+                                />
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/photo:opacity-100 transition-opacity flex items-center justify-center text-white text-[10px] font-bold">
+                                  Lihat ↗
+                                </div>
+                              </a>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-[#94a3b8] italic">
+                            Tidak ada foto evidence yang dilampirkan pada sesi ini.
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 px-6 border-t border-[#f1f5f9] bg-[#f8fafc] flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowFindingsModal(false);
+                  setActionItemFilter("FINDINGS");
+                  document.getElementById("rooms-matrix-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+                className="px-4 py-2 bg-white border border-[#d8e3ea] hover:bg-[#f1f5f9] text-[#0076a8] rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
+              >
+                Tampilkan di Filter Item Perhatian →
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowFindingsModal(false)}
                 className="px-5 py-2 bg-[#072d3f] hover:bg-[#0076a8] text-white rounded-xl text-xs font-bold transition-all shadow-sm"
               >
                 Tutup
