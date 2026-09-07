@@ -152,6 +152,9 @@ export default function ExportPage() {
               <span className="flex items-center gap-1 text-[#157a55]">
                 <Check className="w-3.5 h-3.5" /> Foto pada sheet EVIDENCE
               </span>
+              <span className="flex items-center gap-1.5 text-[#647783] bg-white px-2.5 py-1 rounded-lg border border-[#cbd5e1]">
+                <span className="text-[#94a3b8] font-black text-xs">✕</span> Weekend / Non-Jadwal otomatis bertanda silang abu-abu
+              </span>
             </div>
 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
@@ -238,16 +241,24 @@ export default function ExportPage() {
                         <th rowSpan={4} className="border border-[#94a3b8] p-2 text-left w-64">
                           BAGIAN YANG DIPERIKSA
                         </th>
-                        {(exportPreviewData?.days || []).map((day: any) => (
-                          <th
-                            key={day.dayIndex}
-                            colSpan={isToilet ? 24 : 12}
-                            className="border border-[#94a3b8] p-1.5 bg-[#f1f5f9]"
-                          >
-                            <strong className="block text-[#17313d]">Hari ke {day.dayIndex}</strong>
-                            <span className="text-[9px] text-[#647783] font-normal">{day.dateFormatted}</span>
-                          </th>
-                        ))}
+                        {(exportPreviewData?.days || []).map((day: any) => {
+                          const isWeekend = day.isWeekend ?? (new Date(day.dateKey).getDay() === 0 || new Date(day.dateKey).getDay() === 6);
+                          return (
+                            <th
+                              key={day.dayIndex}
+                              colSpan={isToilet ? 24 : 12}
+                              className={`border border-[#94a3b8] p-1.5 ${isWeekend ? "bg-[#f1f5f9]" : "bg-[#f8fafc]"}`}
+                            >
+                              <strong className="block text-[#17313d]">
+                                Hari ke {day.dayIndex} {day.dayName ? `(${day.dayName})` : ""}
+                              </strong>
+                              <span className="text-[9px] text-[#647783] font-normal">
+                                {day.dateFormatted}
+                                {isWeekend && <span className="ml-1 text-[#0076a8] font-black">[Non-Jadwal]</span>}
+                              </span>
+                            </th>
+                          );
+                        })}
                       </tr>
 
                       {/* Row 2: Shift Headers */}
@@ -311,6 +322,7 @@ export default function ExportPage() {
                             </td>
                             {(exportPreviewData?.days || []).map((day: any, dIdx: number) => {
                               const dayMatrix = actMatrix[day.dateKey] || {};
+                              const isWeekend = day.isWeekend ?? (new Date(day.dateKey).getDay() === 0 || new Date(day.dateKey).getDay() === 6);
 
                               const findSlotData = (query: string) => {
                                 for (const k of Object.keys(dayMatrix)) {
@@ -334,16 +346,16 @@ export default function ExportPage() {
                                   return (
                                     <Fragment key={dIdx}>
                                       {/* PAGI (Ada / Tidak) */}
-                                      <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black">{pagi ? (pagi.isNormal ? "v" : "") : ""}</td>
-                                      <td className="border border-[#94a3b8] p-0.5 bg-[#f8fafc]"></td>
-                                      <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black">{pagi ? (!pagi.isNormal ? "v" : "") : ""}</td>
-                                      <td className="border border-[#94a3b8] p-0.5 bg-[#f8fafc]"></td>
+                                      <td className={`border border-[#94a3b8] p-0.5 ${!pagi && isWeekend ? "bg-[#f1f5f9] text-[#94a3b8] font-bold" : "text-[#157a55] font-black"}`}>{pagi ? (pagi.isNormal ? "v" : "") : (isWeekend ? "✕" : "")}</td>
+                                      <td className={`border border-[#94a3b8] p-0.5 ${!pagi && isWeekend ? "bg-[#f1f5f9] text-[#94a3b8] font-bold" : "bg-[#f8fafc]"}`}>{!pagi && isWeekend ? "✕" : ""}</td>
+                                      <td className={`border border-[#94a3b8] p-0.5 ${!pagi && isWeekend ? "bg-[#f1f5f9] text-[#94a3b8] font-bold" : "text-[#b91c1c] font-black"}`}>{pagi ? (!pagi.isNormal ? "v" : "") : (isWeekend ? "✕" : "")}</td>
+                                      <td className={`border border-[#94a3b8] p-0.5 ${!pagi && isWeekend ? "bg-[#f1f5f9] text-[#94a3b8] font-bold" : "bg-[#f8fafc]"}`}>{!pagi && isWeekend ? "✕" : ""}</td>
 
                                       {/* INSP 1 (Ada / Tidak) */}
-                                      <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black">{insp ? (insp.isNormal ? "v" : "") : ""}</td>
-                                      <td className="border border-[#94a3b8] p-0.5 bg-[#f8fafc]"></td>
-                                      <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black">{insp ? (!insp.isNormal ? "v" : "") : ""}</td>
-                                      <td className="border border-[#94a3b8] p-0.5 bg-[#f8fafc]"></td>
+                                      <td className={`border border-[#94a3b8] p-0.5 ${!insp && isWeekend ? "bg-[#f1f5f9] text-[#94a3b8] font-bold" : "text-[#157a55] font-black"}`}>{insp ? (insp.isNormal ? "v" : "") : (isWeekend ? "✕" : "")}</td>
+                                      <td className={`border border-[#94a3b8] p-0.5 ${!insp && isWeekend ? "bg-[#f1f5f9] text-[#94a3b8] font-bold" : "bg-[#f8fafc]"}`}>{!insp && isWeekend ? "✕" : ""}</td>
+                                      <td className={`border border-[#94a3b8] p-0.5 ${!insp && isWeekend ? "bg-[#f1f5f9] text-[#94a3b8] font-bold" : "text-[#b91c1c] font-black"}`}>{insp ? (!insp.isNormal ? "v" : "") : (isWeekend ? "✕" : "")}</td>
+                                      <td className={`border border-[#94a3b8] p-0.5 ${!insp && isWeekend ? "bg-[#f1f5f9] text-[#94a3b8] font-bold" : "bg-[#f8fafc]"}`}>{!insp && isWeekend ? "✕" : ""}</td>
 
                                       {/* SIANG (N/A in template) */}
                                       <td colSpan={4} className="border border-[#94a3b8] p-0.5 bg-[#f1f5f9] text-[#94a3b8] text-[9px]">-</td>
@@ -352,10 +364,10 @@ export default function ExportPage() {
                                       <td colSpan={4} className="border border-[#94a3b8] p-0.5 bg-[#f1f5f9] text-[#94a3b8] text-[9px]">-</td>
 
                                       {/* SORE (Ada / Tidak) */}
-                                      <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black">{sore ? (sore.isNormal ? "v" : "") : ""}</td>
-                                      <td className="border border-[#94a3b8] p-0.5 bg-[#f8fafc]"></td>
-                                      <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black">{sore ? (!sore.isNormal ? "v" : "") : ""}</td>
-                                      <td className="border border-[#94a3b8] p-0.5 bg-[#f8fafc]"></td>
+                                      <td className={`border border-[#94a3b8] p-0.5 ${!sore && isWeekend ? "bg-[#f1f5f9] text-[#94a3b8] font-bold" : "text-[#157a55] font-black"}`}>{sore ? (sore.isNormal ? "v" : "") : (isWeekend ? "✕" : "")}</td>
+                                      <td className={`border border-[#94a3b8] p-0.5 ${!sore && isWeekend ? "bg-[#f1f5f9] text-[#94a3b8] font-bold" : "bg-[#f8fafc]"}`}>{!sore && isWeekend ? "✕" : ""}</td>
+                                      <td className={`border border-[#94a3b8] p-0.5 ${!sore && isWeekend ? "bg-[#f1f5f9] text-[#94a3b8] font-bold" : "text-[#b91c1c] font-black"}`}>{sore ? (!sore.isNormal ? "v" : "") : (isWeekend ? "✕" : "")}</td>
+                                      <td className={`border border-[#94a3b8] p-0.5 ${!sore && isWeekend ? "bg-[#f1f5f9] text-[#94a3b8] font-bold" : "bg-[#f8fafc]"}`}>{!sore && isWeekend ? "✕" : ""}</td>
 
                                       {/* INSP 3 */}
                                       <td colSpan={4} className="border border-[#94a3b8] p-0.5 bg-[#f1f5f9] text-[#94a3b8] text-[9px]">-</td>
@@ -369,79 +381,81 @@ export default function ExportPage() {
                                       {/* PAGI */}
                                       <td className="border border-[#94a3b8] p-0.5 text-[#94a3b8] font-bold">X</td>
                                       <td className="border border-[#94a3b8] p-0.5 text-[#94a3b8] font-bold">X</td>
-                                      <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black">{pagi?.Y || ""}</td>
-                                      <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black">{pagi?.T || ""}</td>
+                                      <td className={`border border-[#94a3b8] p-0.5 ${!pagi && isWeekend ? "bg-[#f1f5f9] text-[#94a3b8] font-bold" : "text-[#157a55] font-black"}`}>{pagi?.Y || (!pagi && isWeekend ? "✕" : "")}</td>
+                                      <td className={`border border-[#94a3b8] p-0.5 ${!pagi && isWeekend ? "bg-[#f1f5f9] text-[#94a3b8] font-bold" : "text-[#b91c1c] font-black"}`}>{pagi?.T || (!pagi && isWeekend ? "✕" : "")}</td>
 
                                       {/* INSP 1 */}
                                       <td className="border border-[#94a3b8] p-0.5 text-[#94a3b8] font-bold">X</td>
                                       <td className="border border-[#94a3b8] p-0.5 text-[#94a3b8] font-bold">X</td>
-                                      <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black">{insp?.Y || ""}</td>
-                                      <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black">{insp?.T || ""}</td>
+                                      <td className={`border border-[#94a3b8] p-0.5 ${!insp && isWeekend ? "bg-[#f1f5f9] text-[#94a3b8] font-bold" : "text-[#157a55] font-black"}`}>{insp?.Y || (!insp && isWeekend ? "✕" : "")}</td>
+                                      <td className={`border border-[#94a3b8] p-0.5 ${!insp && isWeekend ? "bg-[#f1f5f9] text-[#94a3b8] font-bold" : "text-[#b91c1c] font-black"}`}>{insp?.T || (!insp && isWeekend ? "✕" : "")}</td>
 
                                       {/* SIANG */}
                                       <td className="border border-[#94a3b8] p-0.5 text-[#94a3b8] font-bold">X</td>
                                       <td className="border border-[#94a3b8] p-0.5 text-[#94a3b8] font-bold">X</td>
-                                      <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black">{siang?.Y || ""}</td>
-                                      <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black">{siang?.T || ""}</td>
+                                      <td className={`border border-[#94a3b8] p-0.5 ${!siang && isWeekend ? "bg-[#f1f5f9] text-[#94a3b8] font-bold" : "text-[#157a55] font-black"}`}>{siang?.Y || (!siang && isWeekend ? "✕" : "")}</td>
+                                      <td className={`border border-[#94a3b8] p-0.5 ${!siang && isWeekend ? "bg-[#f1f5f9] text-[#94a3b8] font-bold" : "text-[#b91c1c] font-black"}`}>{siang?.T || (!siang && isWeekend ? "✕" : "")}</td>
 
                                       {/* INSP 2 */}
                                       <td className="border border-[#94a3b8] p-0.5 text-[#94a3b8] font-bold">X</td>
                                       <td className="border border-[#94a3b8] p-0.5 text-[#94a3b8] font-bold">X</td>
-                                      <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black"></td>
-                                      <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black"></td>
+                                      <td className={`border border-[#94a3b8] p-0.5 ${isWeekend ? "bg-[#f1f5f9] text-[#94a3b8] font-bold" : "text-[#157a55] font-black"}`}>{isWeekend ? "✕" : ""}</td>
+                                      <td className={`border border-[#94a3b8] p-0.5 ${isWeekend ? "bg-[#f1f5f9] text-[#94a3b8] font-bold" : "text-[#b91c1c] font-black"}`}>{isWeekend ? "✕" : ""}</td>
 
                                       {/* SORE */}
                                       <td className="border border-[#94a3b8] p-0.5 text-[#94a3b8] font-bold">X</td>
                                       <td className="border border-[#94a3b8] p-0.5 text-[#94a3b8] font-bold">X</td>
-                                      <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black">{sore?.Y || ""}</td>
-                                      <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black">{sore?.T || ""}</td>
+                                      <td className={`border border-[#94a3b8] p-0.5 ${!sore && isWeekend ? "bg-[#f1f5f9] text-[#94a3b8] font-bold" : "text-[#157a55] font-black"}`}>{sore?.Y || (!sore && isWeekend ? "✕" : "")}</td>
+                                      <td className={`border border-[#94a3b8] p-0.5 ${!sore && isWeekend ? "bg-[#f1f5f9] text-[#94a3b8] font-bold" : "text-[#b91c1c] font-black"}`}>{sore?.T || (!sore && isWeekend ? "✕" : "")}</td>
 
                                       {/* INSP 3 */}
                                       <td className="border border-[#94a3b8] p-0.5 text-[#94a3b8] font-bold">X</td>
                                       <td className="border border-[#94a3b8] p-0.5 text-[#94a3b8] font-bold">X</td>
-                                      <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black"></td>
-                                      <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black"></td>
+                                      <td className={`border border-[#94a3b8] p-0.5 ${isWeekend ? "bg-[#f1f5f9] text-[#94a3b8] font-bold" : "text-[#157a55] font-black"}`}>{isWeekend ? "✕" : ""}</td>
+                                      <td className={`border border-[#94a3b8] p-0.5 ${isWeekend ? "bg-[#f1f5f9] text-[#94a3b8] font-bold" : "text-[#b91c1c] font-black"}`}>{isWeekend ? "✕" : ""}</td>
                                     </Fragment>
                                   );
                                 }
 
+                                const renderToiletCellGroup = (slotData: any, isBlankCol?: boolean) => {
+                                  if (isBlankCol) {
+                                    return (
+                                      <>
+                                        <td className={`border border-[#94a3b8] p-0.5 ${isWeekend ? "bg-[#f1f5f9] text-[#94a3b8] font-bold" : "text-[#157a55] font-black"}`}>{isWeekend ? "✕" : ""}</td>
+                                        <td className={`border border-[#94a3b8] p-0.5 ${isWeekend ? "bg-[#f1f5f9] text-[#94a3b8] font-bold" : "text-[#b91c1c] font-black"}`}>{isWeekend ? "✕" : ""}</td>
+                                        <td className={`border border-[#94a3b8] p-0.5 ${isWeekend ? "bg-[#f1f5f9] text-[#94a3b8] font-bold" : "text-[#157a55] font-black"}`}>{isWeekend ? "✕" : ""}</td>
+                                        <td className={`border border-[#94a3b8] p-0.5 ${isWeekend ? "bg-[#f1f5f9] text-[#94a3b8] font-bold" : "text-[#b91c1c] font-black"}`}>{isWeekend ? "✕" : ""}</td>
+                                      </>
+                                    );
+                                  }
+                                  if (!slotData && isWeekend) {
+                                    return (
+                                      <>
+                                        <td className="border border-[#94a3b8] p-0.5 bg-[#f1f5f9] text-[#94a3b8] font-bold text-[9px]">✕</td>
+                                        <td className="border border-[#94a3b8] p-0.5 bg-[#f1f5f9] text-[#94a3b8] font-bold text-[9px]">✕</td>
+                                        <td className="border border-[#94a3b8] p-0.5 bg-[#f1f5f9] text-[#94a3b8] font-bold text-[9px]">✕</td>
+                                        <td className="border border-[#94a3b8] p-0.5 bg-[#f1f5f9] text-[#94a3b8] font-bold text-[9px]">✕</td>
+                                      </>
+                                    );
+                                  }
+                                  return (
+                                    <>
+                                      <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black">{slotData?.S || ""}</td>
+                                      <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black">{slotData?.B || ""}</td>
+                                      <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black">{slotData?.Y || ""}</td>
+                                      <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black">{slotData?.T || ""}</td>
+                                    </>
+                                  );
+                                };
+
                                 return (
                                   <Fragment key={dIdx}>
-                                    {/* PAGI */}
-                                    <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black">{pagi?.S || ""}</td>
-                                    <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black">{pagi?.B || ""}</td>
-                                    <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black">{pagi?.Y || ""}</td>
-                                    <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black">{pagi?.T || ""}</td>
-
-                                    {/* INSP 1 */}
-                                    <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black">{insp?.S || ""}</td>
-                                    <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black">{insp?.B || ""}</td>
-                                    <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black">{insp?.Y || ""}</td>
-                                    <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black">{insp?.T || ""}</td>
-
-                                    {/* SIANG */}
-                                    <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black">{siang?.S || ""}</td>
-                                    <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black">{siang?.B || ""}</td>
-                                    <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black">{siang?.Y || ""}</td>
-                                    <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black">{siang?.T || ""}</td>
-
-                                    {/* INSP 2 */}
-                                    <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black"></td>
-                                    <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black"></td>
-                                    <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black"></td>
-                                    <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black"></td>
-
-                                    {/* SORE */}
-                                    <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black">{sore?.S || ""}</td>
-                                    <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black">{sore?.B || ""}</td>
-                                    <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black">{sore?.Y || ""}</td>
-                                    <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black">{sore?.T || ""}</td>
-
-                                    {/* INSP 3 */}
-                                    <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black"></td>
-                                    <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black"></td>
-                                    <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black"></td>
-                                    <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black"></td>
+                                    {renderToiletCellGroup(pagi)}
+                                    {renderToiletCellGroup(insp)}
+                                    {renderToiletCellGroup(siang)}
+                                    {renderToiletCellGroup(null, true)}
+                                    {renderToiletCellGroup(sore)}
+                                    {renderToiletCellGroup(null, true)}
                                   </Fragment>
                                 );
                               }
@@ -450,25 +464,32 @@ export default function ExportPage() {
                               const sore = findSlotData("SORE");
                               const insp = findSlotData("INSP") || findSlotData("SUPERVISOR");
 
+                              const renderStandardCellGroup = (slotData: any) => {
+                                if (!slotData && isWeekend) {
+                                  return (
+                                    <>
+                                      <td className="border border-[#94a3b8] p-0.5 bg-[#f1f5f9] text-[#94a3b8] font-bold text-[9px]">✕</td>
+                                      <td className="border border-[#94a3b8] p-0.5 bg-[#f1f5f9] text-[#94a3b8] font-bold text-[9px]">✕</td>
+                                      <td className="border border-[#94a3b8] p-0.5 bg-[#f1f5f9] text-[#94a3b8] font-bold text-[9px]">✕</td>
+                                      <td className="border border-[#94a3b8] p-0.5 bg-[#f1f5f9] text-[#94a3b8] font-bold text-[9px]">✕</td>
+                                    </>
+                                  );
+                                }
+                                return (
+                                  <>
+                                    <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black">{slotData?.S || ""}</td>
+                                    <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black">{slotData?.B || ""}</td>
+                                    <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black">{slotData?.Y || ""}</td>
+                                    <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black">{slotData?.T || ""}</td>
+                                  </>
+                                );
+                              };
+
                               return (
                                 <Fragment key={dIdx}>
-                                  {/* PAGI */}
-                                  <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black">{pagi?.S || ""}</td>
-                                  <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black">{pagi?.B || ""}</td>
-                                  <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black">{pagi?.Y || ""}</td>
-                                  <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black">{pagi?.T || ""}</td>
-
-                                  {/* SORE */}
-                                  <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black">{sore?.S || ""}</td>
-                                  <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black">{sore?.B || ""}</td>
-                                  <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black">{sore?.Y || ""}</td>
-                                  <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black">{sore?.T || ""}</td>
-
-                                  {/* INSPEKSI */}
-                                  <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black">{insp?.S || ""}</td>
-                                  <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black">{insp?.B || ""}</td>
-                                  <td className="border border-[#94a3b8] p-0.5 text-[#157a55] font-black">{insp?.Y || ""}</td>
-                                  <td className="border border-[#94a3b8] p-0.5 text-[#b91c1c] font-black">{insp?.T || ""}</td>
+                                  {renderStandardCellGroup(pagi)}
+                                  {renderStandardCellGroup(sore)}
+                                  {renderStandardCellGroup(insp)}
                                 </Fragment>
                               );
                             })}
@@ -524,7 +545,7 @@ export default function ExportPage() {
               </p>
               <p className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-[#94a3b8]"></span>
-                <span>⚪ <strong>Abu-abu (✕)</strong>: Hari non-jadwal / weekend (tetap dapat diisi data jika ada kegiatan)</span>
+                <span>⚪ <strong>Abu-abu (✕)</strong>: Hari libur weekend / non-jadwal (Sabtu & Minggu konsisten non-jadwal, tetap dapat diisi data jika ada kegiatan/piket)</span>
               </p>
             </div>
 

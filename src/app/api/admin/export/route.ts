@@ -168,9 +168,16 @@ export async function GET(request: Request) {
       // ── Update Day Headers with Dates (Row 8 & Row 25 for toilet) ──
       days.forEach((day, dIdx) => {
         const colStart = isToilet ? 4 + dIdx * 24 : 4 + dIdx * 12;
-        sheet.getCell(8, colStart).value = `Hari ke ${day.dayIndex} (${day.dateKey})`;
+        const dDate = new Date(day.dateKey);
+        const dayOfWeek = dDate.getDay();
+        const dayNames = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+        const dayName = dayNames[dayOfWeek];
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+        const headerText = `Hari ke ${day.dayIndex} (${dayName}, ${day.dateKey})${isWeekend ? " [Non-Jadwal]" : ""}`;
+        sheet.getCell(8, colStart).value = headerText;
         if (isToilet) {
-          sheet.getCell(25, colStart).value = `Hari ke ${day.dayIndex} (${day.dateKey})`;
+          sheet.getCell(25, colStart).value = headerText;
         }
       });
 
@@ -226,7 +233,24 @@ export async function GET(request: Request) {
         const rowNum = activityRowMap.get(act.id) || (12 + aIdx);
 
         days.forEach((day, dIdx) => {
+          const dDate = new Date(day.dateKey);
+          const dayOfWeek = dDate.getDay();
+          const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
           const dayInspections = inspections.filter((i) => i.dateKey === day.dateKey);
+
+          const colStart = isToilet ? 4 + dIdx * 24 : 4 + dIdx * 12;
+          const totalCols = isToilet ? 24 : 12;
+
+          // If this day is a weekend (Sabtu atau Minggu), pre-fill all columns with silang abu-abu
+          if (isWeekend) {
+            for (let c = 0; c < totalCols; c++) {
+              const cell = sheet.getCell(rowNum, colStart + c);
+              cell.value = "✕";
+              cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF1F5F9" } };
+              cell.font = { name: "Arial", size: 8, color: { argb: "FF94A3B8" } };
+              cell.alignment = { horizontal: "center", vertical: "middle" };
+            }
+          }
 
           dayInspections.forEach((insp) => {
             const detail = insp.details.find((d) => d.activityId === act.id);
@@ -252,6 +276,15 @@ export async function GET(request: Request) {
             }
 
             const baseCol = isToilet ? 4 + dIdx * 24 + slotOffset : 4 + dIdx * 12 + slotOffset;
+
+            // Clear weekend gray fill for this inspected slot so real values show cleanly
+            if (isWeekend) {
+              for (let c = 0; c < 4; c++) {
+                const cell = sheet.getCell(rowNum, baseCol + c);
+                cell.value = null;
+                cell.fill = { type: "pattern", pattern: "none" };
+              }
+            }
 
             // Specific handling for Toilet special rows
             if (isToilet && (rowNum === 28 || rowNum === 29)) {
@@ -280,6 +313,12 @@ export async function GET(request: Request) {
           });
         });
       });
+
+      // Add Keterangan for weekend non-jadwal in room checklist footer
+      const lastKetRow = isToilet ? 34 : (isPantry ? 28 : (isClass ? 35 : 35));
+      const ketCell = sheet.getCell(lastKetRow, 3);
+      ketCell.value = "Catatan: Tanda silang abu-abu (✕) = Hari non-jadwal / weekend (tetap dapat diisi data jika ada kegiatan/piket).";
+      ketCell.font = { name: "Arial", size: 8, italic: true, color: { argb: "FF64748B" } };
 
       // Safely remove other template sheets without mutating array during iteration
       const sheetsToRemove = workbook.worksheets.filter((ws) => ws.id !== sheet.id && !ws.name.startsWith("Standar"));
@@ -409,13 +448,12 @@ export async function GET(request: Request) {
       const cellStyles: { colIndex: number; fill: string; fontColor: string; symbol: string }[] = [];
 
       let fullDaysCompleted = 0;
-      const workDays = room.roomType?.workDays || (room.roomType?.name?.toLowerCase().includes("toilet") ? 5 : 6);
 
-      // Count scheduled days in this month for this room
+      // Count scheduled operational days in this month (Senin s.d. Jumat adalah hari jadwal; Sabtu & Minggu non-jadwal untuk semua ruangan)
       let scheduledDaysInMonth = 0;
       for (let dayIdx = 1; dayIdx <= daysInMonth; dayIdx++) {
         const dow = new Date(year, monthNum - 1, dayIdx).getDay();
-        const isNonSched = (workDays === 5 && (dow === 0 || dow === 6)) || (workDays === 6 && dow === 0);
+        const isNonSched = dow === 0 || dow === 6; // Minggu (0) & Sabtu (6) non-jadwal
         if (!isNonSched) scheduledDaysInMonth++;
       }
 
@@ -430,7 +468,7 @@ export async function GET(request: Request) {
         const colIndex = 4 + d; // 1-indexed
         const cellDate = new Date(year, monthNum - 1, d);
         const dayOfWeek = cellDate.getDay(); // 0 = Minggu (Sunday), 6 = Sabtu (Saturday)
-        const isWeekendNonSchedule = (workDays === 5 && (dayOfWeek === 0 || dayOfWeek === 6)) || (workDays === 6 && dayOfWeek === 0);
+        const isWeekendNonSchedule = dayOfWeek === 0 || dayOfWeek === 6; // Sabtu & Minggu konsisten non-jadwal
 
         // STATUS RULES:
         // 1. Jika 0 sesi disubmit:

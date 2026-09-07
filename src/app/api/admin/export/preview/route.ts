@@ -44,7 +44,14 @@ export async function GET(request: Request) {
     const numDays = room.roomType?.workDays || (isToilet ? 5 : 6);
 
     // Generate days from startDate
-    const days: { dayIndex: number; dateKey: string; dateFormatted: string }[] = [];
+    const days: {
+      dayIndex: number;
+      dateKey: string;
+      dateFormatted: string;
+      dayOfWeek: number;
+      dayName: string;
+      isWeekend: boolean;
+    }[] = [];
     const baseDate = new Date(startDate);
 
     for (let i = 0; i < numDays; i++) {
@@ -56,11 +63,17 @@ export async function GET(request: Request) {
         month: "long",
         year: "numeric",
       }).format(d);
+      const dayOfWeek = d.getDay();
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+      const dayNames = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
 
       days.push({
         dayIndex: i + 1,
         dateKey,
         dateFormatted,
+        dayOfWeek,
+        dayName: dayNames[dayOfWeek],
+        isWeekend,
       });
     }
 
