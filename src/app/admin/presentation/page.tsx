@@ -271,40 +271,40 @@ export default function PresentationPage() {
 
   return (
     <div className="h-screen w-screen bg-[#edf2f6] text-[#17313d] flex flex-col overflow-hidden font-sans select-none relative">
-      {/* ────────────────── TOP TV COMMAND HEADER (CYAN PLN COLOR SCHEME) ────────────────── */}
-      <header className="min-h-[74px] shrink-0 bg-[#0076a8] border-b border-[#005a82] px-3 sm:px-6 lg:px-8 py-2.5 flex flex-wrap items-center justify-between gap-3 z-20 shadow-md text-white">
+      {/* ────────────────── TOP TV COMMAND HEADER (CYAN PLN COLOR SCHEME - SLEEK & COMPACT) ────────────────── */}
+      <header className="h-13 sm:h-14 shrink-0 bg-[#0076a8] border-b border-[#005a82] px-3 sm:px-4 py-1.5 flex flex-nowrap items-center justify-between gap-2.5 z-20 shadow-md text-white">
         {/* Left: PLN Logo & Corporate Title */}
-        <div className="flex items-center gap-3 shrink-0">
-          <div className="p-1.5 bg-white/20 rounded-xl border border-white/30 shadow-xs backdrop-blur-xs">
+        <div className="flex items-center gap-2.5 shrink-0">
+          <div className="p-1 bg-white/20 rounded-lg border border-white/30 shadow-xs backdrop-blur-xs">
             <Image
               src="/pln-emblem.svg"
               alt="PLN Logo"
-              width={30}
-              height={30}
-              className="w-7 h-7 object-contain"
+              width={24}
+              height={24}
+              className="w-5 h-5 sm:w-6 sm:h-6 object-contain"
               priority
             />
           </div>
           <div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-[9px] text-[#072d3f] font-black uppercase tracking-widest px-2 py-0.5 rounded-md bg-[#ffd100] shadow-xs">
-                MODE PRESENTASI TV
+            <div className="flex items-center gap-1.5 leading-none">
+              <span className="text-[8px] text-[#072d3f] font-black uppercase tracking-wider px-1.5 py-0.2 rounded bg-[#ffd100]">
+                MODE TV
               </span>
-              <span className="flex items-center gap-1 text-[9px] font-bold text-white bg-white/15 border border-white/25 px-2 py-0.5 rounded-md">
+              <span className="flex items-center gap-1 text-[8px] font-bold text-white bg-white/15 px-1.5 py-0.2 rounded">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#ffd100] animate-pulse" />
-                REAL-TIME
+                LIVE
               </span>
             </div>
-            <h1 className="text-base sm:text-lg font-black text-white tracking-tight flex items-center gap-1.5 mt-0.5">
+            <h1 className="text-xs sm:text-sm font-black text-white tracking-tight flex items-center gap-1 mt-0.5">
               Monitoring Kebersihan <span className="text-white/40 font-normal">|</span>{" "}
               <span className="text-[#ffd100]">PLN UPS</span>
             </h1>
           </div>
         </div>
 
-        {/* Center: ALL MENU TABS (ALWAYS VISIBLE & CLEAR) */}
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5 max-w-full">
-          <div className="p-1 bg-black/15 border border-white/20 rounded-2xl flex items-center gap-1 shrink-0 shadow-inner">
+        {/* Center: ALL MENU TABS (ALWAYS VISIBLE & COMPACT) */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 max-w-full">
+          <div className="p-0.5 bg-black/15 border border-white/20 rounded-xl flex items-center gap-1 shrink-0 shadow-inner">
             {/* Tab 1: Ringkasan */}
             <button
               type="button"
@@ -312,10 +312,10 @@ export default function PresentationPage() {
                 setActiveTab("OVERVIEW");
                 setCycleCountdown(25);
               }}
-              className={`px-3 py-1.5 rounded-xl text-xs transition-all flex items-center gap-1.5 whitespace-nowrap ${
+              className={`px-2.5 py-1 rounded-lg text-xs transition-all flex items-center gap-1.5 whitespace-nowrap ${
                 activeTab === "OVERVIEW"
-                  ? "bg-[#ffd100] text-[#072d3f] font-black shadow-md"
-                  : "text-white hover:bg-white/10 font-bold"
+                  ? "bg-[#ffd100] text-[#072d3f] font-black shadow-xs"
+                  : "text-white hover:bg-white/10 font-semibold"
               }`}
             >
               <Tv className="w-3.5 h-3.5" />
@@ -329,10 +329,10 @@ export default function PresentationPage() {
                 setActiveTab("PERFORMANCE");
                 setCycleCountdown(25);
               }}
-              className={`px-3 py-1.5 rounded-xl text-xs transition-all flex items-center gap-1.5 whitespace-nowrap ${
+              className={`px-2.5 py-1 rounded-lg text-xs transition-all flex items-center gap-1.5 whitespace-nowrap ${
                 activeTab === "PERFORMANCE"
-                  ? "bg-[#ffd100] text-[#072d3f] font-black shadow-md"
-                  : "text-white hover:bg-white/10 font-bold"
+                  ? "bg-[#ffd100] text-[#072d3f] font-black shadow-xs"
+                  : "text-white hover:bg-white/10 font-semibold"
               }`}
             >
               <Users className="w-3.5 h-3.5" />
@@ -349,14 +349,14 @@ export default function PresentationPage() {
                 setActiveTab("EVALUATIONS");
                 setCycleCountdown(25);
               }}
-              className={`px-3 py-1.5 rounded-xl text-xs transition-all flex items-center gap-1.5 whitespace-nowrap ${
+              className={`px-2.5 py-1 rounded-lg text-xs transition-all flex items-center gap-1.5 whitespace-nowrap ${
                 activeTab === "EVALUATIONS"
-                  ? "bg-[#ffd100] text-[#072d3f] font-black shadow-md"
-                  : "text-white hover:bg-white/10 font-bold"
+                  ? "bg-[#ffd100] text-[#072d3f] font-black shadow-xs"
+                  : "text-white hover:bg-white/10 font-semibold"
               }`}
             >
               <MessageSquare className="w-3.5 h-3.5" />
-              <span>Kepuasan Pengguna</span>
+              <span>Kepuasan</span>
               <span className={`px-1.5 py-0.2 text-[9px] font-black rounded-md ${activeTab === "EVALUATIONS" ? "bg-[#072d3f]/20 text-[#072d3f]" : "bg-white/20 text-white"}`}>
                 {totalEvals}
               </span>
@@ -369,10 +369,10 @@ export default function PresentationPage() {
                 setActiveTab("ROOMS");
                 setCycleCountdown(25);
               }}
-              className={`px-3 py-1.5 rounded-xl text-xs transition-all flex items-center gap-1.5 whitespace-nowrap ${
+              className={`px-2.5 py-1 rounded-lg text-xs transition-all flex items-center gap-1.5 whitespace-nowrap ${
                 activeTab === "ROOMS"
-                  ? "bg-[#ffd100] text-[#072d3f] font-black shadow-md"
-                  : "text-white hover:bg-white/10 font-bold"
+                  ? "bg-[#ffd100] text-[#072d3f] font-black shadow-xs"
+                  : "text-white hover:bg-white/10 font-semibold"
               }`}
             >
               <Layers className="w-3.5 h-3.5" />
@@ -389,10 +389,10 @@ export default function PresentationPage() {
                 setActiveTab("EVIDENCE");
                 setCycleCountdown(25);
               }}
-              className={`px-3 py-1.5 rounded-xl text-xs transition-all flex items-center gap-1.5 whitespace-nowrap ${
+              className={`px-2.5 py-1 rounded-lg text-xs transition-all flex items-center gap-1.5 whitespace-nowrap ${
                 activeTab === "EVIDENCE"
-                  ? "bg-[#ffd100] text-[#072d3f] font-black shadow-md"
-                  : "text-white hover:bg-white/10 font-bold"
+                  ? "bg-[#ffd100] text-[#072d3f] font-black shadow-xs"
+                  : "text-white hover:bg-white/10 font-semibold"
               }`}
             >
               <Camera className="w-3.5 h-3.5" />
@@ -407,40 +407,40 @@ export default function PresentationPage() {
           <button
             type="button"
             onClick={() => setAutoCycle(!autoCycle)}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 shrink-0 ${
+            className={`px-2.5 py-1 rounded-xl text-xs font-bold border transition-all flex items-center gap-1 shrink-0 ${
               autoCycle
                 ? "bg-[#ffd100] text-[#072d3f] border-[#ffd100]"
                 : "bg-white/15 border-white/20 text-white/80 hover:text-white"
             }`}
             title={autoCycle ? "Rotasi slide otomatis aktif (25s)" : "Rotasi slide dinonaktifkan"}
           >
-            <Sparkles className={`w-3.5 h-3.5 ${autoCycle ? "animate-spin" : ""}`} />
+            <Sparkles className={`w-3 h-3 ${autoCycle ? "animate-spin" : ""}`} />
             <span>Rotasi: {autoCycle ? `${cycleCountdown}s` : "Off"}</span>
           </button>
         </div>
 
         {/* Right: Clock & Executive Controls */}
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           {/* Clock */}
-          <div className="text-right hidden xl:block">
-            <span className="text-[9px] text-white/80 font-bold block uppercase tracking-wider">
+          <div className="text-right hidden 2xl:block">
+            <span className="text-[8px] text-white/80 font-bold block uppercase tracking-wider">
               WAKTU REAL-TIME
             </span>
-            <span className="text-xs font-mono font-bold text-white tracking-wide">{currentTime}</span>
+            <span className="text-[11px] font-mono font-bold text-white tracking-wide">{currentTime}</span>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-1.5 pl-2 border-l border-white/20">
+          <div className="flex items-center gap-1.5 pl-1.5 border-l border-white/20">
             {/* Auto-Refresh Toggle Button (Default: OFF, 10 Menit Interval) */}
             {autoRefreshEnabled ? (
               <button
                 type="button"
                 onClick={() => setAutoRefreshEnabled(false)}
-                className="px-2.5 h-8 rounded-xl bg-[#ffd100] text-[#072d3f] border border-[#ffd100] text-xs font-black flex items-center gap-1.5 transition-all shadow-xs"
+                className="px-2 h-7 rounded-lg bg-[#ffd100] text-[#072d3f] border border-[#ffd100] text-xs font-black flex items-center gap-1 transition-all shadow-xs"
                 title="Auto-refresh aktif (10 menit sekali). Klik untuk mematikan."
               >
-                <Clock className="w-3.5 h-3.5" />
-                <span>Auto-Refresh: ON ({formatCountdown(refreshCountdown)})</span>
+                <Clock className="w-3 h-3" />
+                <span>Auto: ON ({formatCountdown(refreshCountdown)})</span>
               </button>
             ) : (
               <button
@@ -449,11 +449,11 @@ export default function PresentationPage() {
                   setAutoRefreshEnabled(true);
                   setRefreshCountdown(REFRESH_INTERVAL);
                 }}
-                className="px-2.5 h-8 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 text-white text-xs font-bold flex items-center gap-1.5 transition-all"
+                className="px-2 h-7 rounded-lg bg-white/15 hover:bg-white/25 border border-white/20 text-white text-xs font-bold flex items-center gap-1 transition-all"
                 title="Auto-refresh NONAKTIF (Hemat Kuota Bandwidth & Neon DB). Klik untuk mengaktifkan (10 menit sekali)."
               >
-                <Clock className="w-3.5 h-3.5 text-white/70" />
-                <span>Auto-Refresh: OFF</span>
+                <Clock className="w-3 h-3 text-white/70" />
+                <span>Auto: OFF</span>
               </button>
             )}
 
@@ -465,10 +465,10 @@ export default function PresentationPage() {
                 if (autoRefreshEnabled) setRefreshCountdown(REFRESH_INTERVAL);
               }}
               disabled={loading}
-              className="px-2.5 h-8 rounded-xl bg-white/15 border border-white/25 hover:bg-white/25 text-white text-xs font-bold flex items-center gap-1.5 transition-all"
+              className="px-2 h-7 rounded-lg bg-white/15 border border-white/25 hover:bg-white/25 text-white text-xs font-bold flex items-center gap-1 transition-all"
               title="Segarkan data sekarang secara manual"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-[#ffd100]" : ""}`} />
+              <RefreshCw className={`w-3 h-3 ${loading ? "animate-spin text-[#ffd100]" : ""}`} />
               <span className="hidden sm:inline">Segarkan</span>
             </button>
 
@@ -476,20 +476,20 @@ export default function PresentationPage() {
             <button
               type="button"
               onClick={toggleFullscreen}
-              className="w-8 h-8 rounded-xl bg-white/15 border border-white/25 hover:bg-white/25 text-white flex items-center justify-center transition-all"
+              className="w-7 h-7 rounded-lg bg-white/15 border border-white/25 hover:bg-white/25 text-white flex items-center justify-center transition-all"
               title={isFullscreen ? "Keluar Layar Penuh (F)" : "Layar Penuh (F)"}
             >
-              {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+              {isFullscreen ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
             </button>
 
             {/* Back to Admin */}
             <Link
               href="/admin"
-              className="px-2.5 h-8 rounded-xl bg-white text-[#0076a8] hover:bg-white/90 text-xs font-black flex items-center gap-1 transition-all ml-1 shadow-xs"
+              className="px-2 h-7 rounded-lg bg-white text-[#0076a8] hover:bg-white/90 text-xs font-black flex items-center gap-1 transition-all ml-0.5 shadow-xs"
               title="Kembali ke Portal Administrasi"
             >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">Portal Admin</span>
+              <ArrowLeft className="w-3 h-3" />
+              <span className="hidden md:inline">Admin</span>
             </Link>
           </div>
         </div>
@@ -506,33 +506,33 @@ export default function PresentationPage() {
       )}
 
       {/* ────────────────── MAIN STAGE CONTENT (MINIMALIST SCROLLBAR) ────────────────── */}
-      <main className="flex-1 p-3.5 sm:p-4 lg:p-5 overflow-y-auto minimal-scrollbar relative">
+      <main className="flex-1 p-2.5 sm:p-3 lg:p-3.5 overflow-y-auto minimal-scrollbar relative">
         {/* ════════════════════════════════════════════════════════════
             VIEW 1: OVERVIEW (RINGKASAN & CHART)
         ════════════════════════════════════════════════════════════ */}
         {activeTab === "OVERVIEW" && (
-          <div className="space-y-3.5 max-w-[1920px] mx-auto animate-fadeIn">
+          <div className="space-y-2.5 sm:space-y-3 max-w-[1920px] mx-auto animate-fadeIn">
             {/* ── TOP KPI CARDS (4 COMPACT CARDS) ── */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
               {/* Card 1: Sesi Hari Ini */}
-              <div className="bg-white border border-[#d8e3ea] rounded-2xl p-4 shadow-xs relative overflow-hidden group hover:border-[#0076a8] transition-all">
+              <div className="bg-white border border-[#d8e3ea] rounded-xl p-3 shadow-xs relative overflow-hidden group hover:border-[#0076a8] transition-all">
                 <div className="flex justify-between items-start">
                   <span className="text-[10px] font-black uppercase tracking-wider text-[#647783]">
                     PEMERIKSAAN HARI INI
                   </span>
-                  <span className="p-1 rounded-lg bg-[#e8f5fa] text-[#0076a8]">
+                  <span className="p-1 rounded-md bg-[#e8f5fa] text-[#0076a8]">
                     <Clock className="w-3.5 h-3.5" />
                   </span>
                 </div>
-                <div className="flex items-baseline gap-2 mt-1.5">
-                  <span className="text-3xl sm:text-4xl font-black text-[#17313d] tracking-tight">
+                <div className="flex items-baseline gap-1.5 mt-1">
+                  <span className="text-2xl sm:text-3xl font-black text-[#17313d] tracking-tight">
                     {metrics.inspectionsTodayCount || 0}
                   </span>
                   <span className="text-xs font-semibold text-[#647783]">Sesi Selesai</span>
                 </div>
-                <div className="mt-2.5 pt-2 border-t border-[#f1f5f9] flex items-center justify-between text-xs">
+                <div className="mt-1.5 pt-1.5 border-t border-[#f1f5f9] flex items-center justify-between text-xs">
                   <span className="flex items-center gap-1 font-bold text-[#157a55]">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <CheckCircle2 className="w-3 h-3" />
                     {metrics.cleanCount || 0} Bersih
                   </span>
                   <span
@@ -540,31 +540,31 @@ export default function PresentationPage() {
                       (metrics.findingCount || 0) > 0 ? "text-[#ca8a04]" : "text-[#94a3b8]"
                     }`}
                   >
-                    <AlertTriangle className="w-3.5 h-3.5" />
+                    <AlertTriangle className="w-3 h-3" />
                     {metrics.findingCount || 0} Temuan
                   </span>
                 </div>
               </div>
 
               {/* Card 2: Tingkat Kepatuhan Sesi */}
-              <div className="bg-white border border-[#d8e3ea] rounded-2xl p-4 shadow-xs relative overflow-hidden group hover:border-[#157a55] transition-all">
+              <div className="bg-white border border-[#d8e3ea] rounded-xl p-3 shadow-xs relative overflow-hidden group hover:border-[#157a55] transition-all">
                 <div className="flex justify-between items-start">
                   <span className="text-[10px] font-black uppercase tracking-wider text-[#647783]">
                     KEPATUHAN PEMENUHAN
                   </span>
-                  <span className="p-1 rounded-lg bg-[#e8f5e9] text-[#157a55]">
+                  <span className="p-1 rounded-md bg-[#e8f5e9] text-[#157a55]">
                     <ShieldCheck className="w-3.5 h-3.5" />
                   </span>
                 </div>
-                <div className="flex items-baseline gap-2 mt-1.5">
-                  <span className="text-3xl sm:text-4xl font-black text-[#157a55] tracking-tight">
+                <div className="flex items-baseline gap-1.5 mt-1">
+                  <span className="text-2xl sm:text-3xl font-black text-[#157a55] tracking-tight">
                     {summary.completionRate || 0}%
                   </span>
                   <span className="text-xs font-semibold text-[#647783]">
-                    {summary.completedSessions || 0}/{summary.totalExpectedSessions || 0} Sesi Target
+                    {summary.completedSessions || 0}/{summary.totalExpectedSessions || 0} Sesi
                   </span>
                 </div>
-                <div className="mt-2.5 pt-2 border-t border-[#f1f5f9]">
+                <div className="mt-1.5 pt-1.5 border-t border-[#f1f5f9]">
                   <div className="w-full h-1.5 bg-[#f1f5f9] rounded-full overflow-hidden flex">
                     <div
                       className="bg-[#157a55] h-full transition-all duration-700"
@@ -575,46 +575,46 @@ export default function PresentationPage() {
               </div>
 
               {/* Card 3: Kepuasan Pengguna (CSAT) */}
-              <div className="bg-white border border-[#d8e3ea] rounded-2xl p-4 shadow-xs relative overflow-hidden group hover:border-[#ca8a04] transition-all">
+              <div className="bg-white border border-[#d8e3ea] rounded-xl p-3 shadow-xs relative overflow-hidden group hover:border-[#ca8a04] transition-all">
                 <div className="flex justify-between items-start">
                   <span className="text-[10px] font-black uppercase tracking-wider text-[#647783]">
                     KEPUASAN PENGGUNA (CSAT)
                   </span>
-                  <span className="p-1 rounded-lg bg-yellow-50 text-[#ca8a04]">
+                  <span className="p-1 rounded-md bg-yellow-50 text-[#ca8a04]">
                     <Star className="w-3.5 h-3.5 fill-[#ca8a04]" />
                   </span>
                 </div>
-                <div className="flex items-baseline gap-2 mt-1.5">
-                  <span className="text-3xl sm:text-4xl font-black text-[#17313d] tracking-tight flex items-center gap-1">
+                <div className="flex items-baseline gap-1.5 mt-1">
+                  <span className="text-2xl sm:text-3xl font-black text-[#17313d] tracking-tight flex items-center gap-1">
                     ★ {metrics.averageRating || "0.0"}
                   </span>
                   <span className="text-xs font-semibold text-[#647783]">/ 4.0 Skala</span>
                 </div>
-                <div className="mt-2.5 pt-2 border-t border-[#f1f5f9] flex items-center justify-between text-xs">
-                  <span className="text-[#157a55] font-bold">{metrics.satisfactionRate || 0}% Sangat Puas</span>
-                  <span className="text-[#647783] font-medium">{totalEvals} Ulasan Bulan Ini</span>
+                <div className="mt-1.5 pt-1.5 border-t border-[#f1f5f9] flex items-center justify-between text-xs">
+                  <span className="text-[#157a55] font-bold">{metrics.satisfactionRate || 0}% Puas</span>
+                  <span className="text-[#647783] font-medium">{totalEvals} Ulasan</span>
                 </div>
               </div>
 
               {/* Card 4: Akumulasi Operasional Bulanan */}
-              <div className="bg-white border border-[#d8e3ea] rounded-2xl p-4 shadow-xs relative overflow-hidden group hover:border-[#7c3aed] transition-all">
+              <div className="bg-white border border-[#d8e3ea] rounded-xl p-3 shadow-xs relative overflow-hidden group hover:border-[#7c3aed] transition-all">
                 <div className="flex justify-between items-start">
                   <span className="text-[10px] font-black uppercase tracking-wider text-[#647783]">
                     AKUMULASI BULAN INI
                   </span>
-                  <span className="p-1 rounded-lg bg-purple-50 text-[#7c3aed]">
+                  <span className="p-1 rounded-md bg-purple-50 text-[#7c3aed]">
                     <Building2 className="w-3.5 h-3.5" />
                   </span>
                 </div>
-                <div className="flex items-baseline gap-2 mt-1.5">
-                  <span className="text-3xl sm:text-4xl font-black text-[#17313d] tracking-tight">
+                <div className="flex items-baseline gap-1.5 mt-1">
+                  <span className="text-2xl sm:text-3xl font-black text-[#17313d] tracking-tight">
                     {metrics.monthlyInspectionsCount || 0}
                   </span>
-                  <span className="text-xs font-semibold text-[#647783]">Total Sesi Lapangan</span>
+                  <span className="text-xs font-semibold text-[#647783]">Total Sesi</span>
                 </div>
-                <div className="mt-2.5 pt-2 border-t border-[#f1f5f9] flex items-center justify-between text-xs">
+                <div className="mt-1.5 pt-1.5 border-t border-[#f1f5f9] flex items-center justify-between text-xs">
                   <span className="text-[#647783]">
-                    Rasio Bersih:{" "}
+                    Bersih:{" "}
                     <span className="text-[#157a55] font-bold">
                       {metrics.monthlyInspectionsCount
                         ? Math.round(
@@ -631,32 +631,32 @@ export default function PresentationPage() {
               </div>
             </div>
 
-            {/* ── ROW 2: 3 CHARTS (NO UGLY HORIZONTAL SCROLLBAR) ── */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5">
+            {/* ── ROW 2: 3 CHARTS (NO UGLY HORIZONTAL SCROLLBAR & SLEEK RATIO) ── */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 sm:gap-3">
               {/* CHART 1: TREN OPERASIONAL & TEMUAN (6 COLS, 100% PROPORTIONAL WIDTH, ZERO SCROLLBAR) */}
-              <div className="lg:col-span-6 bg-white border border-[#d8e3ea] rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col justify-between">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 pb-2.5 border-b border-[#e2e8f0]">
+              <div className="lg:col-span-6 bg-white border border-[#d8e3ea] rounded-xl p-3 sm:p-3.5 shadow-xs flex flex-col justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 pb-2 border-b border-[#e2e8f0]">
                   <div>
-                    <h3 className="text-xs sm:text-sm font-black text-[#17313d] uppercase tracking-wider flex items-center gap-2">
+                    <h3 className="text-xs sm:text-sm font-black text-[#17313d] uppercase tracking-wider flex items-center gap-1.5">
                       <span className="w-2.5 h-2.5 rounded-full bg-[#0076a8]" />
                       Tren Operasional Harian Bulan Ini
                     </h3>
-                    <p className="text-[10px] sm:text-[11px] text-[#647783] mt-0.5">
-                      Distribusi sesi checklist per hari (Tgl 1 - {dailyTrend.length})
+                    <p className="text-[10px] text-[#647783]">
+                      Distribusi checklist (Tgl 1 - {dailyTrend.length})
                     </p>
                   </div>
-                  <div className="flex items-center gap-3 text-xs">
-                    <span className="flex items-center gap-1 text-[#17313d] font-bold text-[11px]">
-                      <span className="w-2.5 h-2.5 rounded-xs bg-[#0076a8]" /> Selesai Bersih
+                  <div className="flex items-center gap-2.5 text-xs">
+                    <span className="flex items-center gap-1 text-[#17313d] font-bold text-[10px]">
+                      <span className="w-2 h-2 rounded-xs bg-[#0076a8]" /> Bersih
                     </span>
-                    <span className="flex items-center gap-1 text-[#ca8a04] font-bold text-[11px]">
-                      <span className="w-2.5 h-2.5 rounded-xs bg-[#eab308]" /> Ada Temuan
+                    <span className="flex items-center gap-1 text-[#ca8a04] font-bold text-[10px]">
+                      <span className="w-2 h-2 rounded-xs bg-[#eab308]" /> Temuan
                     </span>
                   </div>
                 </div>
 
-                {/* Main Daily Bar Chart Area - NO HORIZONTAL SCROLLBAR */}
-                <div className="h-44 pt-4 pb-1 flex items-end gap-0.5 sm:gap-1 w-full overflow-hidden">
+                {/* Main Daily Bar Chart Area - SLEEK HEIGHT & NO HORIZONTAL SCROLLBAR */}
+                <div className="h-32 sm:h-36 pt-2 pb-1 flex items-end gap-0.5 sm:gap-1 w-full overflow-hidden">
                   {dailyTrend.map((item: any) => {
                     const count = item.total || 0;
                     const findingsCount = item.finding || 0;
@@ -670,7 +670,7 @@ export default function PresentationPage() {
                         className="flex-1 min-w-0 h-full flex flex-col items-center justify-end group relative"
                       >
                         {/* Hover Tooltip */}
-                        <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute bottom-full mb-2 bg-[#072d3f] text-white text-[11px] font-bold py-1 px-2 rounded-md shadow-xl pointer-events-none whitespace-nowrap z-30">
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute bottom-full mb-1.5 bg-[#072d3f] text-white text-[10px] font-bold py-1 px-1.5 rounded-md shadow-xl pointer-events-none whitespace-nowrap z-30">
                           <div className="text-[#ffd100] font-black">
                             Tgl {item.day} {isToday ? "(Hari Ini)" : ""}
                           </div>
@@ -700,7 +700,7 @@ export default function PresentationPage() {
 
                         {/* Day Number Label */}
                         <span
-                          className={`text-[8px] sm:text-[9px] mt-1 font-mono ${
+                          className={`text-[8px] sm:text-[9px] mt-0.5 font-mono ${
                             isToday
                               ? "text-[#0076a8] font-black underline"
                               : item.day % 5 === 0 || item.day === 1
@@ -716,164 +716,164 @@ export default function PresentationPage() {
                 </div>
 
                 {/* Footer Insight */}
-                <div className="pt-2 border-t border-[#e2e8f0] flex items-center justify-between text-[10px] sm:text-[11px] text-[#647783]">
+                <div className="pt-1.5 border-t border-[#e2e8f0] flex items-center justify-between text-[10px] text-[#647783]">
                   <span>
                     Hari ini: <strong className="text-[#17313d]">Tgl {todayDayNumber}</strong> ({metrics.inspectionsTodayCount || 0} sesi)
                   </span>
                   <span>
-                    Puncak Bulanan: <strong className="text-[#0076a8]">{maxTrendTotal} Sesi/Hari</strong>
+                    Puncak: <strong className="text-[#0076a8]">{maxTrendTotal} Sesi/Hari</strong>
                   </span>
                 </div>
               </div>
 
               {/* CHART 2: DISTRIBUSI KEPUASAN & RATING (3 COLS) */}
-              <div className="lg:col-span-3 bg-white border border-[#d8e3ea] rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col justify-between">
-                <div className="pb-2.5 border-b border-[#e2e8f0]">
+              <div className="lg:col-span-3 bg-white border border-[#d8e3ea] rounded-xl p-3 sm:p-3.5 shadow-xs flex flex-col justify-between">
+                <div className="pb-2 border-b border-[#e2e8f0]">
                   <h3 className="text-xs sm:text-sm font-black text-[#17313d] uppercase tracking-wider flex items-center gap-1.5">
                     <Star className="w-3.5 h-3.5 fill-[#ca8a04] text-[#ca8a04]" />
                     Distribusi Rating & CSAT
                   </h3>
-                  <p className="text-[10px] sm:text-[11px] text-[#647783] mt-0.5">Ulasan kepuasan anonim</p>
+                  <p className="text-[10px] text-[#647783]">Ulasan kepuasan anonim</p>
                 </div>
 
                 {/* Score Showcase */}
-                <div className="my-1.5 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl p-2.5 flex items-center justify-between">
+                <div className="my-1 bg-[#f8fafc] border border-[#e2e8f0] rounded-lg p-2 flex items-center justify-between">
                   <div>
-                    <span className="text-[9px] text-[#647783] uppercase font-black block">
+                    <span className="text-[8px] text-[#647783] uppercase font-black block">
                       RATA-RATA SKOR
                     </span>
-                    <div className="text-2xl font-black text-[#17313d] flex items-center gap-1 mt-0.5">
+                    <div className="text-xl font-black text-[#17313d] flex items-center gap-1 mt-0.5">
                       <span>★ {metrics.averageRating || "0.0"}</span>
-                      <span className="text-xs font-semibold text-[#94a3b8]">/ 4.0</span>
+                      <span className="text-[10px] font-semibold text-[#94a3b8]">/ 4.0</span>
                     </div>
                   </div>
                   <div className="text-right">
-                    <span className="text-[9px] text-[#647783] uppercase font-black block">
-                      TINGKAT KEPUASAN
+                    <span className="text-[8px] text-[#647783] uppercase font-black block">
+                      KEPUASAN
                     </span>
-                    <span className="text-xl font-black text-[#157a55] block mt-0.5">
+                    <span className="text-lg font-black text-[#157a55] block mt-0.5">
                       {metrics.satisfactionRate || 0}%
                     </span>
                   </div>
                 </div>
 
                 {/* 4 Star Tier Progress Bars */}
-                <div className="space-y-2 my-1">
+                <div className="space-y-1.5 my-0.5">
                   <div>
-                    <div className="flex justify-between text-[11px] font-bold mb-0.5">
+                    <div className="flex justify-between text-[10px] font-bold mb-0.5">
                       <span className="text-[#157a55]">★★★★ Sangat Puas</span>
                       <span className="text-[#17313d] font-mono">{star4Count} ({star4Pct}%)</span>
                     </div>
-                    <div className="w-full h-1.5 bg-[#f1f5f9] rounded-full overflow-hidden">
+                    <div className="w-full h-1 bg-[#f1f5f9] rounded-full overflow-hidden">
                       <div className="h-full bg-[#157a55] rounded-full" style={{ width: `${star4Pct}%` }} />
                     </div>
                   </div>
 
                   <div>
-                    <div className="flex justify-between text-[11px] font-bold mb-0.5">
+                    <div className="flex justify-between text-[10px] font-bold mb-0.5">
                       <span className="text-[#0076a8]">★★★ Puas</span>
                       <span className="text-[#17313d] font-mono">{star3Count} ({star3Pct}%)</span>
                     </div>
-                    <div className="w-full h-1.5 bg-[#f1f5f9] rounded-full overflow-hidden">
+                    <div className="w-full h-1 bg-[#f1f5f9] rounded-full overflow-hidden">
                       <div className="h-full bg-[#0076a8] rounded-full" style={{ width: `${star3Pct}%` }} />
                     </div>
                   </div>
 
                   <div>
-                    <div className="flex justify-between text-[11px] font-bold mb-0.5">
+                    <div className="flex justify-between text-[10px] font-bold mb-0.5">
                       <span className="text-[#d97706]">★★ Cukup</span>
                       <span className="text-[#17313d] font-mono">{star2Count} ({star2Pct}%)</span>
                     </div>
-                    <div className="w-full h-1.5 bg-[#f1f5f9] rounded-full overflow-hidden">
+                    <div className="w-full h-1 bg-[#f1f5f9] rounded-full overflow-hidden">
                       <div className="h-full bg-[#d97706] rounded-full" style={{ width: `${star2Pct}%` }} />
                     </div>
                   </div>
 
                   <div>
-                    <div className="flex justify-between text-[11px] font-bold mb-0.5">
+                    <div className="flex justify-between text-[10px] font-bold mb-0.5">
                       <span className="text-[#dc2626]">★ Kurang</span>
                       <span className="text-[#17313d] font-mono">{star1Count} ({star1Pct}%)</span>
                     </div>
-                    <div className="w-full h-1.5 bg-[#f1f5f9] rounded-full overflow-hidden">
+                    <div className="w-full h-1 bg-[#f1f5f9] rounded-full overflow-hidden">
                       <div className="h-full bg-[#dc2626] rounded-full" style={{ width: `${star1Pct}%` }} />
                     </div>
                   </div>
                 </div>
 
-                <div className="pt-2 border-t border-[#e2e8f0] text-[10px] text-[#647783] flex justify-between">
-                  <span>Standar Layanan 5S PLN</span>
-                  <span className="font-bold text-[#17313d]">{totalEvals} Total Responden</span>
+                <div className="pt-1.5 border-t border-[#e2e8f0] text-[9px] text-[#647783] flex justify-between">
+                  <span>Standar 5S PLN</span>
+                  <span className="font-bold text-[#17313d]">{totalEvals} Responden</span>
                 </div>
               </div>
 
               {/* CHART 3: KOMPOSISI STATUS RUANGAN (3 COLS) */}
-              <div className="lg:col-span-3 bg-white border border-[#d8e3ea] rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col justify-between">
-                <div className="pb-2.5 border-b border-[#e2e8f0]">
+              <div className="lg:col-span-3 bg-white border border-[#d8e3ea] rounded-xl p-3 sm:p-3.5 shadow-xs flex flex-col justify-between">
+                <div className="pb-2 border-b border-[#e2e8f0]">
                   <h3 className="text-xs sm:text-sm font-black text-[#17313d] uppercase tracking-wider flex items-center gap-1.5">
                     <Layers className="w-3.5 h-3.5 text-[#0076a8]" />
                     Status Ruangan Hari Ini
                   </h3>
-                  <p className="text-[10px] sm:text-[11px] text-[#647783] mt-0.5">
-                    Progres seluruh {roomSummaries.length} ruangan aktif
+                  <p className="text-[10px] text-[#647783]">
+                    Progres {roomSummaries.length} ruangan aktif
                   </p>
                 </div>
 
                 {/* 4 Status Matrix Pill Breakdown */}
-                <div className="grid grid-cols-2 gap-2 my-1.5">
-                  <div className="bg-[#ecfdf5] border border-emerald-200 rounded-xl p-2.5">
-                    <div className="flex items-center gap-1 text-[11px] text-[#157a55] font-bold">
+                <div className="grid grid-cols-2 gap-1.5 my-1">
+                  <div className="bg-[#ecfdf5] border border-emerald-200 rounded-lg p-2">
+                    <div className="flex items-center gap-1 text-[10px] text-[#157a55] font-bold">
                       <span className="w-1.5 h-1.5 rounded-full bg-[#157a55]" />
                       <span>Lengkap</span>
                     </div>
-                    <div className="text-xl font-black text-[#17313d] mt-0.5">
+                    <div className="text-lg font-black text-[#17313d] mt-0.5">
                       {summary.greenCount || 0}
-                      <span className="text-[10px] font-normal text-[#647783] ml-1">ruang</span>
+                      <span className="text-[9px] font-normal text-[#647783] ml-0.5">ruang</span>
                     </div>
                   </div>
 
-                  <div className="bg-[#f5f3ff] border border-purple-200 rounded-xl p-2.5">
-                    <div className="flex items-center gap-1 text-[11px] text-[#7c3aed] font-bold">
+                  <div className="bg-[#f5f3ff] border border-purple-200 rounded-lg p-2">
+                    <div className="flex items-center gap-1 text-[10px] text-[#7c3aed] font-bold">
                       <span className="w-1.5 h-1.5 rounded-full bg-[#7c3aed]" />
                       <span>Tunggu SPV</span>
                     </div>
-                    <div className="text-xl font-black text-[#17313d] mt-0.5">
+                    <div className="text-lg font-black text-[#17313d] mt-0.5">
                       {summary.purpleCount || 0}
-                      <span className="text-[10px] font-normal text-[#647783] ml-1">ruang</span>
+                      <span className="text-[9px] font-normal text-[#647783] ml-0.5">ruang</span>
                     </div>
                   </div>
 
-                  <div className="bg-[#fffbeb] border border-amber-200 rounded-xl p-2.5">
-                    <div className="flex items-center gap-1 text-[11px] text-[#b45309] font-bold">
+                  <div className="bg-[#fffbeb] border border-amber-200 rounded-lg p-2">
+                    <div className="flex items-center gap-1 text-[10px] text-[#b45309] font-bold">
                       <span className="w-1.5 h-1.5 rounded-full bg-[#f59e0b]" />
                       <span>Sebagian</span>
                     </div>
-                    <div className="text-xl font-black text-[#17313d] mt-0.5">
+                    <div className="text-lg font-black text-[#17313d] mt-0.5">
                       {summary.yellowCount || 0}
-                      <span className="text-[10px] font-normal text-[#647783] ml-1">ruang</span>
+                      <span className="text-[9px] font-normal text-[#647783] ml-0.5">ruang</span>
                     </div>
                   </div>
 
-                  <div className="bg-[#fef2f2] border border-rose-200 rounded-xl p-2.5">
-                    <div className="flex items-center gap-1 text-[11px] text-[#be123c] font-bold">
+                  <div className="bg-[#fef2f2] border border-rose-200 rounded-lg p-2">
+                    <div className="flex items-center gap-1 text-[10px] text-[#be123c] font-bold">
                       <span className="w-1.5 h-1.5 rounded-full bg-[#f43f5e]" />
                       <span>Belum Mulai</span>
                     </div>
-                    <div className="text-xl font-black text-[#17313d] mt-0.5">
+                    <div className="text-lg font-black text-[#17313d] mt-0.5">
                       {summary.redCount || 0}
-                      <span className="text-[10px] font-normal text-[#647783] ml-1">ruang</span>
+                      <span className="text-[9px] font-normal text-[#647783] ml-0.5">ruang</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Stacked Composition Bar */}
-                <div className="mt-1">
-                  <div className="flex justify-between text-[10px] text-[#647783] mb-1">
-                    <span>Komposisi Keseluruhan</span>
+                <div className="mt-0.5">
+                  <div className="flex justify-between text-[9px] text-[#647783] mb-0.5">
+                    <span>Komposisi</span>
                     <span className="font-bold text-[#17313d]">
-                      {summary.greenCount + summary.purpleCount}/{roomSummaries.length} Selesai Petugas
+                      {summary.greenCount + summary.purpleCount}/{roomSummaries.length} Selesai
                     </span>
                   </div>
-                  <div className="w-full h-2.5 bg-[#f1f5f9] rounded-full overflow-hidden flex">
+                  <div className="w-full h-2 bg-[#f1f5f9] rounded-full overflow-hidden flex">
                     <div
                       className="bg-[#157a55] h-full transition-all"
                       style={{
@@ -905,32 +905,32 @@ export default function PresentationPage() {
                   </div>
                 </div>
 
-                <div className="pt-2 border-t border-[#e2e8f0] text-[10px] text-[#647783] flex justify-between">
-                  <span>Target: 100% Lengkap Hari Ini</span>
+                <div className="pt-1.5 border-t border-[#e2e8f0] text-[9px] text-[#647783] flex justify-between">
+                  <span>Target: 100%</span>
                   <button
                     type="button"
                     onClick={() => setActiveTab("ROOMS")}
                     className="text-[#0076a8] hover:underline font-bold flex items-center gap-0.5"
                   >
-                    Buka Matriks Detail <ChevronRight className="w-3 h-3" />
+                    Matriks Detail <ChevronRight className="w-2.5 h-2.5" />
                   </button>
                 </div>
               </div>
             </div>
 
             {/* ── ROW 3: LIVE EVIDENCE SHOWCASE & ATTENTION ITEMS FEED (PROPER HEIGHT, NOT CUT OFF) ── */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 sm:gap-3">
               {/* LEFT: 10 EVIDENCE PHOTOS SHOWCASE (7 COLS) */}
-              <div className="lg:col-span-7 bg-white border border-[#d8e3ea] rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col justify-between">
-                <div className="flex items-center justify-between pb-2.5 border-b border-[#e2e8f0]">
+              <div className="lg:col-span-7 bg-white border border-[#d8e3ea] rounded-xl p-3 sm:p-3.5 shadow-xs flex flex-col justify-between">
+                <div className="flex items-center justify-between pb-2 border-b border-[#e2e8f0]">
                   <div className="flex items-center gap-1.5">
-                    <Camera className="w-4 h-4 text-[#0076a8]" />
+                    <Camera className="w-3.5 h-3.5 text-[#0076a8]" />
                     <h3 className="text-xs sm:text-sm font-black text-[#17313d] uppercase tracking-wider">
                       Dokumentasi Foto Evidence Lapangan
                     </h3>
                   </div>
                   <div className="flex items-center gap-2 text-xs">
-                    <span className="text-[#647783]">
+                    <span className="text-[#647783] text-[10px]">
                       Foto <strong className="text-[#17313d]">{photoIndex + 1}</strong> dari{" "}
                       <strong className="text-[#17313d]">{latestPhotos.length}</strong>
                     </span>
@@ -940,18 +940,18 @@ export default function PresentationPage() {
                         onClick={() =>
                           setPhotoIndex((i) => (i - 1 + latestPhotos.length) % latestPhotos.length)
                         }
-                        className="w-6 h-6 rounded-lg bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[#17313d] flex items-center justify-center transition-colors"
+                        className="w-5 h-5 rounded-md bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[#17313d] flex items-center justify-center transition-colors"
                         title="Foto sebelumnya"
                       >
-                        <ChevronLeft className="w-3.5 h-3.5" />
+                        <ChevronLeft className="w-3 h-3" />
                       </button>
                       <button
                         type="button"
                         onClick={() => setPhotoIndex((i) => (i + 1) % latestPhotos.length)}
-                        className="w-6 h-6 rounded-lg bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[#17313d] flex items-center justify-center transition-colors"
+                        className="w-5 h-5 rounded-md bg-[#f1f5f9] hover:bg-[#e2e8f0] text-[#17313d] flex items-center justify-center transition-colors"
                         title="Foto berikutnya"
                       >
-                        <ChevronRight className="w-3.5 h-3.5" />
+                        <ChevronRight className="w-3 h-3" />
                       </button>
                     </div>
                   </div>
@@ -959,11 +959,11 @@ export default function PresentationPage() {
 
                 {/* Photo Display Card - FULLY VISIBLE, OBJECT-CONTAIN, CLICK TO ZOOM */}
                 {activePhoto ? (
-                  <div className="my-2.5 flex flex-col sm:flex-row gap-3.5 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl p-2.5 sm:p-3">
+                  <div className="my-1.5 flex flex-col sm:flex-row gap-3 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl p-2 sm:p-2.5">
                     {/* Image with Edge CDN Proxy - object-contain ensures no cropping */}
                     <div
                       onClick={() => setSelectedPhotoModal(activePhoto)}
-                      className="relative w-full sm:w-56 h-40 bg-[#072d3f]/5 rounded-lg overflow-hidden shrink-0 border border-[#d8e3ea] cursor-pointer group flex items-center justify-center"
+                      className="relative w-full sm:w-44 h-28 sm:h-32 bg-[#072d3f]/5 rounded-lg overflow-hidden shrink-0 border border-[#d8e3ea] cursor-pointer group flex items-center justify-center"
                       title="Klik untuk melihat ukuran penuh"
                     >
                       <img
@@ -977,9 +977,9 @@ export default function PresentationPage() {
                           target.src = "/api/kebersihan/evidence?path=NOT_FOUND";
                         }}
                       />
-                      <div className="absolute top-2 left-2">
+                      <div className="absolute top-1.5 left-1.5">
                         <span
-                          className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider shadow-xs ${
+                          className={`px-1.5 py-0.2 rounded-md text-[8px] font-black uppercase tracking-wider shadow-xs ${
                             activePhoto.overallStatus === "ADA_TEMUAN"
                               ? "bg-[#eab308] text-white"
                               : "bg-[#157a55] text-white"
@@ -988,50 +988,50 @@ export default function PresentationPage() {
                           {activePhoto.overallStatus === "ADA_TEMUAN" ? "⚠ Ada Temuan" : "✓ Bersih"}
                         </span>
                       </div>
-                      <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-xs text-white p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Eye className="w-3.5 h-3.5" />
+                      <div className="absolute bottom-1.5 right-1.5 bg-black/60 backdrop-blur-xs text-white p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Eye className="w-3 h-3" />
                       </div>
                     </div>
 
                     {/* Metadata */}
                     <div className="flex-1 flex flex-col justify-between py-0.5">
                       <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-bold text-[#0076a8] bg-[#e8f5fa] border border-[#0076a8]/20 px-2 py-0.5 rounded-md">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[9px] font-bold text-[#0076a8] bg-[#e8f5fa] border border-[#0076a8]/20 px-1.5 py-0.2 rounded">
                             {activePhoto.slotName} ({activePhoto.slotRole})
                           </span>
-                          <span className="text-[10px] font-mono text-[#647783]">
+                          <span className="text-[9px] font-mono text-[#647783]">
                             {activePhoto.displayTime}
                           </span>
                         </div>
-                        <h4 className="text-sm sm:text-base font-black text-[#17313d] mt-1 line-clamp-1">{activePhoto.roomName}</h4>
-                        <p className="text-xs text-[#647783] mt-0.5">
+                        <h4 className="text-xs sm:text-sm font-black text-[#17313d] mt-1 line-clamp-1">{activePhoto.roomName}</h4>
+                        <p className="text-[11px] text-[#647783] mt-0.5">
                           Pemeriksa: <strong className="text-[#0076a8]">{activePhoto.officerName}</strong>
                         </p>
                       </div>
 
-                      <div className="pt-2 border-t border-[#e2e8f0] text-[10px] sm:text-[11px] text-[#647783] flex items-center justify-between">
+                      <div className="pt-1.5 border-t border-[#e2e8f0] text-[9px] text-[#647783] flex items-center justify-between">
                         <span>Standar 5S Kebersihan PLN</span>
                         <span className="text-[#0076a8] font-medium">QNAP NAS Storage</span>
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <div className="my-6 text-center text-[#94a3b8] text-xs py-8">
+                  <div className="my-3 text-center text-[#94a3b8] text-xs py-4">
                     Belum ada foto evidence tersimpan hari ini.
                   </div>
                 )}
 
                 {/* 10 Photo Thumbnail Strip - COMPACT & VISIBLE */}
-                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1">
+                <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pt-0.5">
                   {latestPhotos.map((photo: any, idx: number) => (
                     <button
                       key={photo.id}
                       type="button"
                       onClick={() => setPhotoIndex(idx)}
-                      className={`relative w-11 h-9 rounded-lg overflow-hidden shrink-0 border-2 transition-all bg-[#072d3f]/5 ${
+                      className={`relative w-9 h-7 sm:w-10 sm:h-8 rounded-md overflow-hidden shrink-0 border-2 transition-all bg-[#072d3f]/5 ${
                         idx === photoIndex
-                          ? "border-[#0076a8] ring-1.5 ring-[#0076a8]/40 scale-105"
+                          ? "border-[#0076a8] ring-1 ring-[#0076a8]/40 scale-105"
                           : "border-[#d8e3ea] opacity-60 hover:opacity-100"
                       }`}
                     >
@@ -1051,20 +1051,20 @@ export default function PresentationPage() {
               </div>
 
               {/* RIGHT: LIVE ATTENTION ITEMS & ACTIVITY FEED (5 COLS) */}
-              <div className="lg:col-span-5 bg-white border border-[#d8e3ea] rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col justify-between">
-                <div className="flex items-center justify-between pb-2.5 border-b border-[#e2e8f0]">
+              <div className="lg:col-span-5 bg-white border border-[#d8e3ea] rounded-xl p-3 sm:p-3.5 shadow-xs flex flex-col justify-between">
+                <div className="flex items-center justify-between pb-2 border-b border-[#e2e8f0]">
                   <div className="flex items-center gap-1.5">
                     <AlertTriangle
-                      className={`w-4 h-4 ${
+                      className={`w-3.5 h-3.5 ${
                         findings.length > 0 ? "text-[#d97706] animate-bounce" : "text-[#157a55]"
                       }`}
                     />
                     <h3 className="text-xs sm:text-sm font-black text-[#17313d] uppercase tracking-wider">
-                      {findings.length > 0 ? "Item Perhatian & Temuan Hari Ini" : "Status Bersih & Optimal"}
+                      {findings.length > 0 ? "Item Perhatian & Temuan" : "Status Bersih & Optimal"}
                     </h3>
                   </div>
                   <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                    className={`px-1.5 py-0.2 rounded-full text-[9px] font-black ${
                       findings.length > 0 ? "bg-amber-100 text-[#b45309]" : "bg-emerald-100 text-[#157a55]"
                     }`}
                   >
@@ -1072,40 +1072,40 @@ export default function PresentationPage() {
                   </span>
                 </div>
 
-                <div className="my-2 space-y-2 max-h-48 overflow-y-auto minimal-scrollbar pr-1">
+                <div className="my-1.5 space-y-1.5 max-h-32 sm:max-h-36 overflow-y-auto minimal-scrollbar pr-1">
                   {findings.length > 0 ? (
                     findings.map((f: any, idx: number) => (
                       <div
                         key={f.id || idx}
-                        className="p-2.5 bg-[#fffbeb] border border-amber-200 rounded-xl text-xs space-y-1"
+                        className="p-2 bg-[#fffbeb] border border-amber-200 rounded-lg text-xs space-y-0.5"
                       >
                         <div className="flex justify-between items-start">
-                          <strong className="text-[#b45309] font-bold">{f.roomName}</strong>
-                          <span className="text-[10px] text-[#647783] font-mono">{f.time} WIB</span>
+                          <strong className="text-[#b45309] font-bold text-[11px]">{f.roomName}</strong>
+                          <span className="text-[9px] text-[#647783] font-mono">{f.time} WIB</span>
                         </div>
-                        <p className="text-[#17313d] text-[11px] leading-relaxed">
+                        <p className="text-[#17313d] text-[10px] leading-snug">
                           {f.note || "Perlu perhatian dan tindak lanjut kebersihan."}
                         </p>
-                        <div className="flex items-center justify-between text-[10px] text-[#647783] pt-1">
+                        <div className="flex items-center justify-between text-[9px] text-[#647783] pt-0.5">
                           <span>Oleh: {f.officerName}</span>
                           <span className="text-[#ca8a04] font-semibold">{f.slotName}</span>
                         </div>
                       </div>
                     ))
                   ) : (
-                    <div className="py-6 px-4 text-center flex flex-col items-center justify-center">
-                      <div className="w-10 h-10 rounded-2xl bg-[#ecfdf5] border border-emerald-200 flex items-center justify-center text-[#157a55] mb-2 shadow-xs">
-                        <CheckCircle2 className="w-5 h-5" />
+                    <div className="py-3 px-3 text-center flex flex-col items-center justify-center">
+                      <div className="w-8 h-8 rounded-xl bg-[#ecfdf5] border border-emerald-200 flex items-center justify-center text-[#157a55] mb-1 shadow-xs">
+                        <CheckCircle2 className="w-4 h-4" />
                       </div>
-                      <h4 className="text-xs sm:text-sm font-bold text-[#17313d]">Semua Ruangan Memenuhi Standar</h4>
-                      <p className="text-[11px] text-[#647783] mt-0.5 max-w-xs">
+                      <h4 className="text-xs font-bold text-[#17313d]">Semua Ruangan Memenuhi Standar</h4>
+                      <p className="text-[10px] text-[#647783] mt-0.5 max-w-xs">
                         Tidak ada temuan kotor atau kerusakan yang belum diselesaikan hari ini.
                       </p>
                     </div>
                   )}
                 </div>
 
-                <div className="pt-2 border-t border-[#e2e8f0] flex items-center justify-between text-[10px] text-[#647783]">
+                <div className="pt-1.5 border-t border-[#e2e8f0] flex items-center justify-between text-[9px] text-[#647783]">
                   <span>Sistem Siaga Operasional</span>
                   <span className="text-[#17313d] font-mono font-semibold">Tervalidasi Supervisor</span>
                 </div>
