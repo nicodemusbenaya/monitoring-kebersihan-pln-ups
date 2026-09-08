@@ -12,6 +12,7 @@ import {
   X,
   ExternalLink,
   ChevronRight,
+  ChevronLeft,
   Sparkles,
   RotateCcw,
   Camera,
@@ -128,6 +129,19 @@ export default function DashboardSummaryPage() {
   const [reopenId, setReopenId] = useState<string | null>(null);
   const [selectedDetailRoom, setSelectedDetailRoom] = useState<any | null>(null);
   const [selectedEvidencePhoto, setSelectedEvidencePhoto] = useState<any | null>(null);
+  const [activeEvidenceIndex, setActiveEvidenceIndex] = useState(0);
+  const [isEvidencePaused, setIsEvidencePaused] = useState(false);
+
+  const latestPhotosList = useMemo(() => dashboardData?.latestPhotos || [], [dashboardData?.latestPhotos]);
+
+  // Auto-cycle 10 foto evidence setiap 7 detik (jeda saat dihover pengguna)
+  useEffect(() => {
+    if (!latestPhotosList.length || isEvidencePaused) return;
+    const timer = setInterval(() => {
+      setActiveEvidenceIndex((prev) => (prev + 1) % latestPhotosList.length);
+    }, 7000);
+    return () => clearInterval(timer);
+  }, [latestPhotosList.length, isEvidencePaused]);
 
   const hasFilterActive = appliedRoomFilter !== "ALL" || appliedPeriod !== currentMonthKey;
   const isMonthFiltered = appliedPeriod !== currentMonthKey;
@@ -739,97 +753,250 @@ export default function DashboardSummaryPage() {
           </div>
         </div>
 
-        {/* Right: Item Perhatian */}
-        <div className="lg:col-span-4 bg-white border border-[#d8e3ea] rounded-2xl p-6 shadow-sm flex flex-col space-y-4">
-          <div>
-            <span className="text-[10px] font-black uppercase tracking-widest text-[#718c99] block">
-              TINDAK LANJUT
-            </span>
-            <h4 className="text-lg font-black text-[#17313d]">Item perhatian</h4>
-            <p className="text-xs text-[#647783] mt-0.5">
-              Temuan dan jadwal yang perlu tindakan lebih lanjut.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setActionItemFilter("ALL")}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${
-                actionItemFilter === "ALL" ? "bg-[#072d3f] text-white shadow-sm" : "bg-[#f1f5f9] text-[#647783] hover:bg-[#e2e8f0]"
-              }`}
-            >
-              Semua {actionCounts.all}
-            </button>
-            <button
-              type="button"
-              onClick={() => setActionItemFilter("FINDINGS")}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${
-                actionItemFilter === "FINDINGS" ? "bg-[#072d3f] text-white shadow-sm" : "bg-[#f1f5f9] text-[#647783] hover:bg-[#e2e8f0]"
-              }`}
-            >
-              Temuan {actionCounts.findings}
-            </button>
-            <button
-              type="button"
-              onClick={() => setActionItemFilter("PENDING")}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${
-                actionItemFilter === "PENDING" ? "bg-[#072d3f] text-white shadow-sm" : "bg-[#f1f5f9] text-[#647783] hover:bg-[#e2e8f0]"
-              }`}
-            >
-              Belum selesai {actionCounts.pending}
-            </button>
-          </div>
-
-          <div className={`flex-1 space-y-3 max-h-[440px] overflow-y-auto pr-1 ${loading ? "opacity-60" : ""}`}>
-            {loading ? (
-              Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="p-3.5 rounded-xl border border-gray-100 bg-gray-50 flex items-start gap-3 animate-pulse">
-                  <div className="w-7 h-7 rounded-lg bg-gray-200 shrink-0"></div>
-                  <div className="flex-1 space-y-2">
-                    <div className="h-3.5 w-32 bg-gray-200 rounded"></div>
-                    <div className="h-2.5 w-44 bg-gray-200 rounded"></div>
-                  </div>
-                </div>
-              ))
-            ) : filteredActionItems.length === 0 ? (
-              <div className="h-full min-h-[220px] flex flex-col items-center justify-center text-center p-6 bg-[#f8fafc] border border-dashed border-[#cbd5e1] rounded-2xl">
-                <div className="w-10 h-10 rounded-xl bg-[#dcfce7] text-[#15803d] flex items-center justify-center mb-2.5">
-                  <CheckCircle2 className="w-5 h-5" />
-                </div>
-                <h6 className="text-xs font-black text-[#17313d]">
-                  {actionItemFilter === "FINDINGS"
-                    ? "Tidak Ada Temuan Rusak/Kotor"
-                    : actionItemFilter === "PENDING"
-                    ? "Semua Jadwal Selesai"
-                    : "Tidak Ada Item Perhatian"}
-                </h6>
-                <p className="text-[11px] text-[#647783] mt-1 max-w-[220px]">
-                  {actionItemFilter === "FINDINGS"
-                    ? "Seluruh ruangan yang telah diinspeksi hari ini dalam kondisi bersih & berfungsi normal."
-                    : "Semua ruangan sudah selesai diperiksa oleh petugas & pengawas."}
-                </p>
+        {/* Right: Stacked Column: Item Perhatian (Cut Half) + Dokumentasi Evidence Terakhir (Auto cycle 7s) */}
+        <div className="lg:col-span-4 flex flex-col gap-4">
+          {/* Card 1: Item Perhatian (Tinggi dipotong setengahnya) */}
+          <div className="bg-white border border-[#d8e3ea] rounded-2xl p-5 shadow-sm flex flex-col space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-[#718c99] block">
+                  TINDAK LANJUT
+                </span>
+                <h4 className="text-base font-black text-[#17313d]">Item perhatian</h4>
               </div>
-            ) : (
-              filteredActionItems.slice(0, 10).map((item, idx) => (
-                <div
-                  key={item.id || idx}
-                  className="p-3.5 rounded-xl border border-[#ffd100]/60 bg-[#fffdf5] flex items-start gap-3"
-                >
-                  <div className="w-7 h-7 rounded-lg bg-[#ffd100]/30 text-[#9a6500] flex items-center justify-center shrink-0 mt-0.5">
-                    <Clock className="w-3.5 h-3.5" />
+              <span className="text-[10px] text-[#647783] font-bold">
+                {actionCounts.all} Catatan
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+              <button
+                type="button"
+                onClick={() => setActionItemFilter("ALL")}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors whitespace-nowrap ${
+                  actionItemFilter === "ALL" ? "bg-[#072d3f] text-white shadow-sm" : "bg-[#f1f5f9] text-[#647783] hover:bg-[#e2e8f0]"
+                }`}
+              >
+                Semua ({actionCounts.all})
+              </button>
+              <button
+                type="button"
+                onClick={() => setActionItemFilter("FINDINGS")}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors whitespace-nowrap ${
+                  actionItemFilter === "FINDINGS" ? "bg-[#072d3f] text-white shadow-sm" : "bg-[#f1f5f9] text-[#647783] hover:bg-[#e2e8f0]"
+                }`}
+              >
+                Temuan ({actionCounts.findings})
+              </button>
+              <button
+                type="button"
+                onClick={() => setActionItemFilter("PENDING")}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors whitespace-nowrap ${
+                  actionItemFilter === "PENDING" ? "bg-[#072d3f] text-white shadow-sm" : "bg-[#f1f5f9] text-[#647783] hover:bg-[#e2e8f0]"
+                }`}
+              >
+                Belum ({actionCounts.pending})
+              </button>
+            </div>
+
+            <div className={`flex-1 space-y-2.5 max-h-[160px] overflow-y-auto pr-1 ${loading ? "opacity-60" : ""}`}>
+              {loading ? (
+                Array.from({ length: 2 }).map((_, i) => (
+                  <div key={i} className="p-3 rounded-xl border border-gray-100 bg-gray-50 flex items-start gap-2.5 animate-pulse">
+                    <div className="w-6 h-6 rounded-lg bg-gray-200 shrink-0"></div>
+                    <div className="flex-1 space-y-1.5">
+                      <div className="h-3 w-28 bg-gray-200 rounded"></div>
+                      <div className="h-2.5 w-36 bg-gray-200 rounded"></div>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <h5 className="text-xs font-bold text-[#17313d] truncate">
-                      {item.roomName} - {item.slotName}
-                    </h5>
-                    <p className="text-[11px] text-[#647783] mt-0.5">{item.desc}</p>
-                    <span className="text-[10px] font-bold text-[#d97706] mt-1 block">
-                      {item.status}
+                ))
+              ) : filteredActionItems.length === 0 ? (
+                <div className="py-5 flex flex-col items-center justify-center text-center p-3 bg-[#f8fafc] border border-dashed border-[#cbd5e1] rounded-xl">
+                  <CheckCircle2 className="w-5 h-5 text-[#15803d] mb-1" />
+                  <span className="text-xs font-bold text-[#17313d]">
+                    {actionItemFilter === "FINDINGS" ? "Nihil Temuan Rusak/Kotor" : "Semua Jadwal Beres"}
+                  </span>
+                </div>
+              ) : (
+                filteredActionItems.slice(0, 8).map((item, idx) => (
+                  <div
+                    key={item.id || idx}
+                    className="p-2.5 rounded-xl border border-[#ffd100]/60 bg-[#fffdf5] flex items-start gap-2.5"
+                  >
+                    <div className="w-6 h-6 rounded-lg bg-[#ffd100]/30 text-[#9a6500] flex items-center justify-center shrink-0 mt-0.5">
+                      <Clock className="w-3 h-3" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h5 className="text-xs font-bold text-[#17313d] truncate">
+                        {item.roomName} - {item.slotName}
+                      </h5>
+                      <p className="text-[10px] text-[#647783] truncate">{item.desc}</p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Card 2: Dokumentasi Evidence Terakhir (Cycle 10 foto bergantian setiap 7 detik) */}
+          <div
+            onMouseEnter={() => setIsEvidencePaused(true)}
+            onMouseLeave={() => setIsEvidencePaused(false)}
+            className="bg-white border border-[#d8e3ea] rounded-2xl p-5 shadow-sm flex flex-col space-y-3 relative group"
+          >
+            {/* Header & Controls */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-[#0076a8]/10 text-[#0076a8] flex items-center justify-center shadow-inner shrink-0">
+                  <Camera className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-[#718c99] block">
+                    DOKUMENTASI FOTO
+                  </span>
+                  <h4 className="text-sm font-black text-[#17313d]">Evidence Terakhir</h4>
+                </div>
+              </div>
+
+              {/* Counter badge & Navigation */}
+              <div className="flex items-center gap-1.5">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#f1f5f9] text-[#647783]">
+                  {latestPhotosList.length > 0 ? `${activeEvidenceIndex + 1}/${latestPhotosList.length}` : "0/0"}
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setActiveEvidenceIndex((prev) =>
+                      prev === 0 ? Math.max(0, latestPhotosList.length - 1) : prev - 1
+                    )
+                  }
+                  className="w-6 h-6 rounded-lg bg-[#f1f5f9] hover:bg-[#0076a8] hover:text-white text-[#647783] flex items-center justify-center transition-colors shadow-xs"
+                  title="Foto sebelumnya"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setActiveEvidenceIndex((prev) =>
+                      (prev + 1) % Math.max(1, latestPhotosList.length)
+                    )
+                  }
+                  className="w-6 h-6 rounded-lg bg-[#f1f5f9] hover:bg-[#0076a8] hover:text-white text-[#647783] flex items-center justify-center transition-colors shadow-xs"
+                  title="Foto berikutnya (berputar tiap 7 detik)"
+                >
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Photo Slide Area */}
+            {loading ? (
+              <div className="w-full aspect-[16/10] bg-[#f1f5f9] animate-pulse rounded-xl" />
+            ) : latestPhotosList.length === 0 ? (
+              <div className="w-full aspect-[16/10] bg-[#f8fafc] border border-dashed border-[#cbd5e1] rounded-xl flex flex-col items-center justify-center text-center p-4">
+                <Camera className="w-6 h-6 text-[#94a3b8] mb-1" />
+                <span className="text-xs font-bold text-[#647783]">Belum ada foto evidence</span>
+              </div>
+            ) : (() => {
+              const currentPhoto = latestPhotosList[activeEvidenceIndex] || latestPhotosList[0];
+              const isClean = currentPhoto.overallStatus === "BERSIH";
+              const photoUrl = currentPhoto.fileUrl.startsWith("http")
+                ? currentPhoto.fileUrl
+                : `/api/kebersihan/evidence?path=${encodeURIComponent(currentPhoto.fileUrl)}`;
+
+              return (
+                <div
+                  onClick={() => setSelectedEvidencePhoto(currentPhoto)}
+                  className="relative w-full aspect-[16/10] rounded-xl overflow-hidden bg-[#072d3f]/5 border border-black/5 cursor-pointer group/slide"
+                  title="Klik untuk melihat ukuran penuh"
+                >
+                  <img
+                    key={currentPhoto.id || activeEvidenceIndex}
+                    src={photoUrl}
+                    alt={currentPhoto.roomName}
+                    loading="lazy"
+                    decoding="async"
+                    className="w-full h-full object-cover transition-all duration-500 animate-in fade-in"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.onerror = null;
+                      target.src = "/api/kebersihan/evidence?path=NOT_FOUND";
+                    }}
+                  />
+
+                  {/* Top-left: Slot Badge */}
+                  <div className="absolute top-2 left-2 flex items-center gap-1">
+                    <span
+                      className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider backdrop-blur-md shadow-xs ${
+                        currentPhoto.slotCode === "PAGI"
+                          ? "bg-[#0284c7]/90 text-white"
+                          : currentPhoto.slotCode === "SORE"
+                          ? "bg-[#d97706]/90 text-white"
+                          : "bg-[#7c3aed]/90 text-white"
+                      }`}
+                    >
+                      {currentPhoto.slotName}
                     </span>
                   </div>
+
+                  {/* Top-right: Condition Status */}
+                  <div className="absolute top-2 right-2 flex items-center gap-1">
+                    <span
+                      className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase backdrop-blur-md shadow-xs ${
+                        isClean
+                          ? "bg-[#16a34a]/90 text-white"
+                          : "bg-[#dc2626]/90 text-white"
+                      }`}
+                    >
+                      {isClean ? "Bersih" : "Temuan"}
+                    </span>
+                  </div>
+
+                  {/* Hover Hint */}
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/slide:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-1.5 text-white text-xs font-bold pointer-events-none">
+                    <ZoomIn className="w-4 h-4" />
+                    <span>Perbesar Foto</span>
+                  </div>
+
+                  {/* Bottom Bar Info Overlay */}
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/50 to-transparent p-2.5 pt-6 text-white">
+                    <h5 className="text-xs font-black truncate">{currentPhoto.roomName}</h5>
+                    <div className="flex items-center justify-between text-[10px] text-white/80 mt-0.5">
+                      <span className="flex items-center gap-1 truncate max-w-[120px]">
+                        <User className="w-3 h-3 text-[#ffd100] shrink-0" />
+                        <span className="truncate">{currentPhoto.officerName}</span>
+                      </span>
+                      <span className="flex items-center gap-1 text-white/70">
+                        <Clock className="w-2.5 h-2.5" />
+                        <span>{currentPhoto.displayTime}</span>
+                      </span>
+                    </div>
+                  </div>
                 </div>
-              ))
+              );
+            })()}
+
+            {/* Mini Progress Indicator Dots (Cycle every 7 seconds) */}
+            {latestPhotosList.length > 0 && (
+              <div className="flex items-center justify-between pt-1 text-[10px] text-[#94a3b8]">
+                <div className="flex items-center gap-1">
+                  {latestPhotosList.slice(0, 10).map((_: any, idx: number) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setActiveEvidenceIndex(idx)}
+                      className={`h-1.5 rounded-full transition-all duration-300 ${
+                        idx === activeEvidenceIndex ? "w-5 bg-[#0076a8]" : "w-1.5 bg-[#d8e3ea] hover:bg-[#94a3b8]"
+                      }`}
+                      title={`Pindah ke foto ${idx + 1}`}
+                    />
+                  ))}
+                </div>
+                <span className="text-[10px] font-medium text-[#718c99]">
+                  {isEvidencePaused ? "Dijeda saat kursor di atas" : "Berganti tiap 7 detik"}
+                </span>
+              </div>
             )}
           </div>
         </div>
@@ -1007,154 +1174,7 @@ export default function DashboardSummaryPage() {
         </div>
       </section>
 
-      {/* 6. 10 FOTO EVIDENCE TERAKHIR */}
-      <section className="bg-white border border-[#d8e3ea] rounded-3xl p-6 sm:p-8 shadow-sm space-y-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#f1f5f9]">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#0076a8]/10 text-[#0076a8] flex items-center justify-center shadow-inner shrink-0">
-              <Camera className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black uppercase tracking-widest text-[#718c99] block">
-                  DOKUMENTASI LAPANGAN
-                </span>
-                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-black bg-[#dcfce7] text-[#15803d]">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#16a34a] animate-pulse"></span>
-                  10 Foto Terkini
-                </span>
-              </div>
-              <h3 className="text-xl font-black text-[#17313d]">Evidence Terakhir Disubmit</h3>
-              <p className="text-xs text-[#647783] mt-0.5">
-                Bukti fisik kebersihan ruangan yang baru saja dikirim oleh petugas. Klik foto untuk melihat ukuran penuh.
-              </p>
-            </div>
-          </div>
-
-          <span className="px-3 py-1 bg-[#f8fafc] border border-[#d8e3ea] rounded-xl text-xs font-bold text-[#647783] self-start sm:self-auto">
-            {dashboardData?.latestPhotos?.length || 0} Foto Tersedia
-          </span>
-        </div>
-
-        {/* 10 Photos Grid */}
-        {loading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
-            {Array.from({ length: 10 }).map((_, idx) => (
-              <div
-                key={idx}
-                className="bg-[#f8fafc] border border-[#e2e8f0] rounded-2xl overflow-hidden p-2.5 flex flex-col gap-2 animate-pulse"
-              >
-                <div className="w-full aspect-[4/3] bg-[#e2e8f0] rounded-xl"></div>
-                <div className="space-y-1.5 pt-1">
-                  <div className="h-3 w-3/4 bg-[#e2e8f0] rounded"></div>
-                  <div className="h-2.5 w-1/2 bg-[#e2e8f0] rounded"></div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (!dashboardData?.latestPhotos || dashboardData.latestPhotos.length === 0) ? (
-          <div className="py-12 flex flex-col items-center justify-center text-center bg-[#f8fafc] border border-dashed border-[#cbd5e1] rounded-2xl p-6">
-            <div className="w-12 h-12 rounded-2xl bg-[#f1f5f9] text-[#94a3b8] flex items-center justify-center mb-3">
-              <Camera className="w-6 h-6" />
-            </div>
-            <h5 className="text-sm font-bold text-[#17313d]">Belum Ada Foto Evidence</h5>
-            <p className="text-xs text-[#647783] mt-1 max-w-sm">
-              Foto bukti checklist kebersihan akan otomatis muncul di sini begitu petugas mengunggah laporan inspeksi.
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
-            {dashboardData.latestPhotos.map((photo: any, index: number) => {
-              const isClean = photo.overallStatus === "BERSIH";
-              const photoUrl = photo.fileUrl.startsWith("http")
-                ? photo.fileUrl
-                : `/api/kebersihan/evidence?path=${encodeURIComponent(photo.fileUrl)}`;
-
-              return (
-                <div
-                  key={photo.id || index}
-                  onClick={() => setSelectedEvidencePhoto(photo)}
-                  className="group relative bg-[#f8fafc] hover:bg-white border border-[#d8e3ea] hover:border-[#0076a8] rounded-2xl p-2.5 shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col justify-between"
-                  title="Klik untuk memperbesar foto evidence"
-                >
-                  {/* Thumbnail Container */}
-                  <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden bg-[#072d3f]/5 border border-black/5">
-                    <img
-                      src={photoUrl}
-                      alt={photo.roomName}
-                      loading="lazy"
-                      decoding="async"
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.onerror = null;
-                        target.src = "/api/kebersihan/evidence?path=NOT_FOUND";
-                      }}
-                    />
-
-                    {/* Overlay: Shift / Slot */}
-                    <div className="absolute top-1.5 left-1.5 flex items-center gap-1 pointer-events-none">
-                      <span
-                        className={`px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider backdrop-blur-md shadow-xs ${
-                          photo.slotCode === "PAGI"
-                            ? "bg-[#0284c7]/90 text-white"
-                            : photo.slotCode === "SORE"
-                            ? "bg-[#d97706]/90 text-white"
-                            : "bg-[#7c3aed]/90 text-white"
-                        }`}
-                      >
-                        {photo.slotName}
-                      </span>
-                    </div>
-
-                    {/* Overlay: Status (Bersih / Temuan) */}
-                    <div className="absolute top-1.5 right-1.5 pointer-events-none">
-                      <span
-                        className={`px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase backdrop-blur-md shadow-xs ${
-                          isClean
-                            ? "bg-[#16a34a]/90 text-white"
-                            : "bg-[#dc2626]/90 text-white"
-                        }`}
-                      >
-                        {isClean ? "Bersih" : "Temuan"}
-                      </span>
-                    </div>
-
-                    {/* Hover hint */}
-                    <div className="absolute inset-0 bg-black/35 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-1 text-white text-[11px] font-bold pointer-events-none">
-                      <ZoomIn className="w-4 h-4" />
-                      <span>Perbesar</span>
-                    </div>
-                  </div>
-
-                  {/* Metadata info */}
-                  <div className="mt-2 space-y-1">
-                    <h5
-                      className="text-xs font-black text-[#17313d] truncate group-hover:text-[#0076a8] transition-colors"
-                      title={photo.roomName}
-                    >
-                      {photo.roomName}
-                    </h5>
-
-                    <div className="flex items-center justify-between text-[10px] text-[#647783]">
-                      <span className="flex items-center gap-1 truncate max-w-[100px]" title={photo.officerName}>
-                        <User className="w-3 h-3 text-[#0076a8] shrink-0" />
-                        <span className="truncate">{photo.officerName}</span>
-                      </span>
-                      <span className="flex items-center gap-0.5 text-[#94a3b8] shrink-0">
-                        <Clock className="w-2.5 h-2.5" />
-                        <span>{photo.displayTime}</span>
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
-
-      {/* 7. AKTIVITAS TERBARU (RECENT ACTIVITY FEED) */}
+      {/* 6. AKTIVITAS TERBARU (RECENT ACTIVITY FEED) */}
       <section className="bg-white border border-[#d8e3ea] rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-[#f1f5f9]">
           <div className="flex items-center gap-3">
