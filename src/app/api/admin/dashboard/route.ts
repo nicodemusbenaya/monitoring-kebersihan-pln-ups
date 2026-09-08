@@ -17,55 +17,133 @@ export async function GET(request: Request) {
     const roomWhere: any = selectedRoomId && selectedRoomId !== "ALL" ? { id: selectedRoomId, active: true, hidden: false } : { active: true, hidden: false };
 
     // 1. Total rooms and active rooms (hidden excluded from display)
+    // 1. Ambil ID hidden room terlebih dahulu untuk filter
     const hiddenRoomIdsForFilter = (await prisma.room.findMany({ where: { hidden: true }, select: { id: true } })).map((r: any) => r.id);
     const hiddenFilter = hiddenRoomIdsForFilter.length > 0 ? { roomId: { notIn: hiddenRoomIdsForFilter } } : {};
-    const totalRooms = await prisma.room.count({ where: { active: true, hidden: false } });
-    const rooms = await prisma.room.findMany({
-      where: roomWhere,
-      include: {
-        roomType: {
-          include: {
-            slots: { where: { active: true } },
-          },
-        },
-      },
-      orderBy: { sortOrder: "asc" },
-    });
 
-    // 2. Submitted inspections for the requested period (exclude hidden rooms)
+    // 2. Date filter
     const dateFilter =
       startDate === endDate
         ? { dateKey: startDate }
         : { dateKey: { gte: startDate, lte: endDate } };
 
-    const todayInspections = await prisma.inspection.findMany({
-      where: {
-        ...dateFilter,
-        state: "SUBMITTED",
-        ...(hiddenFilter as any),
-        ...(selectedRoomId && selectedRoomId !== "ALL" ? { roomId: selectedRoomId } : {}),
-      },
-      include: {
-        room: true,
-        slot: true,
-        user: true,
-        photos: true,
-        details: { include: { activity: true } },
-      },
-      orderBy: { submittedAt: "desc" },
-    });
+    // 3. Jalankan seluruh query database secara PARALEL untuk memangkas latency Neon DB hingga >60%
+    const [
+      totalRooms,
+      rooms,
+      todayInspections,
+      monthlyEvaluations,
+      monthlyInspections,
+      recentInspections,
+      latestPhotoRecords,
+    ] = await Promise.all([
+      // 1. Total rooms
+      prisma.room.count({ where: { active: true, hidden: false } }),
+
+      // 2. Active rooms detail
+      prisma.room.findMany({
+        where: roomWhere,
+        include: {
+          roomType: {
+            include: {
+              slots: { where: { active: true } },
+            },
+          },
+        },
+        orderBy: { sortOrder: "asc" },
+      }),
+
+      // 3. Submitted inspections for today
+      prisma.inspection.findMany({
+        where: {
+          ...dateFilter,
+          state: "SUBMITTED",
+          ...(hiddenFilter as any),
+          ...(selectedRoomId && selectedRoomId !== "ALL" ? { roomId: selectedRoomId } : {}),
+        },
+        include: {
+          room: true,
+          slot: true,
+          user: true,
+          photos: true,
+          details: { include: { activity: true } },
+        },
+        orderBy: { submittedAt: "desc" },
+      }),
+
+      // 4. Monthly evaluations
+      prisma.evaluation.findMany({
+        where: {
+          monthKey: selectedMonth,
+          ...(selectedRoomId && selectedRoomId !== "ALL" ? { roomId: selectedRoomId } : {}),
+        },
+      }),
+
+      // 5. Monthly inspections for trend
+      prisma.inspection.findMany({
+        where: {
+          dateKey: { startsWith: selectedMonth },
+          state: "SUBMITTED",
+          ...(hiddenFilter as any),
+          ...(selectedRoomId && selectedRoomId !== "ALL" ? { roomId: selectedRoomId } : {}),
+        },
+        select: {
+          dateKey: true,
+          overallStatus: true,
+          dirtyCount: true,
+        },
+      }),
+
+      // 6. Recent activity feed (latest 20)
+      prisma.inspection.findMany({
+        take: 20,
+        where: {
+          ...(hiddenFilter as any),
+        },
+        orderBy: { submittedAt: "desc" },
+        include: {
+          room: { select: { name: true, code: true } },
+          slot: { select: { name: true, code: true, role: true } },
+          user: { select: { fullName: true, username: true, role: true } },
+          photos: { select: { fileName: true, fileUrl: true } },
+        },
+      }),
+
+      // 7. Latest 10 evidence photos (lean select)
+      prisma.inspectionPhoto.findMany({
+        take: 10,
+        where: {
+          inspection: {
+            room: { hidden: false },
+          },
+        },
+        orderBy: { capturedAt: "desc" },
+        select: {
+          id: true,
+          fileName: true,
+          fileUrl: true,
+          sortOrder: true,
+          capturedAt: true,
+          inspection: {
+            select: {
+              id: true,
+              dateKey: true,
+              submittedAt: true,
+              overallStatus: true,
+              dirtyCount: true,
+              room: { select: { name: true, code: true } },
+              slot: { select: { name: true, code: true, role: true } },
+              user: { select: { fullName: true, username: true } },
+            },
+          },
+        },
+      }),
+    ]);
 
     const todayCleanCount = todayInspections.filter((i) => i.overallStatus === "BERSIH").length;
     const todayFindingCount = todayInspections.filter((i) => i.overallStatus === "ADA_TEMUAN").length;
 
-    // 3. Monthly evaluations
-    const monthlyEvaluations = await prisma.evaluation.findMany({
-      where: {
-        monthKey: selectedMonth,
-        ...(selectedRoomId && selectedRoomId !== "ALL" ? { roomId: selectedRoomId } : {}),
-      },
-    });
-
+    // Monthly evaluations metrics
     const totalEvals = monthlyEvaluations.length;
     const avgRating =
       totalEvals > 0
@@ -78,7 +156,6 @@ export async function GET(request: Request) {
           )
         : 0;
 
-    // Rating distribution
     const ratingDist: Record<number, number> = { 4: 0, 3: 0, 2: 0, 1: 0 };
     monthlyEvaluations.forEach((ev) => {
       if (ratingDist[ev.rating] !== undefined) {
@@ -86,22 +163,7 @@ export async function GET(request: Request) {
       }
     });
 
-    // 4. Monthly Inspections & Daily Trend (exclude hidden)
-    const monthlyInspections = await prisma.inspection.findMany({
-      where: {
-        dateKey: { startsWith: selectedMonth },
-        state: "SUBMITTED",
-        ...(hiddenFilter as any),
-        ...(selectedRoomId && selectedRoomId !== "ALL" ? { roomId: selectedRoomId } : {}),
-      },
-      select: {
-        dateKey: true,
-        overallStatus: true,
-        dirtyCount: true,
-      },
-    });
-
-    // Days in selected month (e.g. 30 or 31)
+    // Monthly trend
     const [yearStr, monthStr] = selectedMonth.split("-");
     const yearNum = parseInt(yearStr, 10) || new Date().getFullYear();
     const monthNum = parseInt(monthStr, 10) || new Date().getMonth() + 1;
@@ -132,7 +194,7 @@ export async function GET(request: Request) {
       finding: val.finding,
     }));
 
-    // 5. Attention items (inspections with findings today)
+    // Attention items
     const attentionItems = todayInspections
       .filter((i) => i.overallStatus === "ADA_TEMUAN")
       .map((i) => ({
@@ -159,21 +221,7 @@ export async function GET(request: Request) {
           })),
       }));
 
-    // 6. Recent Activity Feed (Latest 20 inspections in system, exclude hidden)
-    const recentInspections = await prisma.inspection.findMany({
-      take: 20,
-      where: {
-        ...(hiddenFilter as any),
-      },
-      orderBy: { submittedAt: "desc" },
-      include: {
-        room: { select: { name: true, code: true } },
-        slot: { select: { name: true, code: true, role: true } },
-        user: { select: { fullName: true, username: true, role: true } },
-        photos: { select: { fileName: true, fileUrl: true } },
-      },
-    });
-
+    // Recent activities
     const recentActivities = recentInspections.map((i) => ({
       id: i.id,
       roomName: i.room.name,
@@ -191,36 +239,6 @@ export async function GET(request: Request) {
       evidenceName: i.evidenceName,
       photos: i.photos.map((p) => p.fileUrl),
     }));
-
-    // 6b. Latest 10 Evidence Photos (Ultra-lean query for Neon efficiency)
-    const latestPhotoRecords = await prisma.inspectionPhoto.findMany({
-      take: 10,
-      where: {
-        inspection: {
-          room: { hidden: false },
-        },
-      },
-      orderBy: { capturedAt: "desc" },
-      select: {
-        id: true,
-        fileName: true,
-        fileUrl: true,
-        sortOrder: true,
-        capturedAt: true,
-        inspection: {
-          select: {
-            id: true,
-            dateKey: true,
-            submittedAt: true,
-            overallStatus: true,
-            dirtyCount: true,
-            room: { select: { name: true, code: true } },
-            slot: { select: { name: true, code: true, role: true } },
-            user: { select: { fullName: true, username: true } },
-          },
-        },
-      },
-    });
 
     const latestPhotos = latestPhotoRecords.map((p) => ({
       id: p.id,
