@@ -36,6 +36,13 @@ const getPhotoUrl = (fileUrl: string) => {
     : `/api/kebersihan/evidence?path=${encodeURIComponent(fileUrl)}`;
 };
 
+// Format countdown MM:SS
+const formatCountdown = (seconds: number) => {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+};
+
 export default function PresentationPage() {
   const [data, setData] = useState<any>(null);
   const [performanceData, setPerformanceData] = useState<any>(null);
@@ -48,8 +55,11 @@ export default function PresentationPage() {
   const [autoCycle, setAutoCycle] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
 
-  // Auto-refresh countdown (20s)
-  const [refreshCountdown, setRefreshCountdown] = useState(20);
+  // Auto-refresh: 10 Menit (600s), DEFAULT: OFF (Hemat Kuota Bandwidth & Neon DB)
+  const REFRESH_INTERVAL = 600;
+  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(false);
+  const [refreshCountdown, setRefreshCountdown] = useState(REFRESH_INTERVAL);
+
   // Auto-cycle tab countdown (25s)
   const [cycleCountdown, setCycleCountdown] = useState(25);
 
@@ -73,9 +83,9 @@ export default function PresentationPage() {
       console.error("Presentation data fetch error:", e);
     } finally {
       setLoading(false);
-      setRefreshCountdown(20);
+      setRefreshCountdown(REFRESH_INTERVAL);
     }
-  }, []);
+  }, [REFRESH_INTERVAL]);
 
   // Initial load
   useEffect(() => {
@@ -107,16 +117,19 @@ export default function PresentationPage() {
   // 1-second interval for countdowns and auto-refresh
   useEffect(() => {
     const interval = setInterval(() => {
-      if (isPaused) return;
+      // Pause countdown if user paused or tab is hidden in background
+      if (isPaused || (typeof document !== "undefined" && document.hidden)) return;
 
-      // Data refresh countdown
-      setRefreshCountdown((prev) => {
-        if (prev <= 1) {
-          fetchData(false);
-          return 20;
-        }
-        return prev - 1;
-      });
+      // Data refresh countdown (ONLY runs when autoRefreshEnabled is TRUE)
+      if (autoRefreshEnabled) {
+        setRefreshCountdown((prev) => {
+          if (prev <= 1) {
+            fetchData(false);
+            return REFRESH_INTERVAL;
+          }
+          return prev - 1;
+        });
+      }
 
       // Auto cycle tabs countdown (when enabled)
       if (autoCycle) {
@@ -137,7 +150,7 @@ export default function PresentationPage() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isPaused, autoCycle, fetchData]);
+  }, [isPaused, autoRefreshEnabled, autoCycle, fetchData, REFRESH_INTERVAL]);
 
   // Photo carousel auto-cycle (every 7 seconds)
   useEffect(() => {
@@ -418,29 +431,45 @@ export default function PresentationPage() {
 
           {/* Action Buttons */}
           <div className="flex items-center gap-1.5 pl-2 border-l border-white/20">
-            {/* Pause / Play */}
-            <button
-              type="button"
-              onClick={() => setIsPaused(!isPaused)}
-              className={`w-8 h-8 rounded-xl border flex items-center justify-center transition-all ${
-                isPaused
-                  ? "bg-[#ffd100] text-[#072d3f] border-[#ffd100]"
-                  : "bg-white/15 border-white/25 text-white hover:bg-white/25"
-              }`}
-              title={isPaused ? "Lanjutkan auto-refresh (Spasi)" : "Jeda auto-refresh (Spasi)"}
-            >
-              {isPaused ? <Play className="w-3.5 h-3.5 fill-current" /> : <Pause className="w-3.5 h-3.5" />}
-            </button>
+            {/* Auto-Refresh Toggle Button (Default: OFF, 10 Menit Interval) */}
+            {autoRefreshEnabled ? (
+              <button
+                type="button"
+                onClick={() => setAutoRefreshEnabled(false)}
+                className="px-2.5 h-8 rounded-xl bg-[#ffd100] text-[#072d3f] border border-[#ffd100] text-xs font-black flex items-center gap-1.5 transition-all shadow-xs"
+                title="Auto-refresh aktif (10 menit sekali). Klik untuk mematikan."
+              >
+                <Clock className="w-3.5 h-3.5" />
+                <span>Auto-Refresh: ON ({formatCountdown(refreshCountdown)})</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setAutoRefreshEnabled(true);
+                  setRefreshCountdown(REFRESH_INTERVAL);
+                }}
+                className="px-2.5 h-8 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 text-white text-xs font-bold flex items-center gap-1.5 transition-all"
+                title="Auto-refresh NONAKTIF (Hemat Kuota Bandwidth & Neon DB). Klik untuk mengaktifkan (10 menit sekali)."
+              >
+                <Clock className="w-3.5 h-3.5 text-white/70" />
+                <span>Auto-Refresh: OFF</span>
+              </button>
+            )}
 
-            {/* Refresh Countdown Pill */}
+            {/* Manual Refresh Button */}
             <button
               type="button"
-              onClick={() => fetchData(true)}
-              className="px-2 h-8 rounded-xl bg-white/15 border border-white/25 hover:bg-white/25 text-white text-xs font-mono font-bold flex items-center gap-1 transition-all"
-              title="Segarkan data sekarang"
+              onClick={() => {
+                fetchData(true);
+                if (autoRefreshEnabled) setRefreshCountdown(REFRESH_INTERVAL);
+              }}
+              disabled={loading}
+              className="px-2.5 h-8 rounded-xl bg-white/15 border border-white/25 hover:bg-white/25 text-white text-xs font-bold flex items-center gap-1.5 transition-all"
+              title="Segarkan data sekarang secara manual"
             >
-              <RefreshCw className={`w-3 h-3 ${loading ? "animate-spin text-[#ffd100]" : ""}`} />
-              <span>{refreshCountdown}s</span>
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-[#ffd100]" : ""}`} />
+              <span className="hidden sm:inline">Segarkan</span>
             </button>
 
             {/* Fullscreen Toggle */}
