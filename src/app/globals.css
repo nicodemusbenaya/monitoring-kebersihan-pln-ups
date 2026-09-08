@@ -39,6 +39,29 @@
   .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 
   .app-shell, #app { width: 100%; max-width: 100%; min-width: 0; min-height: 100dvh; overflow-x: hidden; }
+
+  /* Minimalist Aesthetic Scrollbar */
+  .minimal-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .minimal-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .minimal-scrollbar::-webkit-scrollbar-thumb {
+    background: #0076a8;
+    border-radius: 9999px;
+  }
+  .minimal-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #00577d;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
   .initial-loader { min-height: 100dvh; display: grid; place-content: center; gap: 14px; width: min(360px, calc(100% - 48px)); margin: auto; }
   .brand-mark { width: 156px; height: 64px; display: grid; place-items: center; }
   .brand-mark img { display: block; width: min(150px, 100%); max-height: 58px; object-fit: contain; object-position: center; }
