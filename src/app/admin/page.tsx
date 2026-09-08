@@ -754,8 +754,8 @@ export default function DashboardSummaryPage() {
         </div>
 
         {/* Right: Stacked Column: Item Perhatian (Cut Half) + Dokumentasi Evidence Terakhir (Auto cycle 7s) */}
-        <div className="lg:col-span-4 flex flex-col gap-4">
-          {/* Card 1: Item Perhatian (Tinggi dipotong setengahnya) */}
+        <div className="lg:col-span-4 flex flex-col justify-between gap-4 h-full">
+          {/* Card 1: Item Perhatian (Tinggi dipotong proporsional sejajar) */}
           <div className="bg-white border border-[#d8e3ea] rounded-2xl p-5 shadow-sm flex flex-col space-y-3">
             <div className="flex items-center justify-between">
               <div>
@@ -799,7 +799,7 @@ export default function DashboardSummaryPage() {
               </button>
             </div>
 
-            <div className={`flex-1 space-y-2.5 max-h-[160px] overflow-y-auto pr-1 ${loading ? "opacity-60" : ""}`}>
+            <div className={`flex-1 space-y-2.5 max-h-[195px] overflow-y-auto pr-1 ${loading ? "opacity-60" : ""}`}>
               {loading ? (
                 Array.from({ length: 2 }).map((_, i) => (
                   <div key={i} className="p-3 rounded-xl border border-gray-100 bg-gray-50 flex items-start gap-2.5 animate-pulse">
@@ -892,9 +892,9 @@ export default function DashboardSummaryPage() {
 
             {/* Photo Slide Area */}
             {loading ? (
-              <div className="w-full aspect-[16/10] bg-[#f1f5f9] animate-pulse rounded-xl" />
+              <div className="w-full aspect-[16/11] bg-[#f1f5f9] animate-pulse rounded-xl" />
             ) : latestPhotosList.length === 0 ? (
-              <div className="w-full aspect-[16/10] bg-[#f8fafc] border border-dashed border-[#cbd5e1] rounded-xl flex flex-col items-center justify-center text-center p-4">
+              <div className="w-full aspect-[16/11] bg-[#f8fafc] border border-dashed border-[#cbd5e1] rounded-xl flex flex-col items-center justify-center text-center p-4">
                 <Camera className="w-6 h-6 text-[#94a3b8] mb-1" />
                 <span className="text-xs font-bold text-[#647783]">Belum ada foto evidence</span>
               </div>
@@ -908,7 +908,7 @@ export default function DashboardSummaryPage() {
               return (
                 <div
                   onClick={() => setSelectedEvidencePhoto(currentPhoto)}
-                  className="relative w-full aspect-[16/10] rounded-xl overflow-hidden bg-[#072d3f]/5 border border-black/5 cursor-pointer group/slide"
+                  className="relative w-full aspect-[16/11] rounded-xl overflow-hidden bg-[#072d3f]/5 border border-black/5 cursor-pointer group/slide"
                   title="Klik untuk melihat ukuran penuh"
                 >
                   <img
