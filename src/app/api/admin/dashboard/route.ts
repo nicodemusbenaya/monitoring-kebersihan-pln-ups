@@ -192,6 +192,53 @@ export async function GET(request: Request) {
       photos: i.photos.map((p) => p.fileUrl),
     }));
 
+    // 6b. Latest 10 Evidence Photos (Ultra-lean query for Neon efficiency)
+    const latestPhotoRecords = await prisma.inspectionPhoto.findMany({
+      take: 10,
+      where: {
+        inspection: {
+          room: { hidden: false },
+        },
+      },
+      orderBy: { capturedAt: "desc" },
+      select: {
+        id: true,
+        fileName: true,
+        fileUrl: true,
+        sortOrder: true,
+        capturedAt: true,
+        inspection: {
+          select: {
+            id: true,
+            dateKey: true,
+            submittedAt: true,
+            overallStatus: true,
+            dirtyCount: true,
+            room: { select: { name: true, code: true } },
+            slot: { select: { name: true, code: true, role: true } },
+            user: { select: { fullName: true, username: true } },
+          },
+        },
+      },
+    });
+
+    const latestPhotos = latestPhotoRecords.map((p) => ({
+      id: p.id,
+      fileName: p.fileName,
+      fileUrl: p.fileUrl,
+      capturedAt: p.capturedAt,
+      displayTime: formatDisplayDate(p.capturedAt),
+      roomName: p.inspection?.room?.name || "Ruangan",
+      roomCode: p.inspection?.room?.code || "",
+      slotName: p.inspection?.slot?.name || "Pemeriksaan",
+      slotCode: p.inspection?.slot?.code || "",
+      slotRole: p.inspection?.slot?.role || "PETUGAS",
+      officerName: p.inspection?.user?.fullName || p.inspection?.user?.username || "Petugas",
+      overallStatus: p.inspection?.overallStatus || "BERSIH",
+      dirtyCount: p.inspection?.dirtyCount || 0,
+      dateKey: p.inspection?.dateKey || "",
+    }));
+
     // 7. Total expected sessions across all active rooms for the selected period
     let totalExpectedSessions = 0;
     rooms.forEach((r) => {
@@ -348,6 +395,7 @@ export async function GET(request: Request) {
         dailyTrend,
         ratingDist,
         recentActivities,
+        latestPhotos,
         findings: attentionItems,
         attentionItems,
         roomSummaries,

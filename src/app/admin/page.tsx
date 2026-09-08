@@ -15,6 +15,7 @@ import {
   Sparkles,
   RotateCcw,
   Camera,
+  ZoomIn,
 } from "lucide-react";
 import { AppDropdown, MonthDropdown } from "@/components/AppDropdown";
 
@@ -126,6 +127,7 @@ export default function DashboardSummaryPage() {
   const [actionItemFilter, setActionItemFilter] = useState<"ALL" | "FINDINGS" | "PENDING">("ALL");
   const [reopenId, setReopenId] = useState<string | null>(null);
   const [selectedDetailRoom, setSelectedDetailRoom] = useState<any | null>(null);
+  const [selectedEvidencePhoto, setSelectedEvidencePhoto] = useState<any | null>(null);
 
   const hasFilterActive = appliedRoomFilter !== "ALL" || appliedPeriod !== currentMonthKey;
   const isMonthFiltered = appliedPeriod !== currentMonthKey;
@@ -1005,7 +1007,154 @@ export default function DashboardSummaryPage() {
         </div>
       </section>
 
-      {/* 6. AKTIVITAS TERBARU (RECENT ACTIVITY FEED) */}
+      {/* 6. 10 FOTO EVIDENCE TERAKHIR */}
+      <section className="bg-white border border-[#d8e3ea] rounded-3xl p-6 sm:p-8 shadow-sm space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#f1f5f9]">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-[#0076a8]/10 text-[#0076a8] flex items-center justify-center shadow-inner shrink-0">
+              <Camera className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-widest text-[#718c99] block">
+                  DOKUMENTASI LAPANGAN
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-black bg-[#dcfce7] text-[#15803d]">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#16a34a] animate-pulse"></span>
+                  10 Foto Terkini
+                </span>
+              </div>
+              <h3 className="text-xl font-black text-[#17313d]">Evidence Terakhir Disubmit</h3>
+              <p className="text-xs text-[#647783] mt-0.5">
+                Bukti fisik kebersihan ruangan yang baru saja dikirim oleh petugas. Klik foto untuk melihat ukuran penuh.
+              </p>
+            </div>
+          </div>
+
+          <span className="px-3 py-1 bg-[#f8fafc] border border-[#d8e3ea] rounded-xl text-xs font-bold text-[#647783] self-start sm:self-auto">
+            {dashboardData?.latestPhotos?.length || 0} Foto Tersedia
+          </span>
+        </div>
+
+        {/* 10 Photos Grid */}
+        {loading ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
+            {Array.from({ length: 10 }).map((_, idx) => (
+              <div
+                key={idx}
+                className="bg-[#f8fafc] border border-[#e2e8f0] rounded-2xl overflow-hidden p-2.5 flex flex-col gap-2 animate-pulse"
+              >
+                <div className="w-full aspect-[4/3] bg-[#e2e8f0] rounded-xl"></div>
+                <div className="space-y-1.5 pt-1">
+                  <div className="h-3 w-3/4 bg-[#e2e8f0] rounded"></div>
+                  <div className="h-2.5 w-1/2 bg-[#e2e8f0] rounded"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (!dashboardData?.latestPhotos || dashboardData.latestPhotos.length === 0) ? (
+          <div className="py-12 flex flex-col items-center justify-center text-center bg-[#f8fafc] border border-dashed border-[#cbd5e1] rounded-2xl p-6">
+            <div className="w-12 h-12 rounded-2xl bg-[#f1f5f9] text-[#94a3b8] flex items-center justify-center mb-3">
+              <Camera className="w-6 h-6" />
+            </div>
+            <h5 className="text-sm font-bold text-[#17313d]">Belum Ada Foto Evidence</h5>
+            <p className="text-xs text-[#647783] mt-1 max-w-sm">
+              Foto bukti checklist kebersihan akan otomatis muncul di sini begitu petugas mengunggah laporan inspeksi.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
+            {dashboardData.latestPhotos.map((photo: any, index: number) => {
+              const isClean = photo.overallStatus === "BERSIH";
+              const photoUrl = photo.fileUrl.startsWith("http")
+                ? photo.fileUrl
+                : `/api/kebersihan/evidence?path=${encodeURIComponent(photo.fileUrl)}`;
+
+              return (
+                <div
+                  key={photo.id || index}
+                  onClick={() => setSelectedEvidencePhoto(photo)}
+                  className="group relative bg-[#f8fafc] hover:bg-white border border-[#d8e3ea] hover:border-[#0076a8] rounded-2xl p-2.5 shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col justify-between"
+                  title="Klik untuk memperbesar foto evidence"
+                >
+                  {/* Thumbnail Container */}
+                  <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden bg-[#072d3f]/5 border border-black/5">
+                    <img
+                      src={photoUrl}
+                      alt={photo.roomName}
+                      loading="lazy"
+                      decoding="async"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.onerror = null;
+                        target.src = "/api/kebersihan/evidence?path=NOT_FOUND";
+                      }}
+                    />
+
+                    {/* Overlay: Shift / Slot */}
+                    <div className="absolute top-1.5 left-1.5 flex items-center gap-1 pointer-events-none">
+                      <span
+                        className={`px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider backdrop-blur-md shadow-xs ${
+                          photo.slotCode === "PAGI"
+                            ? "bg-[#0284c7]/90 text-white"
+                            : photo.slotCode === "SORE"
+                            ? "bg-[#d97706]/90 text-white"
+                            : "bg-[#7c3aed]/90 text-white"
+                        }`}
+                      >
+                        {photo.slotName}
+                      </span>
+                    </div>
+
+                    {/* Overlay: Status (Bersih / Temuan) */}
+                    <div className="absolute top-1.5 right-1.5 pointer-events-none">
+                      <span
+                        className={`px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase backdrop-blur-md shadow-xs ${
+                          isClean
+                            ? "bg-[#16a34a]/90 text-white"
+                            : "bg-[#dc2626]/90 text-white"
+                        }`}
+                      >
+                        {isClean ? "Bersih" : "Temuan"}
+                      </span>
+                    </div>
+
+                    {/* Hover hint */}
+                    <div className="absolute inset-0 bg-black/35 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-1 text-white text-[11px] font-bold pointer-events-none">
+                      <ZoomIn className="w-4 h-4" />
+                      <span>Perbesar</span>
+                    </div>
+                  </div>
+
+                  {/* Metadata info */}
+                  <div className="mt-2 space-y-1">
+                    <h5
+                      className="text-xs font-black text-[#17313d] truncate group-hover:text-[#0076a8] transition-colors"
+                      title={photo.roomName}
+                    >
+                      {photo.roomName}
+                    </h5>
+
+                    <div className="flex items-center justify-between text-[10px] text-[#647783]">
+                      <span className="flex items-center gap-1 truncate max-w-[100px]" title={photo.officerName}>
+                        <User className="w-3 h-3 text-[#0076a8] shrink-0" />
+                        <span className="truncate">{photo.officerName}</span>
+                      </span>
+                      <span className="flex items-center gap-0.5 text-[#94a3b8] shrink-0">
+                        <Clock className="w-2.5 h-2.5" />
+                        <span>{photo.displayTime}</span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* 7. AKTIVITAS TERBARU (RECENT ACTIVITY FEED) */}
       <section className="bg-white border border-[#d8e3ea] rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-[#f1f5f9]">
           <div className="flex items-center gap-3">
@@ -1493,6 +1642,98 @@ export default function DashboardSummaryPage() {
               >
                 Tutup
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL PREVIEW FOTO EVIDENCE TERAKHIR */}
+      {selectedEvidencePhoto && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
+          onClick={() => setSelectedEvidencePhoto(null)}
+        >
+          <div
+            className="bg-[#072d3f] border border-[#144b67] text-white rounded-3xl shadow-2xl w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="p-4 sm:px-6 border-b border-[#144b67] flex items-center justify-between gap-4 bg-[#0a364c]">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-[#0076a8] text-white">
+                    {selectedEvidencePhoto.slotName}
+                  </span>
+                  <span
+                    className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase ${
+                      selectedEvidencePhoto.overallStatus === "BERSIH"
+                        ? "bg-[#16a34a] text-white"
+                        : "bg-[#dc2626] text-white"
+                    }`}
+                  >
+                    {selectedEvidencePhoto.overallStatus === "BERSIH" ? "Kondisi Bersih" : "Ada Temuan"}
+                  </span>
+                </div>
+                <h4 className="text-base sm:text-lg font-black text-white mt-1 truncate">
+                  {selectedEvidencePhoto.roomName}
+                </h4>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <a
+                  href={
+                    selectedEvidencePhoto.fileUrl.startsWith("http")
+                      ? selectedEvidencePhoto.fileUrl
+                      : `/api/kebersihan/evidence?path=${encodeURIComponent(selectedEvidencePhoto.fileUrl)}`
+                  }
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 rounded-xl bg-[#144b67] hover:bg-[#1a5a7c] text-white transition-colors"
+                  title="Buka foto asli di tab baru"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setSelectedEvidencePhoto(null)}
+                  className="p-2 rounded-xl bg-[#144b67] hover:bg-[#bd2d22] text-white transition-colors"
+                  title="Tutup (Esc)"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Photo Body */}
+            <div className="p-4 sm:p-6 flex-1 flex items-center justify-center bg-black/40 overflow-hidden min-h-[300px]">
+              <img
+                src={
+                  selectedEvidencePhoto.fileUrl.startsWith("http")
+                    ? selectedEvidencePhoto.fileUrl
+                    : `/api/kebersihan/evidence?path=${encodeURIComponent(selectedEvidencePhoto.fileUrl)}`
+                }
+                alt={selectedEvidencePhoto.roomName}
+                className="max-h-[60vh] max-w-full w-auto object-contain rounded-2xl shadow-xl border border-white/10"
+              />
+            </div>
+
+            {/* Footer details */}
+            <div className="p-4 px-6 border-t border-[#144b67] bg-[#0a364c] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-[#97b7c8]">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                <span className="flex items-center gap-1.5 text-white font-bold">
+                  <User className="w-4 h-4 text-[#ffd100]" />
+                  Petugas: {selectedEvidencePhoto.officerName}
+                </span>
+                <span>•</span>
+                <span className="flex items-center gap-1.5 text-[#97b7c8]">
+                  <Clock className="w-3.5 h-3.5" />
+                  {selectedEvidencePhoto.displayTime}
+                </span>
+              </div>
+
+              <div className="text-[11px] font-mono text-[#86a6b8] truncate">
+                {selectedEvidencePhoto.fileName}
+              </div>
             </div>
           </div>
         </div>
