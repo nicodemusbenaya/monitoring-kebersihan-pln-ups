@@ -86,6 +86,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return "Portal Administrasi";
   };
 
+  if (pathname === "/admin/presentation") {
+    return <>{children}</>;
+  }
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#edf2f6] font-sans text-[#17313d] select-none">
       {/* Backdrop for Mobile Drawer */}
@@ -239,6 +243,28 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   >
                     <MessageSquare className="w-4 h-4 shrink-0" />
                     {!sidebarCollapsed && <span>Kepuasan pengguna</span>}
+                  </Link>
+
+                  <Link
+                    href="/admin/presentation"
+                    title="Layar Monitor TV"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={
+                      sidebarCollapsed
+                        ? `w-10 h-10 mx-auto flex items-center justify-center rounded-xl transition-all ${
+                            pathname === "/admin/presentation"
+                              ? "bg-[#093950] text-[#ffd100] border border-[#ffd100] shadow-md"
+                              : "text-[#b2c8d4] hover:bg-[#0c364d] hover:text-white"
+                          }`
+                        : `w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                            pathname === "/admin/presentation"
+                              ? "bg-[#093950] text-[#ffd100] border border-[#ffd100] shadow-md"
+                              : "text-[#b2c8d4] hover:bg-[#0c364d] hover:text-white"
+                          }`
+                    }
+                  >
+                    <Tv className="w-4 h-4 shrink-0" />
+                    {!sidebarCollapsed && <span>Layar monitor TV</span>}
                   </Link>
                 </div>
               </div>
@@ -466,27 +492,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             )}
 
             <div className="flex items-center gap-1.5 sm:gap-2">
-              {isPresentationMode ? (
-                <button
-                  type="button"
-                  onClick={() => setIsPresentationMode(false)}
-                  className="px-2.5 sm:px-3.5 py-2 bg-[#fffdf5] border border-[#ffd100] hover:bg-[#fff9db] rounded-xl text-xs font-bold text-[#9a6500] shadow-sm flex items-center gap-1.5 transition-all"
-                  title="Keluar presentasi"
-                >
-                  <Tv className="w-3.5 h-3.5 text-[#ffd100]" />
-                  <span className="hidden sm:inline">Keluar presentasi</span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setIsPresentationMode(true)}
-                  className="px-2.5 sm:px-3.5 py-2 bg-white border border-[#b9cbd3] hover:border-[#0076a8] rounded-xl text-xs font-bold text-[#17313d] hover:text-[#0076a8] shadow-sm flex items-center gap-1.5 transition-all"
-                  title="Mode presentasi"
-                >
-                  <Tv className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Mode presentasi</span>
-                </button>
-              )}
+              <Link
+                href="/admin/presentation"
+                className="px-2.5 sm:px-3.5 py-2 bg-[#072d3f] hover:bg-[#0c3e56] text-white border border-[#0076a8] rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 transition-all group"
+                title="Buka Layar Monitor TV / Command Center"
+              >
+                <Tv className="w-3.5 h-3.5 text-[#ffd100] group-hover:scale-110 transition-transform" />
+                <span className="hidden sm:inline">Mode Layar TV</span>
+              </Link>
 
               <button
                 type="button"

@@ -29,3 +29,4 @@ Thumbs.db
 .analysis/
 output/
 tmp/
+*.tsbuildinfo
