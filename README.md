@@ -6,7 +6,7 @@ Sistem ini dibangun ulang menggunakan **Next.js 15 (App Router), TypeScript, Tai
 
 ---
 
-## 🚀 Fitur Utama & Keunggulan
+##  Fitur Utama 
 
 1. **Performa Tinggi (< 0.5s Response Time)**:
    - Tidak ada lagi *cold-start* atau *loading* lama Google Apps Script.
@@ -26,18 +26,7 @@ Sistem ini dibangun ulang menggunakan **Next.js 15 (App Router), TypeScript, Tai
 
 ---
 
-## 👥 Akun Awal Bawaan (*Default Accounts*)
-
-| Username | Nama Lengkap | Peran | Password Awal |
-|---|---|---|---|
-| `arif` | Arif Budi Hartono | PETUGAS | `ArifPLN123!` |
-| `sulaiman` | Sulaiman | PETUGAS | `SulaimanPLN123!` |
-| `ipal` | Ipal Hapidz | SUPERVISOR | `IpalPLN123!` |
-| `dwi` | Dwi Meyrizka Prativi | ADMIN | `DwiPLN123!` |
-
----
-
-## 🛠️ Panduan Menjalankan Secara Lokal
+## Panduan Menjalankan Secara Lokal
 
 ### 1. Prasyarat
 - Node.js versi 18+ atau 20+
@@ -63,7 +52,7 @@ Buka browser di `http://localhost:3000`.
 
 ---
 
-## 🌐 Panduan Deploy ke Vercel (100% Gratis)
+## Panduan Deploy ke Vercel (100% Gratis)
 
 1. Push cabang `main` ini ke repositori GitHub Anda.
 2. Buka [vercel.com](https://vercel.com) dan impor repositori ini.
