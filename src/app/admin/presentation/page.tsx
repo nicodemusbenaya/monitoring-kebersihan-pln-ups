@@ -28,13 +28,7 @@ import {
   Eye,
 } from "lucide-react";
 
-// Safe photo URL converter for NAS on-premise storage
-const getPhotoUrl = (fileUrl: string) => {
-  if (!fileUrl) return "/api/kebersihan/evidence?path=NOT_FOUND";
-  return fileUrl.startsWith("http")
-    ? fileUrl
-    : `/api/kebersihan/evidence?path=${encodeURIComponent(fileUrl)}`;
-};
+import { getEvidencePhotoUrl as getPhotoUrl } from "@/lib/evidence";
 
 // Format countdown MM:SS
 const formatCountdown = (seconds: number) => {
