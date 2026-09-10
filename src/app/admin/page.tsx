@@ -221,6 +221,18 @@ export default function DashboardSummaryPage() {
   const pendingIsDirty = pendingRoomFilter !== appliedRoomFilter || pendingPeriod !== appliedPeriod;
 
   useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (selectedEvidencePhoto) setSelectedEvidencePhoto(null);
+        else if (selectedDetailRoom) setSelectedDetailRoom(null);
+        else if (showFindingsModal) setShowFindingsModal(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedEvidencePhoto, selectedDetailRoom, showFindingsModal]);
+
+  useEffect(() => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -712,6 +724,11 @@ export default function DashboardSummaryPage() {
                   statusText = "Sebagian";
                 }
 
+                const roomPhotosCount = (room.slots || []).reduce(
+                  (acc: number, s: any) => acc + (s.inspection?.photos?.length || 0),
+                  0
+                );
+
                 return (
                   <div
                     key={room.id}
@@ -736,15 +753,25 @@ export default function DashboardSummaryPage() {
                       <span className="text-[#647783] font-bold">
                         {room.completedSlots}/{room.totalSlots} Sesi
                       </span>
-                      {room.dirtyCount > 0 ? (
-                        <span className="text-[#b91c1c] font-black flex items-center gap-1">
-                          <AlertTriangle className="w-3 h-3" /> {room.dirtyCount} Temuan
-                        </span>
-                      ) : (
-                        <span className="text-[#0076a8] font-bold text-[10px] opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
-                          Lihat Detail <ChevronRight className="w-3 h-3" />
-                        </span>
-                      )}
+                      <div className="flex items-center gap-1.5">
+                        {roomPhotosCount > 0 && (
+                          <span
+                            className="text-[#0076a8] font-black text-[10px] flex items-center gap-1 bg-[#e0f2fe] border border-[#bae6fd] px-1.5 py-0.5 rounded-md"
+                            title={`${roomPhotosCount} foto bukti tersimpan untuk ruangan ini`}
+                          >
+                            <Camera className="w-3 h-3 text-[#0284c7]" /> {roomPhotosCount} Foto
+                          </span>
+                        )}
+                        {room.dirtyCount > 0 ? (
+                          <span className="text-[#b91c1c] font-black flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3" /> {room.dirtyCount}
+                          </span>
+                        ) : (
+                          <span className="text-[#0076a8] font-bold text-[10px] opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
+                            Detail <ChevronRight className="w-3 h-3" />
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
@@ -1331,29 +1358,46 @@ export default function DashboardSummaryPage() {
             {/* Modal Body */}
             <div className="p-6 overflow-y-auto space-y-6">
               {/* Summary Stats */}
-              <div className="grid grid-cols-3 gap-3">
-                <div className="p-3.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0]">
-                  <span className="text-[10px] font-bold text-[#647783] block uppercase tracking-wider">Pemeriksaan</span>
-                  <div className="text-lg font-black text-[#17313d] mt-0.5">
-                    {selectedDetailRoom.completedSlots} / {selectedDetailRoom.totalSlots}
-                    <span className="text-xs font-semibold text-[#94a3b8] ml-1">Sesi</span>
+              {(() => {
+                const roomTotalPhotos = (selectedDetailRoom.slots || []).reduce(
+                  (acc: number, s: any) => acc + (s.inspection?.photos?.length || 0),
+                  0
+                );
+
+                return (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="p-3.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0]">
+                      <span className="text-[10px] font-bold text-[#647783] block uppercase tracking-wider">Pemeriksaan</span>
+                      <div className="text-lg font-black text-[#17313d] mt-0.5">
+                        {selectedDetailRoom.completedSlots} / {selectedDetailRoom.totalSlots}
+                        <span className="text-xs font-semibold text-[#94a3b8] ml-1">Sesi</span>
+                      </div>
+                    </div>
+                    <div className="p-3.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0]">
+                      <span className="text-[10px] font-bold text-[#647783] block uppercase tracking-wider">Temuan Kotor / Rusak</span>
+                      <div className={`text-lg font-black mt-0.5 ${selectedDetailRoom.dirtyCount > 0 ? "text-[#b91c1c]" : "text-[#157a55]"}`}>
+                        {selectedDetailRoom.dirtyCount}
+                        <span className="text-xs font-semibold text-[#94a3b8] ml-1">Item</span>
+                      </div>
+                    </div>
+                    <div className="p-3.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0]">
+                      <span className="text-[10px] font-bold text-[#647783] block uppercase tracking-wider">Foto Evidence</span>
+                      <div className={`text-lg font-black mt-0.5 flex items-center gap-1.5 ${roomTotalPhotos > 0 ? "text-[#0076a8]" : "text-[#94a3b8]"}`}>
+                        <Camera className="w-4 h-4" />
+                        <span>{roomTotalPhotos}</span>
+                        <span className="text-xs font-semibold text-[#94a3b8]">Foto</span>
+                      </div>
+                    </div>
+                    <div className="p-3.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0]">
+                      <span className="text-[10px] font-bold text-[#647783] block uppercase tracking-wider">Peran Selesai</span>
+                      <div className="text-xs font-black text-[#17313d] mt-1 space-y-0.5">
+                        <div>Petugas: <span className="font-bold text-[#0076a8]">{selectedDetailRoom.petugasFinished}/{selectedDetailRoom.petugasTotal}</span></div>
+                        <div>SPV: <span className="font-bold text-[#7e22ce]">{selectedDetailRoom.spvFinished}/{selectedDetailRoom.spvTotal}</span></div>
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div className="p-3.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0]">
-                  <span className="text-[10px] font-bold text-[#647783] block uppercase tracking-wider">Temuan Kotor / Rusak</span>
-                  <div className={`text-lg font-black mt-0.5 ${selectedDetailRoom.dirtyCount > 0 ? "text-[#b91c1c]" : "text-[#157a55]"}`}>
-                    {selectedDetailRoom.dirtyCount}
-                    <span className="text-xs font-semibold text-[#94a3b8] ml-1">Item</span>
-                  </div>
-                </div>
-                <div className="p-3.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0]">
-                  <span className="text-[10px] font-bold text-[#647783] block uppercase tracking-wider">Peran Selesai</span>
-                  <div className="text-xs font-black text-[#17313d] mt-1.5 space-y-0.5">
-                    <div>Petugas: <span className="font-bold text-[#0076a8]">{selectedDetailRoom.petugasFinished}/{selectedDetailRoom.petugasTotal}</span></div>
-                    <div>Supervisor: <span className="font-bold text-[#7e22ce]">{selectedDetailRoom.spvFinished}/{selectedDetailRoom.spvTotal}</span></div>
-                  </div>
-                </div>
-              </div>
+                );
+              })()}
 
               {/* Slot List */}
               <div className="space-y-3">
@@ -1361,19 +1405,20 @@ export default function DashboardSummaryPage() {
                   Jadwal & Sesi Pemeriksaan Hari Ini
                 </h4>
 
-                <div className="space-y-2.5">
+                <div className="space-y-3">
                   {(selectedDetailRoom.slots || []).map((slot: any) => {
                     const isDone = slot.completed;
                     const insp = slot.inspection;
+                    const slotPhotos = insp?.photos || [];
 
                     return (
                       <div
                         key={slot.id}
-                        className={`p-4 rounded-2xl border transition-all ${
+                        className={`p-4 sm:p-5 rounded-2xl border transition-all ${
                           isDone
                             ? insp?.overallStatus === "ADA_TEMUAN"
-                              ? "bg-[#fffbeb] border-[#f59e0b]/40"
-                              : "bg-[#f0fdf4] border-[#10b981]/40"
+                              ? "bg-[#fffbeb] border-[#f59e0b]/40 shadow-xs"
+                              : "bg-[#f0fdf4] border-[#10b981]/40 shadow-xs"
                             : "bg-[#f8fafc] border-[#e2e8f0]"
                         }`}
                       >
@@ -1456,6 +1501,82 @@ export default function DashboardSummaryPage() {
                                 </div>
                               ))}
                             </div>
+                          </div>
+                        )}
+
+                        {/* Evidence Photos Gallery */}
+                        {isDone && insp && (
+                          <div className="mt-3 pt-3 border-t border-black/5 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-black uppercase text-[#718c99] tracking-wider flex items-center gap-1.5">
+                                <Camera className="w-3.5 h-3.5 text-[#0076a8]" />
+                                Foto Bukti Evidence ({slotPhotos.length})
+                              </span>
+                              {slotPhotos.length > 0 && (
+                                <span className="text-[10px] text-[#0076a8] font-bold">
+                                  Klik foto untuk perbesar
+                                </span>
+                              )}
+                            </div>
+
+                            {slotPhotos.length > 0 ? (
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-0.5">
+                                {slotPhotos.map((photo: any, pIdx: number) => {
+                                  const photoUrl = photo.fileUrl.startsWith("http")
+                                    ? photo.fileUrl
+                                    : `/api/kebersihan/evidence?path=${encodeURIComponent(photo.fileUrl)}`;
+
+                                  return (
+                                    <div
+                                      key={pIdx}
+                                      onClick={() =>
+                                        setSelectedEvidencePhoto({
+                                          id: `${insp.id}-${pIdx}`,
+                                          fileName: photo.fileName || `evidence-${pIdx + 1}.jpg`,
+                                          fileUrl: photo.fileUrl,
+                                          roomName: selectedDetailRoom.name,
+                                          roomCode: selectedDetailRoom.code,
+                                          slotName: slot.name,
+                                          slotCode: slot.code,
+                                          slotRole: slot.role,
+                                          officerName: insp.inspectorName,
+                                          overallStatus: insp.overallStatus,
+                                          dirtyCount: insp.dirtyCount,
+                                          displayTime: insp.displayTime,
+                                        })
+                                      }
+                                      className="group/photo relative aspect-[4/3] rounded-xl overflow-hidden bg-black/5 border border-black/10 hover:border-[#0076a8] hover:shadow-md cursor-pointer transition-all"
+                                      title="Klik untuk melihat foto ukuran penuh"
+                                    >
+                                      <img
+                                        src={photoUrl}
+                                        alt={`${selectedDetailRoom.name} - ${slot.name} (${pIdx + 1})`}
+                                        loading="lazy"
+                                        decoding="async"
+                                        className="w-full h-full object-cover group-hover/photo:scale-105 transition-transform duration-300"
+                                        onError={(e) => {
+                                          const target = e.target as HTMLImageElement;
+                                          target.onerror = null;
+                                          target.src = "/api/kebersihan/evidence?path=NOT_FOUND";
+                                        }}
+                                      />
+                                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/photo:opacity-100 transition-opacity flex items-center justify-center gap-1 text-white text-[11px] font-bold pointer-events-none">
+                                        <ZoomIn className="w-3.5 h-3.5" />
+                                        <span>Perbesar</span>
+                                      </div>
+                                      <div className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-black/60 backdrop-blur-xs rounded text-[9px] font-mono text-white pointer-events-none">
+                                        #{pIdx + 1}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              <div className="p-2.5 rounded-xl bg-black/[0.02] border border-dashed border-black/10 flex items-center gap-2 text-xs text-[#94a3b8]">
+                                <Camera className="w-3.5 h-3.5 text-[#cbd5e1]" />
+                                <span>Tidak ada foto evidence yang dilampirkan pada sesi ini.</span>
+                              </div>
+                            )}
                           </div>
                         )}
 

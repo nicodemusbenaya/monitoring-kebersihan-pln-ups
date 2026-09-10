@@ -1783,9 +1783,55 @@ export default function PresentationPage() {
                   </div>
 
                   {slot.inspection && (
-                    <div className="mt-2 pt-2 border-t border-black/5 flex justify-between text-[11px] text-[#647783]">
-                      <span>Pemeriksa: <strong className="text-[#17313d]">{slot.inspection.inspectorName}</strong></span>
-                      <span className="font-mono text-[#647783]">{slot.inspection.displayTime}</span>
+                    <div className="mt-2 pt-2 border-t border-black/5 space-y-2 text-[11px] text-[#647783]">
+                      <div className="flex justify-between items-center">
+                        <span>Pemeriksa: <strong className="text-[#17313d]">{slot.inspection.inspectorName}</strong></span>
+                        <span className="font-mono text-[#647783]">{slot.inspection.displayTime}</span>
+                      </div>
+
+                      {slot.inspection.photos && slot.inspection.photos.length > 0 && (
+                        <div className="pt-1">
+                          <span className="text-[10px] font-bold text-[#647783] block mb-1.5">
+                            Foto Bukti ({slot.inspection.photos.length}):
+                          </span>
+                          <div className="flex gap-2 overflow-x-auto pb-1">
+                            {slot.inspection.photos.map((photo: any, pIdx: number) => (
+                              <button
+                                key={pIdx}
+                                type="button"
+                                onClick={() =>
+                                  setSelectedPhotoModal({
+                                    roomName: selectedRoom.name,
+                                    slotName: slot.name,
+                                    slotRole: slot.role,
+                                    displayTime: slot.inspection.displayTime,
+                                    fileUrl: photo.fileUrl,
+                                    officerName: slot.inspection.inspectorName,
+                                    overallStatus: slot.inspection.overallStatus,
+                                  })
+                                }
+                                className="relative w-16 h-12 rounded-lg overflow-hidden shrink-0 border border-[#d8e3ea] hover:border-[#0076a8] hover:shadow-md transition-all group/p"
+                                title="Klik untuk memperbesar foto"
+                              >
+                                <img
+                                  src={getPhotoUrl(photo.fileUrl)}
+                                  alt={`Evidence ${pIdx + 1}`}
+                                  loading="lazy"
+                                  className="w-full h-full object-cover group-hover/p:scale-105 transition-transform"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.onerror = null;
+                                    target.src = "/api/kebersihan/evidence?path=NOT_FOUND";
+                                  }}
+                                />
+                                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/p:opacity-100 transition-opacity flex items-center justify-center text-white text-[9px] font-bold">
+                                  Lihat
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
